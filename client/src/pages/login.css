@@ -1,0 +1,562 @@
+/* ============================================================
+   GymOps – Flashy Login (White BG)
+   ============================================================ */
+:root {
+  --white:        #ffffff;
+  --surface:      #f8fafc;
+  --emerald:      #10b981;
+  --emerald-dark: #059669;
+  --emerald-soft: rgba(16, 185, 129, 0.08);
+  --slate:        #64748b;
+  --text:         #0f172a;
+  --text-muted:   #94a3b8;
+  --border:       #e2e8f0;
+  --font:         'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+}
+
+/* ============================================================
+   Root
+   ============================================================ */
+.gl-root {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--white);
+  position: relative;
+}
+
+/* ============================================================
+   Background effects (right panel only)
+   ============================================================ */
+.gl-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.gl-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  animation: gl-drift 9s ease-in-out infinite alternate;
+}
+
+.gl-orb-1 {
+  width: 380px;
+  height: 380px;
+  background: rgba(16, 185, 129, 0.10);
+  top: -80px;
+  right: 10%;
+  animation-delay: 0s;
+}
+
+.gl-orb-2 {
+  width: 260px;
+  height: 260px;
+  background: rgba(59, 130, 246, 0.07);
+  bottom: -40px;
+  right: 5%;
+  animation-delay: -4s;
+}
+
+.gl-orb-3 {
+  width: 180px;
+  height: 180px;
+  background: rgba(16, 185, 129, 0.08);
+  top: 45%;
+  right: 40%;
+  animation-delay: -7s;
+}
+
+@keyframes gl-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(24px, 16px) scale(1.06); }
+}
+
+/* Grid dots — right panel only */
+.gl-grid {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 55%;
+  height: 100%;
+  background-image:
+    radial-gradient(circle, rgba(16,185,129,0.12) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 80% at 60% 50%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 60% 50%, black 40%, transparent 100%);
+}
+
+/* Floating particles */
+.gl-particle {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--emerald);
+  opacity: 0;
+  animation: gl-float-up 6s ease-in infinite;
+}
+
+@keyframes gl-float-up {
+  0%   { opacity: 0; transform: translateY(0) scale(1); }
+  10%  { opacity: 0.45; }
+  85%  { opacity: 0.1; }
+  100% { opacity: 0; transform: translateY(-340px) scale(0.3); }
+}
+
+/* ============================================================
+   LEFT – Hero
+   ============================================================ */
+.gl-hero {
+  position: relative;
+  width: 45%;
+  flex-shrink: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.gl-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.gl-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    155deg,
+    rgba(5, 15, 20, 0.40) 0%,
+    rgba(5, 15, 20, 0.70) 100%
+  );
+  z-index: 1;
+}
+
+.gl-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 52px 44px;
+}
+
+/* Logo on hero */
+.gl-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.gl-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: gl-pulse-ring 2.4s ease-out infinite;
+  box-shadow: 0 4px 16px rgba(16,185,129,0.4);
+}
+
+@keyframes gl-pulse-ring {
+  0%   { box-shadow: 0 4px 16px rgba(16,185,129,0.4), 0 0 0 0 rgba(16,185,129,0.5); }
+  70%  { box-shadow: 0 4px 16px rgba(16,185,129,0.4), 0 0 0 10px rgba(16,185,129,0); }
+  100% { box-shadow: 0 4px 16px rgba(16,185,129,0.4), 0 0 0 0 rgba(16,185,129,0); }
+}
+
+.gl-logo-text {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.04em;
+}
+
+.gl-logo-dot {
+  color: var(--emerald);
+}
+
+.gl-tagline {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.gl-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--white);
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ============================================================
+   RIGHT – Auth panel
+   ============================================================ */
+.gl-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* ============================================================
+   Card
+   ============================================================ */
+.gl-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: var(--white);
+  border-radius: 28px;
+  border: 1px solid rgba(16, 185, 129, 0.14);
+  padding: 44px 40px 40px;
+  box-shadow:
+    0 4px 6px rgba(0,0,0,0.04),
+    0 20px 48px rgba(16,185,129,0.08),
+    0 1px 0 rgba(255,255,255,0.9) inset;
+}
+
+/* Emerald shimmer top edge */
+.gl-card-glow {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--emerald), transparent);
+  border-radius: 0 0 2px 2px;
+}
+
+/* Card logo */
+.gl-card-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.gl-card-logo-icon {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(16,185,129,0.30);
+}
+
+.gl-card-logo-text {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.04em;
+}
+
+.gl-card-logo-dot {
+  color: var(--emerald);
+}
+
+/* Headings */
+.gl-heading {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.gl-sub {
+  font-size: 0.88rem;
+  color: var(--slate);
+  font-weight: 400;
+  margin-bottom: 28px;
+}
+
+/* Social buttons */
+.gl-socials {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.gl-social-btn {
+  flex: 1;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.gl-social-btn:hover {
+  background: var(--surface);
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.gl-social-btn:active {
+  transform: translateY(0);
+}
+
+/* Divider */
+.gl-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.gl-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.gl-divider-text {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Form */
+.gl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gl-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gl-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.gl-forgot {
+  font-size: 12px;
+  color: var(--emerald);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.gl-forgot:hover {
+  color: var(--emerald-dark);
+}
+
+/* Inputs */
+.gl-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  font-family: var(--font);
+  font-size: 0.93rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.gl-input::placeholder {
+  color: var(--text-muted);
+}
+
+.gl-input:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.gl-input:focus {
+  background: var(--white);
+  border-color: var(--emerald);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+}
+
+/* Submit button */
+.gl-btn {
+  position: relative;
+  overflow: hidden;
+  margin-top: 6px;
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-dark) 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: transform 0.15s, box-shadow 0.2s;
+  box-shadow:
+    0 4px 20px rgba(16, 185, 129, 0.30),
+    0 1px 0 rgba(255,255,255,0.15) inset;
+}
+
+/* Shimmer sweep */
+.gl-btn-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.22),
+    transparent
+  );
+  transform: skewX(-18deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+
+.gl-btn:hover .gl-btn-shimmer {
+  left: 160%;
+}
+
+.gl-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(16, 185, 129, 0.38);
+}
+
+.gl-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+}
+
+.gl-btn:focus-visible {
+  outline: 3px solid var(--emerald);
+  outline-offset: 2px;
+}
+
+/* Register link */
+.gl-register {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 0.85rem;
+  color: var(--slate);
+}
+
+.gl-register-link {
+  color: var(--emerald);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.gl-register-link:hover {
+  color: var(--emerald-dark);
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 999px) {
+  .gl-hero { display: none; }
+
+  .gl-panel {
+    width: 100%;
+    padding: 48px 20px;
+  }
+
+  .gl-card {
+    max-width: 92%;
+  }
+}
+
+@media (max-width: 480px) {
+  .gl-card {
+    padding: 36px 24px 32px;
+    border-radius: 20px;
+  }
+
+  .gl-heading { font-size: 1.4rem; }
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
