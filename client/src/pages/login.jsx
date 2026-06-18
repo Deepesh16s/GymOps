@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import hero from "../assets/hero.jpg";
 import "./login.css";
+import api from "../services/api";
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -17,11 +18,38 @@ export default function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    // const response = await api.post("/auth/login", formData);
-    // navigate("/dashboard");
-  };
+  e.preventDefault();
 
+  try {
+    const response = await api.post(
+      "/auth/login",
+      formData
+    );
+
+    localStorage.setItem(
+      "token",
+      response.data.token
+    );
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify(response.data.user)
+    );
+
+    alert("Login Successful!");
+
+    navigate("/dashboard");
+  } catch (error) {
+  console.log(error);
+  console.log(error.response);
+  console.log(error.response?.data);
+
+  alert(
+    error.response?.data?.message ||
+    "Login Failed"
+  );
+}
+};
   return (
     <div className="gl-root">
       {/* Ambient background effects */}

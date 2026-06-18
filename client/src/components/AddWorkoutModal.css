@@ -1,0 +1,191 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 1000;
+}
+
+.modal-card {
+  width: 420px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  border-radius: 30px;
+
+  padding: 30px;
+
+  box-shadow:
+    0 25px 60px rgba(15, 23, 42, 0.15);
+
+  position: relative;
+}
+
+.modal-card h2 {
+  font-size: 2rem;
+  color: #0f172a;
+  margin-bottom: 25px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+
+  background: transparent;
+  border: none;
+
+  font-size: 2rem;
+  color: #64748b;
+
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.close-btn:hover {
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+.modal-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-card label {
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.modal-card input,
+.modal-card select {
+  width: 100%;
+  padding: 16px 18px;
+
+  border: 1px solid #dbe3e8;
+  border-radius: 18px;
+
+  font-size: 1rem;
+  background: white;
+
+  transition: all 0.3s ease;
+}
+
+.modal-card input:focus,
+.modal-card select:focus {
+  outline: none;
+  border-color: #10b981;
+
+  box-shadow:
+    0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.save-btn {
+  margin-top: 18px;
+  width: 100%;
+  padding: 16px;
+
+  border: none;
+  border-radius: 18px;
+
+  background: #10b981;
+  color: white;
+
+  font-size: 1rem;
+  font-weight: 700;
+
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 15px 30px rgba(16, 185, 129, 0.3);
+}
+
+.save-btn:active {
+  transform: scale(0.98);
+}
+.modal-overlay {
+  /* styles here */
+}
+
+.modal-card {
+  /* styles here */
+}
+
+.modal-card form {
+  /* styles here */
+}
+
+.modal-card input,
+.modal-card select {
+  /* styles here */
+}
+
+.save-btn {
+  /* styles here */
+}
+
+.save-btn:hover {
+  /* styles here */
+}
+.custom-btn {
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: #10b981;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.custom-form {
+  margin-top: 15px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  padding: 15px;
+
+  border: 1px solid
+    rgba(16, 185, 129, 0.15);
+
+  border-radius: 18px;
+
+  background:
+    rgba(
+      16,
+      185,
+      129,
+      0.03
+    );
+}
+
+.save-custom-btn {
+  border: none;
+  background: #10b981;
+  color: white;
+
+  padding: 12px;
+  border-radius: 14px;
+
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-custom-btn:hover {
+  background: #059669;
+}

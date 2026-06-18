@@ -1,0 +1,880 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================================
+   GymOps Dashboard — premium SaaS stylesheet
+   Palette: emerald #10b981 · surface #f5fbf8 · text #0f172a
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── page shell ─────────────────────────────────────────────── */
+.dash-page {
+  min-height: 100vh;
+  background: #f5fbf8;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #0f172a;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── ambient orbs ───────────────────────────────────────────── */
+.dash-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.65;
+}
+
+.orb--1 {
+  width: 420px;
+  height: 420px;
+  background: rgba(16, 185, 129, 0.13);
+  top: -140px;
+  left: -120px;
+}
+
+.orb--2 {
+  width: 320px;
+  height: 320px;
+  background: rgba(16, 185, 129, 0.09);
+  top: 42%;
+  right: -100px;
+}
+
+.orb--3 {
+  width: 280px;
+  height: 280px;
+  background: rgba(52, 211, 153, 0.09);
+  bottom: -80px;
+  left: 38%;
+}
+
+/* ── main content ───────────────────────────────────────────── */
+.dash-main {
+  position: relative;
+  z-index: 1;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 32px 44px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── section wrapper ────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+/* ============================================================
+   HERO CARD
+   ============================================================ */
+.hero-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(16, 185, 129, 0.14);
+  border-radius: 28px;
+  padding: 40px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 8px 32px rgba(16, 185, 129, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  position: relative;
+  overflow: hidden;
+}
+
+/* decorative mesh strip */
+.hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 80% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #10b981;
+  margin-bottom: 12px;
+  letter-spacing: 0.02em;
+}
+
+.hero-card__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22); }
+  50%       { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.10); }
+}
+
+.hero-card__title {
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.hero-card__sub {
+  margin-top: 10px;
+  font-size: 1.05rem;
+  color: #64748b;
+  line-height: 1.55;
+  max-width: 440px;
+}
+
+.hero-card__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.hero-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 26px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  white-space: nowrap;
+}
+
+.cta-btn:hover {
+  background: #059669;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.38);
+}
+
+.cta-btn:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   PRIMARY STAT CARDS
+   ============================================================ */
+.primary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.primary-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  border-radius: 22px;
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: default;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 6px 24px rgba(16, 185, 129, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,0) 100%);
+  transition: background 0.25s ease;
+}
+
+.primary-card:hover::after {
+  background: linear-gradient(90deg, rgba(16,185,129,0.5) 0%, rgba(52,211,153,0.3) 100%);
+}
+
+.primary-card--accent {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(255, 255, 255, 0.85) 60%);
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+.primary-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 16px 40px rgba(16, 185, 129, 0.12);
+}
+
+.primary-card__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.primary-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.primary-card__label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.primary-card__value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.primary-card__arrow {
+  color: #cbd5e1;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.primary-card:hover .primary-card__arrow {
+  color: #10b981;
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 16px;
+  flex-direction: row;
+}
+
+.chart-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  border-radius: 22px;
+  padding: 28px 28px 22px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 6px 24px rgba(16, 185, 129, 0.05);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.chart-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 16px 40px rgba(16, 185, 129, 0.1);
+}
+
+.chart-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.chart-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.chart-card__sub {
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin-top: 3px;
+}
+
+.chart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 100px;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.chart-tooltip {
+  background: rgba(15, 23, 42, 0.92);
+  border-radius: 10px;
+  padding: 9px 14px;
+  border: none;
+}
+
+.chart-tooltip__label {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chart-tooltip__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ============================================================
+   SECONDARY STAT CARDS
+   ============================================================ */
+.secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.secondary-card {
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.09);
+  border-radius: 18px;
+  padding: 18px 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 4px 16px rgba(16, 185, 129, 0.04);
+}
+
+.secondary-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(16, 185, 129, 0.1);
+}
+
+.secondary-card__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.secondary-card__icon {
+  color: #10b981;
+}
+
+.secondary-card__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.secondary-card__value {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.secondary-card__sub {
+  display: block;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* ============================================================
+   ACTIVITY ROW
+   ============================================================ */
+.activity-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr 0.9fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.activity-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  border-radius: 22px;
+  padding: 26px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 6px 24px rgba(16, 185, 129, 0.05);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.activity-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 16px 40px rgba(16, 185, 129, 0.1);
+}
+
+.activity-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.activity-card__title {
+  font-size: 0.975rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.activity-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #10b981;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+
+.activity-card__link:hover {
+  opacity: 0.7;
+}
+
+/* ─── workout list ─────────────────── */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workout-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.workout-row:hover {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.workout-row__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.workout-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.workout-row__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workout-row__meta {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.workout-row__vol {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+/* ─── delete button ─────────────────── */
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  transform: scale(1.08);
+}
+
+.delete-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.delete-btn:disabled {
+  cursor: default;
+  color: #10b981;
+}
+
+.delete-btn__spinner {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* row fades + collapses slightly while its delete request is in flight */
+.workout-row--deleting {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* inline delete error banner above the Recent Workouts list */
+.delete-error {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: 10px;
+  padding: 9px 13px;
+  margin-bottom: 14px;
+}
+
+/* ─── empty state ──────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.empty-state p {
+  font-size: 13.5px;
+  color: #94a3b8;
+}
+
+.empty-btn {
+  margin-top: 6px;
+  background: none;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  border-radius: 100px;
+  padding: 7px 18px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.empty-btn:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* ─── favorite card ─────────────────── */
+.activity-card--fav {
+  background: linear-gradient(145deg, rgba(16,185,129,0.14) 0%, rgba(255,255,255,0.85) 70%);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.fav-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.fav-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fav-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.fav-count {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.fav-count strong {
+  color: #10b981;
+}
+
+/* ─── PR card ──────────────────────── */
+.pr-trophy {
+  color: #10b981;
+}
+
+.pr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 11px;
+  transition: background 0.15s;
+}
+
+.pr-row:hover {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.pr-row__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 10px;
+}
+
+.pr-row__badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 100px;
+  padding: 3px 10px;
+  flex-shrink: 0;
+}
+
+/* ─── skeleton ─────────────────────── */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* ── 1280px ──── */
+@media (max-width: 1280px) {
+  .primary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .secondary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .charts-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .activity-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .activity-card--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── 960px ───── */
+@media (max-width: 960px) {
+  .dash-main {
+    padding: 24px 28px 56px;
+  }
+
+  .hero-card {
+    padding: 32px 36px;
+  }
+
+  .hero-card__title {
+    font-size: 2.5rem;
+  }
+
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .secondary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── 720px ───── */
+@media (max-width: 720px) {
+  .dash-main {
+    padding: 20px 18px 48px;
+    gap: 22px;
+  }
+
+  .hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px 26px;
+    gap: 24px;
+  }
+
+  .hero-card__right {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .hero-card__title {
+    font-size: 2rem;
+  }
+
+  .primary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .secondary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .activity-row {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-card--wide {
+    grid-column: auto;
+  }
+}
+
+/* ── 480px ───── */
+@media (max-width: 480px) {
+  .hero-card__title {
+    font-size: 1.7rem;
+  }
+
+  .primary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .secondary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
