@@ -1,5 +1,13 @@
 const Workout = require("../models/workout");
 
+/* small helper — volume for one workout doc = sum of (reps*weight)
+   across all its sets. Used everywhere below instead of the old
+   single sets*reps*weight line. */
+const workoutVolume = (w) =>
+  w.workoutSets.reduce((sum, s) => sum + s.reps * s.weight, 0);
+
+const totalSetsCount = (w) => w.workoutSets.length;
+
 /* ─────────────────────────────────────────
    1. Total Workouts
 ───────────────────────────────────────── */
@@ -16,13 +24,13 @@ exports.getTotalWorkouts = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────
-   2. Total Volume  (sets × reps × weight)
+   2. Total Volume  (sum of reps × weight across all sets)
 ───────────────────────────────────────── */
 exports.getTotalVolume = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id });
     const totalVolume = workouts.reduce(
-      (sum, w) => sum + w.sets * w.reps * w.weight,
+      (sum, w) => sum + workoutVolume(w),
       0
     );
     res.status(200).json({ totalVolume });
@@ -49,6 +57,8 @@ exports.getTotalExercises = async (req, res) => {
 
 /* ─────────────────────────────────────────
    4. Recent Workouts  (last 5, populated)
+   workoutSets travels along automatically since we no
+   longer pick individual fields off the doc.
 ───────────────────────────────────────── */
 exports.getRecentWorkouts = async (req, res) => {
   try {
@@ -65,7 +75,8 @@ exports.getRecentWorkouts = async (req, res) => {
 
 /* ─────────────────────────────────────────
    5. Muscle Distribution  [{muscle, sets}]
-   Frontend maps to [{name, value}] for Recharts.
+   "sets" now means total workoutSets entries for that muscle,
+   not the old single `sets` number on the doc.
 ───────────────────────────────────────── */
 exports.getMuscleDistribution = async (req, res) => {
   try {
@@ -77,7 +88,7 @@ exports.getMuscleDistribution = async (req, res) => {
     workouts.forEach((w) => {
       if (!w.exercise) return;
       const muscle = w.exercise.muscleGroup;
-      distribution[muscle] = (distribution[muscle] || 0) + w.sets;
+      distribution[muscle] = (distribution[muscle] || 0) + totalSetsCount(w);
     });
 
     const result = Object.entries(distribution).map(([muscle, sets]) => ({
@@ -118,7 +129,7 @@ exports.getWeeklyVolume = async (req, res) => {
     workouts.forEach((w) => {
       const d = new Date(w.date).getDay(); // 0=Sun
       const label = DAYS[d === 0 ? 6 : d - 1];  // map JS day → Mon-first index
-      accum[label] += w.sets * w.reps * w.weight;
+      accum[label] += workoutVolume(w);
     });
 
     const result = DAYS.map((day) => ({ day, volume: accum[day] }));
@@ -152,7 +163,7 @@ exports.getMonthlyWorkouts = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────
-   8. Favorite Exercise  (most-performed)
+   8. Favorite Exercise  (most-performed, by session count)
 ───────────────────────────────────────── */
 exports.getFavoriteExercise = async (req, res) => {
   try {
@@ -204,7 +215,7 @@ exports.getAverageVolume = async (req, res) => {
     if (workouts.length === 0) return res.status(200).json({ averageVolume: 0 });
 
     const totalVolume = workouts.reduce(
-      (sum, w) => sum + w.sets * w.reps * w.weight,
+      (sum, w) => sum + workoutVolume(w),
       0
     );
     /* Return raw float — frontend rounds via Math.round() */
@@ -218,6 +229,8 @@ exports.getAverageVolume = async (req, res) => {
 
 /* ─────────────────────────────────────────
    11. Personal Records  {exerciseName: maxWeight}
+   Max weight now has to be found across every set of every
+   workout, not just one weight field per doc.
 ───────────────────────────────────────── */
 exports.getPersonalRecords = async (req, res) => {
   try {
@@ -229,7 +242,13 @@ exports.getPersonalRecords = async (req, res) => {
     workouts.forEach((w) => {
       if (!w.exercise) return;
       const name = w.exercise.name;
-      if (!prs[name] || w.weight > prs[name]) prs[name] = w.weight;
+
+      const heaviestSet = w.workoutSets.reduce(
+        (max, s) => (s.weight > max ? s.weight : max),
+        0
+      );
+
+      if (!prs[name] || heaviestSet > prs[name]) prs[name] = heaviestSet;
     });
 
     res.status(200).json(prs);
@@ -317,7 +336,7 @@ exports.getTopMuscle = async (req, res) => {
     workouts.forEach((w) => {
       if (!w.exercise) return;
       const muscle = w.exercise.muscleGroup;
-      muscleSets[muscle] = (muscleSets[muscle] || 0) + w.sets;
+      muscleSets[muscle] = (muscleSets[muscle] || 0) + totalSetsCount(w);
     });
 
     let topMuscle = null;
@@ -359,5 +378,29 @@ exports.getTopExercise = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+exports.getCalendarWorkouts = async (
+  req,
+  res
+) => {
+  try {
+    const workouts =
+      await Workout.find({
+        user: req.user._id,
+      })
+        .populate("exercise")
+        .sort({ date: -1 });
+
+    res.status(200).json(
+      workouts
+    );
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message:
+        "Server Error",
+    });
   }
 };

@@ -17,7 +17,10 @@ const {
   getWeeklyWorkouts,
   getTopMuscle,
   getTopExercise,
-} = require("../controllers/dashboardController");
+  getCalendarWorkouts,
+} = require(
+  "../controllers/dashboardController"
+);
 
 const { protect } = require("../middleware/authMiddleware");
 
@@ -73,3 +76,8 @@ router.get("/top-muscle", protect, getTopMuscle);
 router.get("/top-exercise", protect, getTopExercise);
 
 module.exports = router;
+router.get(
+  "/calendar-workouts",
+  protect,
+  getCalendarWorkouts
+);

@@ -1,0 +1,95 @@
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+}
+
+.history-header h1 { font-size: 1.5rem; color: #0f172a; }
+.history-header p { color: #64748b; font-size: 0.9rem; }
+
+.history-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.history-search {
+  flex: 1;
+  min-width: 220px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: #fff;
+  font-size: 0.92rem;
+}
+
+.history-select {
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: #fff;
+  font-size: 0.92rem;
+  color: #334155;
+}
+
+.history-list { display: flex; flex-direction: column; gap: 12px; }
+
+.history-row {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.history-row-main { display: flex; flex-direction: column; gap: 4px; }
+.history-exercise { font-weight: 600; color: #0f172a; }
+
+.history-muscle-tag {
+  width: fit-content;
+  font-size: 0.72rem;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.history-row-sets { color: #64748b; font-size: 0.88rem; }
+
+.history-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: right;
+}
+
+.history-delete-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: transparent;
+  color: #dc2626;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.history-delete-btn:hover { background: rgba(239, 68, 68, 0.08); }
+.history-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 760px) {
+  .history-row { grid-template-columns: 1fr; text-align: left; }
+  .history-row-meta { text-align: left; }
+}
+
+[data-theme="dark"] .history-search,
+[data-theme="dark"] .history-select { background: #0f1714; border-color: rgba(16, 185, 129, 0.25); color: #e2f5ee; }
+[data-theme="dark"] .history-header h1 { color: #e2f5ee; }
+[data-theme="dark"] .history-row { background: rgba(20, 30, 27, 0.82); border-color: rgba(16, 185, 129, 0.18); }
+[data-theme="dark"] .history-exercise { color: #e2f5ee; }

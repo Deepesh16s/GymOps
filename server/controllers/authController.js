@@ -93,3 +93,54 @@ exports.loginUser = async (req, res) => {
 exports.getMe = async (req, res) => {
   res.status(200).json(req.user);
 };
+// ================= UPDATE PROFILE =================
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { name: name.trim() },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    res.status(200).json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// ================= CHANGE PASSWORD =================
+exports.changePassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.findByIdAndUpdate(req.user._id, { password: hashedPassword });
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// ================= DELETE ACCOUNT =================
+exports.deleteAccount = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.user._id);
+    res.status(200).json({ message: "Account deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

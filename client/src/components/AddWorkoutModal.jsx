@@ -22,13 +22,13 @@ function AddWorkoutModal({
       muscleGroup: "",
     });
 
-  const [formData, setFormData] =
-    useState({
-      exercise: "",
-      sets: "",
-      reps: "",
-      weight: "",
-    });
+  const [selectedExercise, setSelectedExercise] =
+    useState("");
+
+  // per-set rows — start with one empty set so the form
+  // isn't blank on open
+  const [workoutSets, setWorkoutSets] =
+    useState([{ weight: "", reps: "" }]);
 
   useEffect(() => {
     fetchExercises();
@@ -61,14 +61,6 @@ function AddWorkoutModal({
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]:
-        e.target.value,
-    });
-  };
-
   const handleCustomChange = (
     e
   ) => {
@@ -77,6 +69,33 @@ function AddWorkoutModal({
       [e.target.name]:
         e.target.value,
     });
+  };
+
+  // update a single set's weight or reps without touching the rest
+  const handleSetChange = (index, field, value) => {
+    const updated = [...workoutSets];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setWorkoutSets(updated);
+  };
+
+  const addSet = () => {
+    // new set starts empty — could also copy the last set's
+    // weight as a convenience, keeping it simple for now
+    setWorkoutSets([
+      ...workoutSets,
+      { weight: "", reps: "" },
+    ]);
+  };
+
+  const removeSet = (index) => {
+    // always keep at least one set row on screen
+    if (workoutSets.length === 1) return;
+    setWorkoutSets(
+      workoutSets.filter((_, i) => i !== index)
+    );
   };
 
   const createCustomExercise =
@@ -112,10 +131,7 @@ function AddWorkoutModal({
 
         await fetchExercises();
 
-        setFormData({
-          ...formData,
-          exercise: res.data._id,
-        });
+        setSelectedExercise(res.data._id);
       } catch (error) {
         console.log(error);
 
@@ -131,21 +147,31 @@ function AddWorkoutModal({
     async (e) => {
       e.preventDefault();
 
+      // basic guard — every set needs both fields filled in
+      // before we bother hitting the API
+      const hasEmptySet = workoutSets.some(
+        (s) => s.weight === "" || s.reps === ""
+      );
+
+      if (!selectedExercise) {
+        alert("Please select an exercise");
+        return;
+      }
+
+      if (hasEmptySet) {
+        alert("Please fill in weight and reps for every set");
+        return;
+      }
+
       try {
         await api.post(
           "/workouts",
           {
-            exercise:
-              formData.exercise,
-            sets: Number(
-              formData.sets
-            ),
-            reps: Number(
-              formData.reps
-            ),
-            weight: Number(
-              formData.weight
-            ),
+            exercise: selectedExercise,
+            workoutSets: workoutSets.map((s) => ({
+              weight: Number(s.weight),
+              reps: Number(s.reps),
+            })),
           },
           getConfig()
         );
@@ -250,18 +276,16 @@ function AddWorkoutModal({
                 .find(
                   (option) =>
                     option.value ===
-                    formData.exercise
+                    selectedExercise
                 ) || null
             }
             onChange={(
               selected
             ) =>
-              setFormData({
-                ...formData,
-                exercise:
-                  selected?.value ||
-                  "",
-              })
+              setSelectedExercise(
+                selected?.value ||
+                  ""
+              )
             }
           />
 
@@ -349,53 +373,53 @@ function AddWorkoutModal({
             </div>
           )}
 
-          <label>
-            Sets
-          </label>
+          {/* ── per-set rows ── */}
+          <label>Sets</label>
 
-          <input
-            type="number"
-            name="sets"
-            value={
-              formData.sets
-            }
-            onChange={
-              handleChange
-            }
-            required
-          />
+          <div className="sets-list">
+            {workoutSets.map((set, index) => (
+              <div className="set-row" key={index}>
+                <span className="set-row__index">{index + 1}</span>
 
-          <label>
-            Reps
-          </label>
+                <input
+                  type="number"
+                  placeholder="Weight (kg)"
+                  value={set.weight}
+                  onChange={(e) =>
+                    handleSetChange(index, "weight", e.target.value)
+                  }
+                  required
+                />
 
-          <input
-            type="number"
-            name="reps"
-            value={
-              formData.reps
-            }
-            onChange={
-              handleChange
-            }
-            required
-          />
+                <input
+                  type="number"
+                  placeholder="Reps"
+                  value={set.reps}
+                  onChange={(e) =>
+                    handleSetChange(index, "reps", e.target.value)
+                  }
+                  required
+                />
 
-          <label>
-            Weight (kg)
-          </label>
+                <button
+                  type="button"
+                  className="remove-set-btn"
+                  onClick={() => removeSet(index)}
+                  disabled={workoutSets.length === 1}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
 
-          <input
-            type="number"
-            name="weight"
-            value={
-              formData.weight
-            }
-            onChange={
-              handleChange
-            }
-            required
-          />
+          <button
+            type="button"
+            className="add-set-btn"
+            onClick={addSet}
+          >
+            + Add Set
+          </button>
 
           <button
             className="save-btn"

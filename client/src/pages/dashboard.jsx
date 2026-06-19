@@ -24,29 +24,23 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from "recharts";
 
 import Navbar from "../components/Navbar";
 import AddWorkoutModal from "../components/AddWorkoutModal";
+import MuscleBodyMap from "../components/MuscleBodyMap";
 import api from "../services/api";
 
 /* ─── colour tokens for Recharts ─── */
 const EMERALD = "#10b981";
-const PIE_COLORS = [
-  "#10b981",
-  "#34d399",
-  "#6ee7b7",
-  "#a7f3d0",
-  "#059669",
-  "#047857",
-];
 
 /* ─── Ordered days for the bar chart (Sun-first from backend, reordered Mon-first) ─── */
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/* ─── small helper — volume for a single workout doc.
+   Sums reps × weight across every set in workoutSets. ─── */
+const getWorkoutVolume = (w) =>
+  (w.workoutSets || []).reduce((sum, s) => sum + s.reps * s.weight, 0);
 
 /* ─── Stat card variants ─── */
 function PrimaryCard({ title, value, icon: Icon, accent }) {
@@ -82,23 +76,13 @@ function SkeletonVal() {
   return <span className="skeleton" style={{ width: 64, height: 22, display: "inline-block", borderRadius: 6 }} />;
 }
 
-/* ─── Custom Recharts tooltips ─── */
+/* ─── Custom Recharts tooltip (bar chart only now) ─── */
 function CustomBarTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="chart-tooltip">
       <p className="chart-tooltip__label">{label}</p>
       <p className="chart-tooltip__value">{Number(payload[0].value).toLocaleString()} kg</p>
-    </div>
-  );
-}
-
-function CustomPieTooltip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="chart-tooltip">
-      <p className="chart-tooltip__label">{payload[0].name}</p>
-      <p className="chart-tooltip__value">{payload[0].value} sets</p>
     </div>
   );
 }
@@ -199,7 +183,7 @@ function Dashboard() {
       setWeeklyVolumeData(sortedWeekly);
 
       /* ── muscle distribution: backend returns [{muscle, sets}].
-         Recharts Pie needs [{name, value}]. ── */
+         Body map needs [{name, value}]. ── */
       const rawMuscle = muscleDist.data; // [{muscle:"Chest", sets:18}, ...]
       const mappedMuscle = rawMuscle.map((m) => ({
         name:  m.muscle,
@@ -362,7 +346,7 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Muscle Split Pie Chart */}
+          {/* Muscle Split Body Map */}
           <div className="chart-card chart-card--pie">
             <div className="chart-card__head">
               <div>
@@ -370,38 +354,7 @@ function Dashboard() {
                 <p className="chart-card__sub">Sets distribution by muscle group</p>
               </div>
             </div>
-            {muscleData.length === 0 && !loading ? (
-              <div className="chart-empty">
-                <Activity size={28} strokeWidth={1.4} />
-                <p>No muscle data yet.</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={muscleData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={58}
-                    outerRadius={90}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {muscleData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomPieTooltip />} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(val) => (
-                      <span style={{ fontSize: 12, color: "#64748b" }}>{val}</span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+            <MuscleBodyMap muscleData={muscleData} />
           </div>
 
         </section>
@@ -480,6 +433,14 @@ function Dashboard() {
               <div className="activity-list">
                 {stats.recentWorkouts.map((w) => {
                   const isDeleting = deletingId === w._id;
+                  const setCount   = w.workoutSets?.length || 0;
+                  const volume     = getWorkoutVolume(w);
+
+                  // quick per-set string, e.g. "60kg×8, 65kg×6, 65kg×5"
+                  const setBreakdown = (w.workoutSets || [])
+                    .map((s) => `${s.weight}kg×${s.reps}`)
+                    .join(", ");
+
                   return (
                     <div
                       key={w._id}
@@ -491,11 +452,13 @@ function Dashboard() {
                       <div className="workout-row__info">
                         <p className="workout-row__name">{w.exercise?.name}</p>
                         <p className="workout-row__meta">
-                          {w.sets} sets · {w.reps} reps · {w.weight} kg
+                          {setCount} {setCount === 1 ? "set" : "sets"} · {volume.toLocaleString()} kg volume
                         </p>
+                        {/* per-set breakdown, small and secondary */}
+                        <p className="workout-row__sets">{setBreakdown}</p>
                       </div>
                       <span className="workout-row__vol">
-                        {(w.sets * w.reps * w.weight).toLocaleString()} kg
+                        {volume.toLocaleString()} kg
                       </span>
 
                       <button

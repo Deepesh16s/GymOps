@@ -1,24 +1,54 @@
 const Workout = require("../models/workout");
 
+/* small helper — keeps createWorkout/updateWorkout from duplicating
+   the same checks. Throws a plain Error with a .status attached
+   so the route handlers can just catch and respond. */
+const validateWorkoutSets = (workoutSets) => {
+  if (!Array.isArray(workoutSets) || workoutSets.length === 0) {
+    const err = new Error("workoutSets must be a non-empty array");
+    err.status = 400;
+    throw err;
+  }
+
+  workoutSets.forEach((s, i) => {
+    if (
+      s.weight === undefined ||
+      s.reps === undefined ||
+      isNaN(Number(s.weight)) ||
+      isNaN(Number(s.reps))
+    ) {
+      const err = new Error(`Set ${i + 1} needs a valid weight and reps`);
+      err.status = 400;
+      throw err;
+    }
+  });
+};
+
 // Create Workout
 exports.createWorkout = async (req, res) => {
   try {
-    const { exercise, sets, reps, weight } = req.body;
+    const { exercise, workoutSets } = req.body;
+
+    validateWorkoutSets(workoutSets);
+
+    // normalize to numbers in case the client sent strings
+    const cleanSets = workoutSets.map((s) => ({
+      weight: Number(s.weight),
+      reps: Number(s.reps),
+    }));
 
     const workout = await Workout.create({
       user: req.user._id,
       exercise,
-      sets,
-      reps,
-      weight,
+      workoutSets: cleanSets,
     });
 
     res.status(201).json(workout);
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({
-      message: "Server Error",
+    res.status(error.status || 500).json({
+      message: error.status ? error.message : "Server Error",
     });
   }
 };
@@ -157,18 +187,28 @@ exports.updateWorkout = async (req, res) => {
       });
     }
 
+    // only validate workoutSets if the caller is actually changing them —
+    // partial updates (e.g. just swapping exercise) shouldn't require it
+    if (req.body.workoutSets !== undefined) {
+      validateWorkoutSets(req.body.workoutSets);
+      req.body.workoutSets = req.body.workoutSets.map((s) => ({
+        weight: Number(s.weight),
+        reps: Number(s.reps),
+      }));
+    }
+
     const updatedWorkout = await Workout.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     res.status(200).json(updatedWorkout);
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({
-      message: "Server Error",
+    res.status(error.status || 500).json({
+      message: error.status ? error.message : "Server Error",
     });
   }
 };

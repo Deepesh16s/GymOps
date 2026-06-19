@@ -395,6 +395,21 @@
   color: #fff;
 }
 
+/* ── muscle split card (body map) ──────────────────────────────
+   Pie chart used to self-size via Recharts' ResponsiveContainer;
+   the body map is plain markup so this card needs explicit sizing
+   to match the bar chart card's height and center its content. */
+.chart-card--pie {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card--pie .muscle-map {
+  flex: 1;
+  justify-content: center;
+  min-height: 220px;
+}
+
 /* ============================================================
    SECONDARY STAT CARDS
    ============================================================ */
@@ -877,4 +892,9 @@
     width: 100%;
     justify-content: center;
   }
+}
+.workout-row__sets {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
 }
