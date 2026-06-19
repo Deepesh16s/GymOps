@@ -538,3 +538,107 @@
     transition: none;
   }
 }
+
+/* ============================================================
+   ADD GOAL MODAL
+   Minimal additions only — reuses existing design tokens,
+   go-card-style surface, and cta-btn color language.
+   ============================================================ */
+.goal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.goal-modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 22px;
+  padding: 28px;
+  box-shadow: var(--go-shadow-sm), 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.goal-modal h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--go-text);
+  letter-spacing: -0.02em;
+  margin-bottom: 18px;
+}
+
+.goal-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.goal-modal input,
+.goal-modal select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.92rem;
+  color: var(--go-text);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 12px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.goal-modal input:focus,
+.goal-modal select:focus {
+  border-color: var(--go-emerald);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-emerald) 18%, transparent);
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.modal-btn {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 11px 20px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.modal-btn--cancel {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  border: 1px solid var(--go-border-soft);
+}
+
+.modal-btn--cancel:hover {
+  background: color-mix(in srgb, var(--go-text-muted) 10%, var(--go-surface-sunken));
+}
+
+.modal-btn--submit {
+  background: var(--go-emerald);
+  color: #fff;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-emerald) 30%, transparent);
+}
+
+.modal-btn--submit:hover {
+  background: var(--go-emerald-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--go-emerald) 35%, transparent);
+}

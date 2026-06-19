@@ -1,4 +1,6 @@
 import "./goals.css";
+import { useEffect } from "react";
+import api from "../services/api";
 import { useState } from "react";
 import {
   Plus,
@@ -152,13 +154,69 @@ function Goals() {
      useState with a real fetch + loading state when the
      backend goals API exists. */
   const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [overviewStats] = useState(initialOverviewStats);
   const [achievements] = useState(initialAchievements);
-  const [showModalStub, setShowModalStub] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    type: "Strength",
+    target: "",
+    unit: "",
+    exercise: "",
+    deadline: "",
+  });
+
+  const fetchGoals = async () => {
+    try {
+      const res = await api.get("/goals");
+      setGoals(res.data);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGoals();
+  }, []);
 
   const handleAddGoal = () => {
-    // Stub only — wiring a real "Add Goal" modal/flow is a follow-up task.
-    setShowModalStub(true);
+    setShowModal(true);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await api.post("/goals", formData);
+
+      setGoals((prev) => [
+        res.data,
+        ...prev,
+      ]);
+
+      setFormData({
+        title: "",
+        type: "Strength",
+        target: "",
+        unit: "",
+        exercise: "",
+        deadline: "",
+      });
+
+      setShowModal(false);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
@@ -184,13 +242,6 @@ function Goals() {
             Add Goal
           </button>
         </section>
-
-        {showModalStub && (
-          <p className="goals-stub-note">
-            <Sparkles size={14} strokeWidth={2} />
-            Add Goal flow coming soon.
-          </p>
-        )}
 
         {/* ── OVERVIEW CARDS ── */}
         <section className="section">
@@ -231,12 +282,14 @@ function Goals() {
         {/* ── MAIN GOALS GRID ── */}
         <section className="section">
           <p className="section__label">Your Goals</p>
-          {goals.length === 0 ? (
+          {loading ? (
+            <p className="goals-empty__sub">Loading goals...</p>
+          ) : goals.length === 0 ? (
             <EmptyState onAdd={handleAddGoal} />
           ) : (
             <div className="goals-grid">
               {goals.map((goal) => (
-                <GoalCard key={goal.id} goal={goal} />
+                <GoalCard key={goal._id} goal={goal} />
               ))}
             </div>
           )}
@@ -256,6 +309,86 @@ function Goals() {
         </section>
 
       </main>
+
+      {/* ── ADD GOAL MODAL ── */}
+      {showModal && (
+        <div className="goal-modal-overlay">
+          <div className="goal-modal">
+            <h2>Add New Goal</h2>
+            <form onSubmit={handleSubmit}>
+              <input
+                type="text"
+                name="title"
+                placeholder="Goal Title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+              />
+
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+              >
+                <option value="Strength">Strength</option>
+                <option value="Cardio">Cardio</option>
+                <option value="Endurance">Endurance</option>
+                <option value="Weight">Weight</option>
+                <option value="Habit">Habit</option>
+              </select>
+
+              <input
+                type="number"
+                name="target"
+                placeholder="Target"
+                value={formData.target}
+                onChange={handleChange}
+                required
+              />
+
+              <input
+                type="text"
+                name="unit"
+                placeholder="Unit (kg, reps, days...)"
+                value={formData.unit}
+                onChange={handleChange}
+                required
+              />
+
+              <input
+                type="text"
+                name="exercise"
+                placeholder="Exercise (optional)"
+                value={formData.exercise}
+                onChange={handleChange}
+              />
+
+              <input
+                type="date"
+                name="deadline"
+                value={formData.deadline}
+                onChange={handleChange}
+              />
+
+              <div className="modal-buttons">
+                <button
+                  type="button"
+                  className="modal-btn modal-btn--cancel"
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="modal-btn modal-btn--submit"
+                >
+                  Create Goal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
