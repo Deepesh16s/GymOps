@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.registerUser = async (req, res) => {
   try {
@@ -116,21 +118,82 @@ exports.updateProfile = async (req, res) => {
 };
 
 // ================= CHANGE PASSWORD =================
-exports.changePassword = async (req, res) => {
+exports.changePassword = async (
+  req,
+  res
+) => {
   try {
-    const { newPassword } = req.body;
+    const {
+      oldPassword,
+      newPassword,
+    } = req.body;
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    if (
+      !oldPassword ||
+      !newPassword
+    ) {
+      return res.status(400).json({
+        message:
+          "All fields are required",
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(req.user._id, { password: hashedPassword });
+    if (
+      newPassword.length < 6
+    ) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 6 characters",
+      });
+    }
 
-    res.status(200).json({ message: "Password changed successfully" });
+    const user =
+      await User.findById(
+        req.user._id
+      );
+
+    if (!user) {
+      return res.status(404).json({
+        message:
+          "User not found",
+      });
+    }
+
+    const isMatch =
+      await bcrypt.compare(
+        oldPassword,
+        user.password
+      );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message:
+          "Current password is incorrect",
+      });
+    }
+
+    const hashedPassword =
+      await bcrypt.hash(
+        newPassword,
+        10
+      );
+
+    user.password =
+      hashedPassword;
+
+    await user.save();
+
+    res.status(200).json({
+      message:
+        "Password changed successfully",
+    });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message:
+        "Server Error",
+    });
   }
 };
 
@@ -142,5 +205,53 @@ exports.deleteAccount = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// ================= GOOGLE LOGIN =================
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token: googleToken } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: googleToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub, email, name, picture } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        googleId: sub,
+        picture,
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        picture: user.picture,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Google Login Failed",
+    });
   }
 };

@@ -26,6 +26,7 @@ function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] =
     useState("");
+  const [oldPassword, setOldPassword] = useState("");
   const [savingPassword, setSavingPassword] =
     useState(false);
   const [passwordMsg, setPasswordMsg] =
@@ -92,7 +93,7 @@ function Profile() {
       setNameMsg(
         error.response?.data
           ?.message ||
-          "Could not update name."
+        "Could not update name."
       );
     } finally {
       setSavingName(false);
@@ -104,6 +105,12 @@ function Profile() {
       e.preventDefault();
 
       setPasswordMsg("");
+      if (!oldPassword) {
+        setPasswordMsg(
+          "Please enter your current password."
+        );
+        return;
+      }
 
       if (
         newPassword.length < 6
@@ -130,6 +137,7 @@ function Profile() {
         await api.put(
           "/auth/change-password",
           {
+            oldPassword,
             newPassword,
           }
         );
@@ -137,14 +145,14 @@ function Profile() {
         setPasswordMsg(
           "Password updated successfully."
         );
-
+        setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } catch (error) {
         setPasswordMsg(
           error.response?.data
             ?.message ||
-            "Could not change password."
+          "Could not change password."
         );
       } finally {
         setSavingPassword(false);
@@ -178,15 +186,15 @@ function Profile() {
   const joinedDate =
     user?.createdAt
       ? new Date(
-          user.createdAt
-        ).toLocaleDateString(
-          undefined,
-          {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }
-        )
+        user.createdAt
+      ).toLocaleDateString(
+        undefined,
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }
+      )
       : null;
 
   if (loading) {
@@ -316,6 +324,23 @@ function Profile() {
                 handlePasswordChange
               }
             >
+              <label
+                className="profile-label"
+                htmlFor="oldPassword"
+              >
+                Current Password
+              </label>
+
+              <input
+                id="oldPassword"
+                className="profile-input"
+                type="password"
+                placeholder="Enter current password"
+                value={oldPassword}
+                onChange={(e) =>
+                  setOldPassword(e.target.value)
+                }
+              />
               <label
                 className="profile-label"
                 htmlFor="newPassword"

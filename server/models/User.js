@@ -11,7 +11,15 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
+        default: null
+    },
+    googleId: {
+        type: String,
+        default: null
+    },
+    picture: {
+        type: String,
+        default: ""
     }
 }, { timestamps: true });
 module.exports = mongoose.model("User", userSchema);

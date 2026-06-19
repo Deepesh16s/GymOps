@@ -1,158 +1,284 @@
+@import "../styles/design-tokens.css";
+
 .calendar-page {
   min-height: 100vh;
-  background: #f5fbf8;
+  background: var(--go-bg);
 }
 
 .calendar-main {
   max-width: 1480px;
   margin: 0 auto;
-  padding: 32px 44px 72px;
-
+  padding: 32px 44px 96px;
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 28px;
+  gap: 24px;
+  align-items: start;
 }
 
 .calendar-card,
 .calendar-details-card {
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(16, 185, 129, 0.1);
-  border-radius: 28px;
-  padding: 32px;
-  backdrop-filter: blur(20px);
+  padding: 28px;
 }
 
-.calendar-title {
-  color: #0f172a;
-  margin-bottom: 32px;
+/* ---- Header / month nav ---- */
+.calendar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
+.calendar-title { margin-bottom: 2px; }
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--go-surface-sunken);
+  border-radius: var(--go-radius-md);
+  padding: 5px;
+}
+
+.calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--go-radius-sm);
+  color: var(--go-text-muted);
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast), transform var(--go-fast);
+}
+
+.calendar-nav-btn:hover {
+  background: var(--go-surface);
+  color: var(--go-emerald-dark);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.calendar-nav-btn:active { transform: scale(0.94); }
+
+.calendar-month-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--go-text);
+  padding: 0 6px;
+  min-width: 130px;
+  text-align: center;
+}
+
+.calendar-today-btn {
+  height: 32px;
+  padding: 0 14px;
+  margin-left: 4px;
+  border: none;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-emerald-100);
+  color: var(--go-emerald-dark);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--go-fast), transform var(--go-fast);
+}
+
+.calendar-today-btn:hover { background: var(--go-emerald-200); }
+.calendar-today-btn:active { transform: scale(0.96); }
+
+/* ---- Grid ---- */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 14px;
+  gap: 10px;
 }
 
 .calendar-weekday {
   text-align: center;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: #64748b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--go-text-faint);
+  padding-bottom: 6px;
 }
 
 .calendar-cell {
-  height: 90px;
-  border-radius: 18px;
-  background: #f8fafc;
-
+  height: 88px;
+  border-radius: var(--go-radius-md);
+  background: var(--go-surface-sunken);
+  border: 1.5px solid transparent;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  transition: 0.2s;
+  font-family: var(--go-font);
+  color: var(--go-text);
+  transition: transform var(--go-base), box-shadow var(--go-base), border-color var(--go-base), background var(--go-base);
+}
+
+.calendar-cell-day {
+  font-size: 0.92rem;
+  font-weight: 500;
 }
 
 .calendar-cell:hover {
   transform: translateY(-2px);
+  box-shadow: var(--go-shadow-sm);
+  border-color: var(--go-emerald-200);
 }
 
-.empty {
+.calendar-cell.empty {
   background: transparent;
+  cursor: default;
+  pointer-events: none;
 }
 
 .workout-day {
-  background:
-    linear-gradient(
-      135deg,
-      rgba(16, 185, 129, 0.18),
-      rgba(16, 185, 129, 0.08)
-    );
-
-  border:
-    1px solid rgba(
-      16,
-      185,
-      129,
-      0.25
-    );
+  background: linear-gradient(135deg, var(--go-emerald-200), var(--go-emerald-100));
+  border-color: var(--go-emerald-300);
 }
 
+.workout-day .calendar-cell-day { font-weight: 700; color: var(--go-emerald-dark); }
+
+.calendar-cell.is-today {
+  border-color: var(--go-emerald);
+  box-shadow: 0 0 0 3px var(--go-emerald-100);
+}
+
+.calendar-cell.is-selected {
+  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
+  border-color: var(--go-emerald-dark);
+  box-shadow: var(--go-shadow-glow);
+}
+
+.calendar-cell.is-selected .calendar-cell-day { color: #fff; }
+
 .calendar-dot {
-  width: 10px;
-  height: 10px;
-
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  background: var(--go-emerald-dark);
+}
 
-  background: #10b981;
+.calendar-cell.is-selected .calendar-dot { background: #fff; }
 
-  margin-top: 10px;
+/* ---- Details panel ---- */
+.calendar-details-card {
+  position: sticky;
+  top: 92px;
+}
+
+.calendar-details-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--go-text-muted);
+  margin-bottom: 18px;
+}
+
+.calendar-details-header h2 {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.workout-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .workout-entry {
   padding: 16px;
-  border-radius: 18px;
-  background: #f8fafc;
-  margin-top: 18px;
+  border-radius: var(--go-radius-md);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
 }
 
 .workout-entry h3 {
-  margin-bottom: 12px;
-  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--go-text);
+  margin-bottom: 10px;
 }
 
-.workout-entry p {
-  color: #64748b;
-  margin-bottom: 6px;
+.workout-entry-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-[data-theme="dark"] .calendar-page {
-  background: #0b1210;
+.workout-set-chip {
+  font-size: 0.76rem;
+  color: var(--go-emerald-dark);
+  background: var(--go-emerald-100);
+  border-radius: var(--go-radius-pill);
+  padding: 4px 10px;
+  font-weight: 500;
 }
 
-[data-theme="dark"] .calendar-card,
-[data-theme="dark"]
-  .calendar-details-card {
-  background: rgba(
-    20,
-    30,
-    27,
-    0.82
-  );
-  border-color: rgba(
-    16,
-    185,
-    129,
-    0.18
-  );
+/* ---- Skeleton ---- */
+.go-skeleton.calendar-cell { cursor: default; }
+
+/* ---- Dark mode ---- */
+[data-theme="dark"] .calendar-month-label,
+[data-theme="dark"] .calendar-cell,
+[data-theme="dark"] .calendar-cell-day { color: var(--go-text); }
+
+[data-theme="dark"] .calendar-weekday { color: var(--go-text-muted); }
+
+[data-theme="dark"] .calendar-nav-btn { color: var(--go-text-muted); }
+[data-theme="dark"] .calendar-nav-btn:hover { color: var(--go-emerald-light); }
+
+[data-theme="dark"] .calendar-today-btn {
+  background: var(--go-emerald-200);
+  color: var(--go-emerald-light);
+}
+[data-theme="dark"] .calendar-today-btn:hover { background: var(--go-emerald-300); }
+
+[data-theme="dark"] .workout-day .calendar-cell-day { color: var(--go-emerald-light); }
+
+[data-theme="dark"] .calendar-cell.is-selected,
+[data-theme="dark"] .calendar-cell.is-selected .calendar-cell-day { color: #fff; }
+
+[data-theme="dark"] .calendar-details-header,
+[data-theme="dark"] .calendar-details-header h2,
+[data-theme="dark"] .workout-entry h3 { color: var(--go-text); }
+
+[data-theme="dark"] .workout-set-chip {
+  background: var(--go-emerald-200);
+  color: var(--go-emerald-light);
 }
 
-[data-theme="dark"]
-  .calendar-title,
-[data-theme="dark"]
-  .workout-entry h3 {
-  color: #e2f5ee;
-}
+/* Shared/global classes (go-page-title, go-page-subtitle, go-empty-*)
+   don't have dark-mode rules in their own stylesheet, so they were
+   rendering in a near-black color on the dark surface here. Scoped
+   to .calendar-page only — does not affect these classes anywhere else. */
+[data-theme="dark"] .calendar-page .go-page-title { color: var(--go-text); }
+[data-theme="dark"] .calendar-page .go-page-subtitle { color: var(--go-text-muted); }
+[data-theme="dark"] .calendar-page .go-empty-title { color: var(--go-text); }
+[data-theme="dark"] .calendar-page .go-empty-sub { color: var(--go-text-muted); }
+[data-theme="dark"] .calendar-page .go-empty-icon { color: var(--go-text-faint); }
 
-[data-theme="dark"]
-  .calendar-weekday,
-[data-theme="dark"]
-  .workout-entry p {
-  color: #94a3b8;
-}
-
-[data-theme="dark"]
-  .calendar-cell {
-  background: #111a17;
-}
-
-[data-theme="dark"]
-  .workout-entry {
-  background: #111a17;
-}
-
+/* ---- Responsive ---- */
 @media (max-width: 1000px) {
-  .calendar-main {
-    grid-template-columns: 1fr;
-  }
+  .calendar-main { grid-template-columns: 1fr; padding: 24px 20px 110px; }
+  .calendar-details-card { position: static; }
+}
+
+@media (max-width: 560px) {
+  .calendar-cell { height: 56px; border-radius: var(--go-radius-sm); }
+  .calendar-grid { gap: 6px; }
+  .calendar-card, .calendar-details-card { padding: 18px; }
+  .calendar-month-label { min-width: 110px; font-size: 0.82rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-cell { transition: none; }
 }

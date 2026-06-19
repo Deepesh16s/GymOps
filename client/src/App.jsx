@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import WorkoutHistory from "./pages/WorkoutHistory";
 import Analytics from "./pages/Analytics";
 import CalendarPage from "./pages/Calendar";
+import Goals from "./pages/goals";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/workouts" element={<WorkoutHistory />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/goals" element={<Goals />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

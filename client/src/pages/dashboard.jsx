@@ -1,5 +1,6 @@
 import "./dashboard.css";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dumbbell,
   Flame,
@@ -91,6 +92,8 @@ function CustomBarTooltip({ active, payload, label }) {
    MAIN COMPONENT
 ═══════════════════════════════════════ */
 function Dashboard() {
+  const navigate = useNavigate();
+
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -393,14 +396,28 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* ── ACTIVITY SECTION ── */}
-        <section className="section activity-row">
+        {/* ════════════════════════════════════════════════════
+            ACTIVITY SECTION
+            NOTE: this <section> intentionally does NOT carry the
+            shared "section" class anymore. "section" sets
+            display:flex / flex-direction:column, which was
+            colliding (same specificity) with "activity-row"'s
+            display:grid and intermittently winning the cascade,
+            collapsing the two-column layout. "activity-row" is
+            now the sole class controlling this element's layout.
+        ═══════════════════════════════════════════════════════ */}
+        <section className="activity-row">
 
-          {/* Recent Workouts */}
-          <div className="activity-card activity-card--wide">
+          {/* Recent Workouts — left column */}
+          <div className="activity-card activity-card--recent">
             <div className="activity-card__head">
               <p className="activity-card__title">Recent Workouts</p>
-              <button className="activity-card__link">
+              {/* "View all" now navigates to the full Workout History
+                  page instead of being a static, non-functional button. */}
+              <button
+                className="view-all-btn"
+                onClick={() => navigate("/workouts")}
+              >
                 View all <ChevronRight size={14} />
               </button>
             </div>
@@ -431,7 +448,9 @@ function Dashboard() {
               </div>
             ) : (
               <div className="activity-list">
-                {stats.recentWorkouts.map((w) => {
+                {/* Dashboard only ever shows the latest 5 workouts —
+                    the Workout History page remains the full history view. */}
+                {stats.recentWorkouts.slice(0, 5).map((w) => {
                   const isDeleting = deletingId === w._id;
                   const setCount   = w.workoutSets?.length || 0;
                   const volume     = getWorkoutVolume(w);
@@ -480,41 +499,46 @@ function Dashboard() {
             )}
           </div>
 
-          {/* Favorite Exercise */}
-          <div className="activity-card activity-card--fav">
-            <p className="activity-card__title">Top Pick</p>
-            <div className="fav-body">
-              <div className="fav-icon">
-                <Repeat2 size={24} strokeWidth={1.6} />
-              </div>
-              <p className="fav-name">{stats.favoriteExercise || "No data yet"}</p>
-              <p className="fav-count">
-                Performed <strong>{stats.favoriteCount}</strong> times
-              </p>
-            </div>
-          </div>
+          {/* Right column — Top Pick stacked above Personal Records */}
+          <div className="activity-side">
 
-          {/* Personal Records */}
-          <div className="activity-card activity-card--pr">
-            <div className="activity-card__head">
-              <p className="activity-card__title">Personal Records</p>
-              <Trophy size={16} strokeWidth={1.8} className="pr-trophy" />
+            {/* Favorite Exercise */}
+            <div className="activity-card activity-card--fav">
+              <p className="activity-card__title">Top Pick</p>
+              <div className="fav-body">
+                <div className="fav-icon">
+                  <Repeat2 size={24} strokeWidth={1.6} />
+                </div>
+                <p className="fav-name">{stats.favoriteExercise || "No data yet"}</p>
+                <p className="fav-count">
+                  Performed <strong>{stats.favoriteCount}</strong> times
+                </p>
+              </div>
             </div>
-            {prEntries.length === 0 ? (
-              <div className="empty-state">
-                <Trophy size={28} strokeWidth={1.4} />
-                <p>No PRs recorded yet.</p>
+
+            {/* Personal Records */}
+            <div className="activity-card activity-card--pr">
+              <div className="activity-card__head">
+                <p className="activity-card__title">Personal Records</p>
+                <Trophy size={16} strokeWidth={1.8} className="pr-trophy" />
               </div>
-            ) : (
-              <div className="activity-list">
-                {prEntries.map(([exercise, weight]) => (
-                  <div key={exercise} className="pr-row">
-                    <p className="pr-row__name">{exercise}</p>
-                    <span className="pr-row__badge">{weight} kg</span>
-                  </div>
-                ))}
-              </div>
-            )}
+              {prEntries.length === 0 ? (
+                <div className="empty-state">
+                  <Trophy size={28} strokeWidth={1.4} />
+                  <p>No PRs recorded yet.</p>
+                </div>
+              ) : (
+                <div className="activity-list">
+                  {prEntries.map(([exercise, weight]) => (
+                    <div key={exercise} className="pr-row">
+                      <p className="pr-row__name">{exercise}</p>
+                      <span className="pr-row__badge">{weight} kg</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
 
         </section>

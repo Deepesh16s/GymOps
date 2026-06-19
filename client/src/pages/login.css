@@ -1,17 +1,20 @@
 /* ============================================================
-   GymOps – Flashy Login (White BG)
+   GymOps – Login (aligned to shared design tokens)
+   Only visual values changed — markup/handlers untouched.
    ============================================================ */
+@import "../styles/design-tokens.css";
+
 :root {
   --white:        #ffffff;
-  --surface:      #f8fafc;
-  --emerald:      #10b981;
-  --emerald-dark: #059669;
-  --emerald-soft: rgba(16, 185, 129, 0.08);
-  --slate:        #64748b;
-  --text:         #0f172a;
-  --text-muted:   #94a3b8;
-  --border:       #e2e8f0;
-  --font:         'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --surface:      var(--go-surface-sunken);
+  --emerald:      var(--go-emerald);
+  --emerald-dark: var(--go-emerald-dark);
+  --emerald-soft: var(--go-emerald-100);
+  --slate:        var(--go-text-muted);
+  --text:         var(--go-text);
+  --text-muted:   var(--go-text-faint);
+  --border:       var(--go-border);
+  --font:         var(--go-font);
 }
 
 *,
@@ -88,21 +91,18 @@ body {
   to   { transform: translate(24px, 16px) scale(1.06); }
 }
 
-/* Grid dots — right panel only */
 .gl-grid {
   position: absolute;
   top: 0;
   right: 0;
   width: 55%;
   height: 100%;
-  background-image:
-    radial-gradient(circle, rgba(16,185,129,0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(16, 185, 129, 0.12) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(ellipse 80% 80% at 60% 50%, black 40%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 80% 80% at 60% 50%, black 40%, transparent 100%);
 }
 
-/* Floating particles */
 .gl-particle {
   position: absolute;
   bottom: 0;
@@ -145,11 +145,7 @@ body {
 .gl-hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    155deg,
-    rgba(5, 15, 20, 0.40) 0%,
-    rgba(5, 15, 20, 0.70) 100%
-  );
+  background: linear-gradient(155deg, rgba(5, 15, 20, 0.40) 0%, rgba(5, 15, 20, 0.70) 100%);
   z-index: 1;
 }
 
@@ -163,7 +159,6 @@ body {
   padding: 52px 44px;
 }
 
-/* Logo on hero */
 .gl-logo {
   display: flex;
   align-items: center;
@@ -175,18 +170,18 @@ body {
   width: 36px;
   height: 36px;
   background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
-  border-radius: 10px;
+  border-radius: var(--go-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   animation: gl-pulse-ring 2.4s ease-out infinite;
-  box-shadow: 0 4px 16px rgba(16,185,129,0.4);
+  box-shadow: var(--go-shadow-glow);
 }
 
 @keyframes gl-pulse-ring {
-  0%   { box-shadow: 0 4px 16px rgba(16,185,129,0.4), 0 0 0 0 rgba(16,185,129,0.5); }
-  70%  { box-shadow: 0 4px 16px rgba(16,185,129,0.4), 0 0 0 10px rgba(16,185,129,0); }
-  100% { box-shadow: 0 4px 16px rgba(16,185,129,0.4), 0 0 0 0 rgba(16,185,129,0); }
+  0%   { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  70%  { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 .gl-logo-text {
@@ -196,13 +191,11 @@ body {
   letter-spacing: -0.04em;
 }
 
-.gl-logo-dot {
-  color: var(--emerald);
-}
+.gl-logo-dot { color: var(--emerald); }
 
 .gl-tagline {
   font-size: 0.88rem;
-  color: rgba(255,255,255,0.65);
+  color: rgba(255, 255, 255, 0.65);
   margin-bottom: 24px;
   line-height: 1.6;
 }
@@ -218,12 +211,12 @@ body {
   align-items: center;
   gap: 6px;
   padding: 7px 16px;
-  border-radius: 999px;
+  border-radius: var(--go-radius-pill);
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--white);
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -242,24 +235,17 @@ body {
   background: transparent;
 }
 
-/* ============================================================
-   Card
-   ============================================================ */
 .gl-card {
   position: relative;
   width: 100%;
   max-width: 440px;
   background: var(--white);
-  border-radius: 28px;
-  border: 1px solid rgba(16, 185, 129, 0.14);
+  border-radius: var(--go-radius-xl);
+  border: 1px solid var(--go-border-soft);
   padding: 44px 40px 40px;
-  box-shadow:
-    0 4px 6px rgba(0,0,0,0.04),
-    0 20px 48px rgba(16,185,129,0.08),
-    0 1px 0 rgba(255,255,255,0.9) inset;
+  box-shadow: var(--go-shadow-sm), 0 20px 48px rgba(16, 185, 129, 0.08), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
-/* Emerald shimmer top edge */
 .gl-card-glow {
   position: absolute;
   top: 0;
@@ -270,7 +256,6 @@ body {
   border-radius: 0 0 2px 2px;
 }
 
-/* Card logo */
 .gl-card-logo {
   display: flex;
   align-items: center;
@@ -282,11 +267,11 @@ body {
   width: 30px;
   height: 30px;
   background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
-  border-radius: 8px;
+  border-radius: var(--go-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(16,185,129,0.30);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.30);
 }
 
 .gl-card-logo-text {
@@ -296,11 +281,8 @@ body {
   letter-spacing: -0.04em;
 }
 
-.gl-card-logo-dot {
-  color: var(--emerald);
-}
+.gl-card-logo-dot { color: var(--emerald); }
 
-/* Headings */
 .gl-heading {
   font-size: 1.65rem;
   font-weight: 700;
@@ -317,7 +299,6 @@ body {
   margin-bottom: 28px;
 }
 
-/* Social buttons */
 .gl-socials {
   display: flex;
   gap: 10px;
@@ -333,27 +314,24 @@ body {
   gap: 8px;
   background: var(--white);
   border: 1.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--go-radius-sm);
   color: var(--text);
   font-family: var(--font);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+  transition: border-color var(--go-base), background var(--go-base), transform var(--go-fast), box-shadow var(--go-base);
 }
 
 .gl-social-btn:hover {
   background: var(--surface);
   border-color: #cbd5e1;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  box-shadow: var(--go-shadow-sm);
 }
 
-.gl-social-btn:active {
-  transform: translateY(0);
-}
+.gl-social-btn:active { transform: translateY(0); }
 
-/* Divider */
 .gl-divider {
   display: flex;
   align-items: center;
@@ -361,36 +339,12 @@ body {
   margin-bottom: 20px;
 }
 
-.gl-divider-line {
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
+.gl-divider-line { flex: 1; height: 1px; background: var(--border); }
+.gl-divider-text { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
 
-.gl-divider-text {
-  font-size: 11.5px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-/* Form */
-.gl-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.gl-field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.gl-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+.gl-form { display: flex; flex-direction: column; gap: 16px; }
+.gl-field { display: flex; flex-direction: column; gap: 7px; }
+.gl-label-row { display: flex; align-items: center; justify-content: space-between; }
 
 .gl-label {
   font-size: 11px;
@@ -405,14 +359,10 @@ body {
   color: var(--emerald);
   font-weight: 500;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color var(--go-fast);
 }
+.gl-forgot:hover { color: var(--emerald-dark); }
 
-.gl-forgot:hover {
-  color: var(--emerald-dark);
-}
-
-/* Inputs */
 .gl-input {
   width: 100%;
   height: 48px;
@@ -422,27 +372,19 @@ body {
   color: var(--text);
   background: var(--surface);
   border: 1.5px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--go-radius-sm);
   outline: none;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: border-color var(--go-base), background var(--go-base), box-shadow var(--go-base);
 }
 
-.gl-input::placeholder {
-  color: var(--text-muted);
-}
-
-.gl-input:hover {
-  border-color: #cbd5e1;
-  background: #f1f5f9;
-}
-
+.gl-input::placeholder { color: var(--text-muted); }
+.gl-input:hover { border-color: #cbd5e1; background: #f1f5f9; }
 .gl-input:focus {
   background: var(--white);
   border-color: var(--emerald);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+  box-shadow: 0 0 0 3px var(--go-emerald-200);
 }
 
-/* Submit button */
 .gl-btn {
   position: relative;
   overflow: hidden;
@@ -461,102 +403,58 @@ body {
   border-radius: 12px;
   cursor: pointer;
   letter-spacing: 0.01em;
-  transition: transform 0.15s, box-shadow 0.2s;
-  box-shadow:
-    0 4px 20px rgba(16, 185, 129, 0.30),
-    0 1px 0 rgba(255,255,255,0.15) inset;
+  transition: transform var(--go-fast), box-shadow var(--go-base);
+  box-shadow: var(--go-shadow-glow), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
 }
 
-/* Shimmer sweep */
 .gl-btn-shimmer {
   position: absolute;
   top: 0;
   left: -100%;
   width: 55%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255,255,255,0.22),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
   transform: skewX(-18deg);
   transition: left 0.55s ease;
   pointer-events: none;
 }
 
-.gl-btn:hover .gl-btn-shimmer {
-  left: 160%;
-}
+.gl-btn:hover .gl-btn-shimmer { left: 160%; }
+.gl-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(16, 185, 129, 0.38); }
+.gl-btn:active { transform: translateY(0); box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25); }
+.gl-btn:focus-visible { outline: 3px solid var(--emerald); outline-offset: 2px; }
 
-.gl-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(16, 185, 129, 0.38);
-}
+.gl-register { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--slate); }
+.gl-register-link { color: var(--emerald); font-weight: 600; text-decoration: none; transition: color var(--go-fast); }
+.gl-register-link:hover { color: var(--emerald-dark); text-decoration: underline; }
 
-.gl-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
-}
-
-.gl-btn:focus-visible {
-  outline: 3px solid var(--emerald);
-  outline-offset: 2px;
-}
-
-/* Register link */
-.gl-register {
-  text-align: center;
-  margin-top: 22px;
-  font-size: 0.85rem;
-  color: var(--slate);
-}
-
-.gl-register-link {
-  color: var(--emerald);
-  font-weight: 600;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.gl-register-link:hover {
-  color: var(--emerald-dark);
-  text-decoration: underline;
-}
+/* ============================================================
+   Dark mode (new — login previously had no dark variant)
+   ============================================================ */
+[data-theme="dark"] .gl-root,
+[data-theme="dark"] .gl-panel { background: var(--go-bg); }
+[data-theme="dark"] .gl-card { background: var(--go-surface); border-color: var(--go-border-soft); }
+[data-theme="dark"] .gl-heading,
+[data-theme="dark"] .gl-card-logo-text { color: var(--go-text); }
+[data-theme="dark"] .gl-input { background: var(--go-surface-sunken); border-color: var(--go-border); color: var(--go-text); }
+[data-theme="dark"] .gl-input:focus { background: var(--go-surface); }
+[data-theme="dark"] .gl-social-btn { background: var(--go-surface); border-color: var(--go-border); color: var(--go-text); }
+[data-theme="dark"] .gl-social-btn:hover { background: var(--go-surface-sunken); }
 
 /* ============================================================
    Responsive
    ============================================================ */
 @media (max-width: 999px) {
   .gl-hero { display: none; }
-
-  .gl-panel {
-    width: 100%;
-    padding: 48px 20px;
-  }
-
-  .gl-card {
-    max-width: 92%;
-  }
+  .gl-panel { width: 100%; padding: 48px 20px; }
+  .gl-card { max-width: 92%; }
 }
 
 @media (max-width: 480px) {
-  .gl-card {
-    padding: 36px 24px 32px;
-    border-radius: 20px;
-  }
-
+  .gl-card { padding: 36px 24px 32px; border-radius: var(--go-radius-lg); }
   .gl-heading { font-size: 1.4rem; }
 }
 
-/* ============================================================
-   Reduced motion
-   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

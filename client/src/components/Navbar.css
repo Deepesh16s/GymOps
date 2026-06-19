@@ -1,14 +1,23 @@
+@import "../styles/design-tokens.css";
+
 .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 36px;
-  background: rgba(255, 255, 255, 0.85);
-  border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+  background: color-mix(in srgb, var(--go-surface) 82%, transparent);
+  border-bottom: 1px solid var(--go-border-soft);
   position: sticky;
   top: 0;
   z-index: 50;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: box-shadow var(--go-base), background var(--go-base);
+  flex-wrap: wrap;
+}
+
+.navbar-scrolled {
+  box-shadow: var(--go-shadow-sm);
 }
 
 .navbar-logo {
@@ -17,51 +26,88 @@
   gap: 8px;
   font-weight: 700;
   font-size: 1.05rem;
-  color: #0f172a;
+  color: var(--go-text);
   text-decoration: none;
+  font-family: var(--go-font);
+  flex-shrink: 0;
 }
 
 .navbar-logo-icon {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+  transition: transform var(--go-base);
 }
 
-.navbar-logo-dot { color: #10b981; }
+.navbar-logo:hover .navbar-logo-icon {
+  transform: rotate(-6deg) scale(1.05);
+}
 
+.navbar-logo-dot { color: var(--go-emerald); }
+
+/* ── desktop nav links ───────────────────────────────────────── */
 .navbar-links {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  background: var(--go-surface-sunken);
+  padding: 4px;
+  border-radius: var(--go-radius-md);
 }
 
 .navbar-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border-radius: 10px;
-  color: #64748b;
+  border-radius: var(--go-radius-sm);
+  color: var(--go-text-muted);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  transition: background var(--go-base), color var(--go-base);
 }
 
-.navbar-link:hover { background: rgba(16, 185, 129, 0.08); color: #0f172a; }
+.navbar-link:hover {
+  background: var(--go-emerald-50);
+  color: var(--go-text);
+}
 
 .navbar-link-active {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  background: var(--go-surface);
+  color: var(--go-emerald-dark);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.navbar-link-indicator {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-emerald);
+  transform: scaleX(0);
+  opacity: 0;
+  transition: transform var(--go-base), opacity var(--go-base);
+}
+
+.navbar-link-active .navbar-link-indicator {
+  transform: scaleX(1);
+  opacity: 1;
 }
 
 .navbar-right {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-shrink: 0;
 }
 
 .navbar-profile { position: relative; }
@@ -73,15 +119,80 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #64748b;
+  color: var(--go-text-muted);
   padding: 4px;
+  border-radius: var(--go-radius-pill);
+  transition: background var(--go-fast);
+}
+
+.navbar-profile-btn:hover {
+  background: var(--go-emerald-50);
 }
 
 .navbar-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.navbar-chevron {
+  transition: transform var(--go-base);
+  color: var(--go-text-faint);
+}
+
+.navbar-chevron-open {
+  transform: rotate(180deg);
+}
+
+.navbar-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 230px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-lg);
+  padding: 8px;
+  overflow: hidden;
+
+  /* Animated open/close instead of mount/unmount */
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  pointer-events: none;
+  transform-origin: top right;
+  transition: opacity var(--go-base), transform var(--go-base);
+}
+
+.navbar-dropdown-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.navbar-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--go-border-soft);
+  margin-bottom: 6px;
+}
+
+.navbar-dropdown-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
   color: #fff;
   display: flex;
   align-items: center;
@@ -90,27 +201,16 @@
   font-weight: 600;
 }
 
-.navbar-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 10px);
-  width: 220px;
-  background: #fff;
-  border: 1px solid rgba(16, 185, 129, 0.12);
-  border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-  padding: 8px;
+.navbar-dropdown-name { font-size: 0.88rem; font-weight: 600; color: var(--go-text); line-height: 1.3; }
+.navbar-dropdown-email {
+  font-size: 0.76rem;
+  color: var(--go-text-muted);
+  line-height: 1.3;
+  max-width: 150px;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.navbar-dropdown-header {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(16, 185, 129, 0.08);
-  margin-bottom: 6px;
-}
-
-.navbar-dropdown-name { font-size: 0.9rem; font-weight: 600; color: #0f172a; }
-.navbar-dropdown-email { font-size: 0.78rem; color: #64748b; }
 
 .navbar-dropdown-item {
   display: flex;
@@ -118,24 +218,178 @@
   gap: 10px;
   width: 100%;
   padding: 9px 12px;
-  border-radius: 9px;
+  border-radius: var(--go-radius-sm);
   border: none;
   background: transparent;
-  color: #334155;
-  font-size: 0.88rem;
+  color: var(--go-text);
+  font-size: 0.87rem;
+  font-family: var(--go-font);
   text-decoration: none;
   cursor: pointer;
   text-align: left;
+  transition: background var(--go-fast), color var(--go-fast), padding-left var(--go-fast);
 }
 
-.navbar-dropdown-item:hover { background: rgba(16, 185, 129, 0.08); }
-.navbar-dropdown-logout { color: #dc2626; }
-.navbar-dropdown-logout:hover { background: rgba(239, 68, 68, 0.08); }
+.navbar-dropdown-item:hover {
+  background: var(--go-emerald-50);
+  padding-left: 15px;
+}
 
-[data-theme="dark"] .navbar { background: rgba(11, 18, 16, 0.9); border-color: rgba(16, 185, 129, 0.18); }
-[data-theme="dark"] .navbar-logo { color: #e2f5ee; }
-[data-theme="dark"] .navbar-link { color: #94a3b8; }
-[data-theme="dark"] .navbar-link:hover { color: #e2f5ee; }
-[data-theme="dark"] .navbar-dropdown { background: #141e1b; border-color: rgba(16, 185, 129, 0.2); }
-[data-theme="dark"] .navbar-dropdown-name { color: #e2f5ee; }
-[data-theme="dark"] .navbar-dropdown-item { color: #cbd5e1; }
+.navbar-dropdown-logout { color: var(--go-danger-dark); }
+.navbar-dropdown-logout:hover { background: var(--go-danger-50); }
+
+/* ---- Dark mode ---- */
+/* Most elements above resolve correctly in dark mode automatically via
+   tokens. Only a genuine design decision remains here: the active link
+   uses the sunken surface (instead of the raised surface) for contrast
+   against the dark navbar background. */
+[data-theme="dark"] .navbar-link-active {
+  background: var(--go-surface-sunken);
+}
+
+/* ============================================================
+   HAMBURGER TRIGGER
+   Hidden on desktop, shown only under the 900px breakpoint.
+   ============================================================ */
+.navbar-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: var(--go-radius-sm);
+  background: transparent;
+  color: var(--go-text);
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast);
+  flex-shrink: 0;
+}
+
+.navbar-hamburger:hover {
+  background: var(--go-emerald-50);
+  color: var(--go-emerald-dark);
+}
+
+.navbar-hamburger:focus-visible,
+.navbar-link:focus-visible,
+.navbar-mobile-link:focus-visible,
+.navbar-profile-btn:focus-visible,
+.navbar-dropdown-item:focus-visible {
+  outline: 2px solid var(--go-emerald);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   MOBILE SLIDE-DOWN MENU
+   Always present in the DOM (for animation + accessibility),
+   collapsed via max-height/opacity when closed. Hidden entirely
+   on desktop where .navbar-links is used instead.
+   ============================================================ */
+.navbar-mobile-menu {
+  display: none;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-md);
+  transition:
+    max-height var(--go-base),
+    opacity var(--go-base),
+    margin-top var(--go-base),
+    padding var(--go-base);
+}
+
+.navbar-mobile-menu-open {
+  max-height: 420px;
+  opacity: 1;
+  margin-top: 12px;
+  padding: 8px;
+  pointer-events: auto;
+}
+
+.navbar-mobile-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--go-radius-sm);
+  color: var(--go-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background var(--go-fast), color var(--go-fast), padding-left var(--go-fast);
+}
+
+.navbar-mobile-link:hover {
+  background: var(--go-emerald-50);
+  color: var(--go-text);
+  padding-left: 18px;
+}
+
+.navbar-mobile-link-active {
+  background: var(--go-emerald-50);
+  color: var(--go-emerald-dark);
+  font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE BREAKPOINTS
+   Desktop  (>900px):  top nav links, no hamburger
+   Tablet/Mobile (<=900px): hamburger + slide-down menu
+   ============================================================ */
+@media (max-width: 900px) {
+  .navbar {
+    padding: 12px 18px;
+  }
+
+  .navbar-links {
+    display: none;
+  }
+
+  .navbar-hamburger {
+    display: flex;
+  }
+
+  .navbar-mobile-menu {
+    display: flex;
+    order: 3;
+  }
+}
+
+/* Fine-tune spacing/sizing across the required test widths
+   (320 / 375 / 390 / 430 / 768) without changing structure. */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .navbar-logo span {
+    font-size: 0.98rem;
+  }
+
+  .navbar-right {
+    gap: 8px;
+  }
+
+  .navbar-dropdown {
+    width: min(230px, calc(100vw - 28px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-dropdown,
+  .navbar-chevron,
+  .navbar-logo-icon,
+  .navbar-mobile-menu,
+  .navbar-mobile-link,
+  .navbar-hamburger { transition: none; }
+}

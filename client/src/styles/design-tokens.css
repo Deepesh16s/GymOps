@@ -1,0 +1,65 @@
+:root {
+  --go-bg: #f5fbf8;
+
+  --go-surface: #ffffff;
+  --go-surface-sunken: #f7faf9;
+
+  --go-text: #0f172a;
+  --go-text-muted: #64748b;
+  --go-text-faint: #94a3b8;
+
+  --go-border-soft: rgba(16,185,129,0.1);
+
+  --go-emerald: #10b981;
+  --go-emerald-dark: #059669;
+  --go-emerald-light: #6ee7b7;
+
+  --go-emerald-50: rgba(16,185,129,0.08);
+  --go-emerald-100: rgba(16,185,129,0.08);
+  --go-emerald-200: rgba(16,185,129,0.16);
+  --go-emerald-300: rgba(16,185,129,0.25);
+
+  --go-danger-dark: #dc2626;
+  --go-danger-50: rgba(239, 68, 68, 0.08);
+
+  --go-radius-sm: 12px;
+  --go-radius-md: 20px;
+  --go-radius-pill: 999px;
+
+  --go-shadow-xs: 0 2px 8px rgba(0,0,0,0.05);
+  --go-shadow-sm: 0 8px 24px rgba(0,0,0,0.08);
+  --go-shadow-md: 0 12px 30px rgba(0,0,0,0.12);
+  --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.16);
+  --go-shadow-glow: 0 0 25px rgba(16,185,129,0.22);
+
+  --go-fast: 0.15s ease;
+  --go-base: 0.25s ease;
+
+  --go-font:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+[data-theme="dark"] {
+  --go-bg: #0b1210;
+
+  --go-surface: #111827;
+  --go-surface-sunken: #1a2320;
+
+  --go-text: #e2f5ee;
+  --go-text-muted: #94a3b8;
+  --go-text-faint: #64748b;
+
+  --go-border-soft: rgba(16,185,129,0.18);
+
+  --go-emerald-50: rgba(16, 185, 129, 0.14);
+
+  --go-danger-dark: #f87171;
+  --go-danger-50: rgba(239, 68, 68, 0.16);
+
+  --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
