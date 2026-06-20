@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const Exercise = require("../models/Exercise");
+const defaultExercises = require("../data/defaultExercises");
 
 exports.registerUser = async (req, res) => {
   try {
@@ -26,6 +28,15 @@ exports.registerUser = async (req, res) => {
       email,
       password: hashedPassword,
     });
+
+    // ── NEW: seed default exercise library for this user ──
+    await Exercise.insertMany(
+      defaultExercises.map((exercise) => ({
+        ...exercise,
+        createdBy: user._id,
+        isDefault: true,
+      }))
+    );
 
     res.status(201).json({
       message: "User Registered Successfully",
@@ -230,6 +241,16 @@ exports.googleLogin = async (req, res) => {
         googleId: sub,
         picture,
       });
+
+      // ── NEW: brand-new Google sign-up — seed the same default
+      // exercise library as email/password registration ──
+      await Exercise.insertMany(
+        defaultExercises.map((exercise) => ({
+          ...exercise,
+          createdBy: user._id,
+          isDefault: true,
+        }))
+      );
     }
 
     const token = jwt.sign(

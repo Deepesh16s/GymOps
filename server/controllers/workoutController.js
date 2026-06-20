@@ -1,4 +1,6 @@
 const Workout = require("../models/workout");
+const updateGoalsForWorkout = require("../utils/updateGoals");
+const recalculateGoalsForExercise = require("../utils/recalculateGoals");
 
 /* small helper — keeps createWorkout/updateWorkout from duplicating
    the same checks. Throws a plain Error with a .status attached
@@ -42,6 +44,9 @@ exports.createWorkout = async (req, res) => {
       exercise,
       workoutSets: cleanSets,
     });
+
+    // ── NEW: auto-update any goals tied to this exercise ──
+    await updateGoalsForWorkout(req.user._id, exercise, cleanSets);
 
     res.status(201).json(workout);
   } catch (error) {
@@ -203,6 +208,16 @@ exports.updateWorkout = async (req, res) => {
       { new: true, runValidators: true }
     );
 
+    // ── NEW: if the sets or the exercise itself changed, the PR may
+    // have moved — let goals react to it the same way creation does ──
+    if (req.body.workoutSets !== undefined || req.body.exercise !== undefined) {
+      await updateGoalsForWorkout(
+        req.user._id,
+        updatedWorkout.exercise,
+        updatedWorkout.workoutSets
+      );
+    }
+
     res.status(200).json(updatedWorkout);
   } catch (error) {
     console.log(error);
@@ -231,6 +246,10 @@ exports.deleteWorkout = async (req, res) => {
     }
 
     await workout.deleteOne();
+
+    // ── NEW: weight that was the PR may have just been deleted —
+    // recompute this exercise's goals from what's left ──
+    await recalculateGoalsForExercise(req.user._id, workout.exercise);
 
     res.status(200).json({
       message: "Workout deleted successfully",

@@ -1,5 +1,5 @@
 import "./goals.css";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import api from "../services/api";
 import { useState } from "react";
 import {
@@ -24,24 +24,103 @@ import Navbar from "../components/Navbar";
    a loading flag), same pattern as Dashboard.jsx.
 ═══════════════════════════════════════════════════════════ */
 
-/* Overview stat definitions: each maps to a goal "category".
-   current/target start at 0 until real workout/goal data exists. */
-const initialOverviewStats = {
-  weeklyWorkouts: { current: 0, target: 0 },
-  monthlyVolume: { current: 0, target: 0 },
-  streak: { current: 0, target: 0 },
-  pr: { current: 0, target: 0, exercise: "" },
+/* ════════════════════════════════════════════════════════════
+   DATA-DRIVEN OVERVIEW + ACHIEVEMENTS
+   Both are now derived from real /goals and /workouts data
+   instead of hardcoded placeholders. No goal/workout schema
+   changes were made — these are pure read-side computations.
+═══════════════════════════════════════════════════════════ */
+
+/* Goal model has no explicit "category" field, so overview cards
+   are matched to a goal by keywords in its title (case-insensitive,
+   all keywords must appear). If no goal matches a category, the
+   OverviewCard already renders "No goal set" whenever target is 0 —
+   so an unmatched category naturally falls back to that, unchanged. */
+const findGoalForCategory = (goals, keywords) =>
+  goals.find((g) =>
+    keywords.every((kw) => g.title.toLowerCase().includes(kw))
+  );
+
+const buildOverviewStats = (goals) => {
+  const weeklyGoal = findGoalForCategory(goals, ["weekly", "workout"]);
+  const monthlyGoal = findGoalForCategory(goals, ["monthly", "volume"]);
+  const streakGoal = findGoalForCategory(goals, ["streak"]);
+  const prGoal =
+    findGoalForCategory(goals, ["personal", "record"]) ||
+    findGoalForCategory(goals, ["pr"]);
+
+  return {
+    weeklyWorkouts: weeklyGoal
+      ? { current: weeklyGoal.current, target: weeklyGoal.target }
+      : { current: 0, target: 0 },
+    monthlyVolume: monthlyGoal
+      ? { current: monthlyGoal.current, target: monthlyGoal.target }
+      : { current: 0, target: 0 },
+    streak: streakGoal
+      ? { current: streakGoal.current, target: streakGoal.target }
+      : { current: 0, target: 0 },
+    pr: prGoal
+      ? {
+          current: prGoal.current,
+          target: prGoal.target,
+          exercise: prGoal.exercise || "",
+        }
+      : { current: 0, target: 0, exercise: "" },
+  };
 };
 
-/* Achievement definitions stay (they're derived from workout
-   activity, not fake goal data) but start fully locked since
-   there is no workout history wired in on this page yet. */
-const initialAchievements = [
-  { id: "a1", label: "First Workout", icon: "🔥", unlocked: false },
-  { id: "a2", label: "1000 kg Lifted", icon: "🏋️", unlocked: false },
-  { id: "a3", label: "7 Day Streak", icon: "📅", unlocked: false },
-  { id: "a4", label: "New PR", icon: "💪", unlocked: false },
-];
+/* total volume + workout streak, derived from raw workout history */
+const computeWorkoutStats = (workouts) => {
+  let totalVolume = 0;
+  const dayKeys = new Set();
+
+  workouts.forEach((w) => {
+    const day = new Date(w.date || w.createdAt);
+    day.setHours(0, 0, 0, 0);
+    dayKeys.add(day.getTime());
+
+    (w.workoutSets || []).forEach((s) => {
+      totalVolume += (s.weight || 0) * (s.reps || 0);
+    });
+  });
+
+  // streak = consecutive days with a workout, counting back from the
+  // most recent workout day (so an old streak doesn't linger forever,
+  // but a rest day "today" doesn't zero out yesterday's streak either)
+  const days = Array.from(dayKeys).sort((a, b) => b - a);
+  let streak = 0;
+  if (days.length) {
+    let expected = days[0];
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    for (const day of days) {
+      if (day === expected) {
+        streak += 1;
+        expected -= ONE_DAY;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { totalWorkouts: workouts.length, totalVolume, streak };
+};
+
+const buildAchievements = (goals, workouts) => {
+  const { totalWorkouts, totalVolume, streak } = computeWorkoutStats(workouts);
+
+  // a "PR goal" is any goal tied to a specific exercise that has
+  // reached Completed status
+  const hasCompletedPRGoal = goals.some(
+    (g) => g.status === "Completed" && g.exercise && g.exercise.trim() !== ""
+  );
+
+  return [
+    { id: "a1", label: "First Workout", icon: "🔥", unlocked: totalWorkouts >= 1 },
+    { id: "a2", label: "1000 kg Lifted", icon: "🏋️", unlocked: totalVolume >= 1000 },
+    { id: "a3", label: "7 Day Streak", icon: "📅", unlocked: streak >= 7 },
+    { id: "a4", label: "New PR", icon: "💪", unlocked: hasCompletedPRGoal },
+  ];
+};
 
 /* ── helpers ── */
 const pct = (current, target) =>
@@ -91,7 +170,7 @@ function OverviewCard({ icon: Icon, label, current, target, suffix, footnote }) 
   );
 }
 
-function GoalCard({ goal }) {
+function GoalCard({ goal, onEdit, onDelete }) {
   const percent = pct(goal.current, goal.target);
   return (
     <div className="go-card goal-card">
@@ -114,6 +193,23 @@ function GoalCard({ goal }) {
         value={percent}
         variant={goal.status === "Behind" ? "behind" : goal.status === "Completed" ? "completed" : undefined}
       />
+
+      <div className="goal-card-actions">
+        <button
+          type="button"
+          className="goal-edit-btn"
+          onClick={() => onEdit(goal)}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className="goal-delete-btn"
+          onClick={() => onDelete(goal)}
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 }
@@ -154,10 +250,15 @@ function Goals() {
      useState with a real fetch + loading state when the
      backend goals API exists. */
   const [goals, setGoals] = useState([]);
+  const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [overviewStats] = useState(initialOverviewStats);
-  const [achievements] = useState(initialAchievements);
+  const overviewStats = useMemo(() => buildOverviewStats(goals), [goals]);
+  const achievements = useMemo(
+    () => buildAchievements(goals, workouts),
+    [goals, workouts]
+  );
   const [showModal, setShowModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     type: "Strength",
@@ -178,12 +279,58 @@ function Goals() {
     }
   };
 
+  /* Reuses the existing GET /workouts endpoint (no backend changes) —
+     a high limit is passed so achievement math (total volume, streak)
+     sees full history rather than just the first paginated page. */
+  const fetchWorkouts = async () => {
+    try {
+      const res = await api.get("/workouts?limit=1000");
+      setWorkouts(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
     fetchGoals();
+    fetchWorkouts();
   }, []);
 
   const handleAddGoal = () => {
+    setEditingGoal(null);
+    setFormData({
+      title: "",
+      type: "Strength",
+      target: "",
+      unit: "",
+      exercise: "",
+      deadline: "",
+    });
     setShowModal(true);
+  };
+
+  const handleEditGoal = (goal) => {
+    setEditingGoal(goal);
+    setFormData({
+      title: goal.title,
+      type: goal.type,
+      target: goal.target,
+      unit: goal.unit,
+      exercise: goal.exercise || "",
+      deadline: goal.deadline ? goal.deadline.slice(0, 10) : "",
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteGoal = async (goal) => {
+    if (!window.confirm("Delete this goal?")) return;
+
+    try {
+      await api.delete(`/goals/${goal._id}`);
+      setGoals((prev) => prev.filter((g) => g._id !== goal._id));
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const handleChange = (e) => {
@@ -197,12 +344,22 @@ function Goals() {
     e.preventDefault();
 
     try {
-      const res = await api.post("/goals", formData);
+      if (editingGoal) {
+        const res = await api.put(`/goals/${editingGoal._id}`, formData);
 
-      setGoals((prev) => [
-        res.data,
-        ...prev,
-      ]);
+        setGoals((prev) =>
+          prev.map((g) => (g._id === editingGoal._id ? res.data : g))
+        );
+
+        setEditingGoal(null);
+      } else {
+        const res = await api.post("/goals", formData);
+
+        setGoals((prev) => [
+          res.data,
+          ...prev,
+        ]);
+      }
 
       setFormData({
         title: "",
@@ -289,7 +446,12 @@ function Goals() {
           ) : (
             <div className="goals-grid">
               {goals.map((goal) => (
-                <GoalCard key={goal._id} goal={goal} />
+                <GoalCard
+                  key={goal._id}
+                  goal={goal}
+                  onEdit={handleEditGoal}
+                  onDelete={handleDeleteGoal}
+                />
               ))}
             </div>
           )}
@@ -310,11 +472,11 @@ function Goals() {
 
       </main>
 
-      {/* ── ADD GOAL MODAL ── */}
+      {/* ── ADD / EDIT GOAL MODAL ── */}
       {showModal && (
         <div className="goal-modal-overlay">
           <div className="goal-modal">
-            <h2>Add New Goal</h2>
+            <h2>{editingGoal ? "Edit Goal" : "Create Goal"}</h2>
             <form onSubmit={handleSubmit}>
               <input
                 type="text"
@@ -374,7 +536,10 @@ function Goals() {
                 <button
                   type="button"
                   className="modal-btn modal-btn--cancel"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingGoal(null);
+                  }}
                 >
                   Cancel
                 </button>
@@ -382,7 +547,7 @@ function Goals() {
                   type="submit"
                   className="modal-btn modal-btn--submit"
                 >
-                  Create Goal
+                  {editingGoal ? "Update Goal" : "Create Goal"}
                 </button>
               </div>
             </form>
