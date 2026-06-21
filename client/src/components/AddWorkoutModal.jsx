@@ -61,6 +61,16 @@ function AddWorkoutModal({
     }
   };
 
+  // ── dedupe by normalized (trimmed, lowercase) name — a defensive
+  // safety net on top of the backend dedupe, so the dropdown never
+  // shows the same exercise name twice ──
+  const uniqueExercises = exercises.filter((exercise, index, arr) => {
+    const key = exercise.name.trim().toLowerCase();
+    return (
+      arr.findIndex((e) => e.name.trim().toLowerCase() === key) === index
+    );
+  });
+
   const handleCustomChange = (
     e
   ) => {
@@ -255,7 +265,7 @@ function AddWorkoutModal({
           <Select
             placeholder="Search Exercise..."
             isSearchable
-            options={exercises.map(
+            options={uniqueExercises.map(
               (exercise) => ({
                 value:
                   exercise._id,
@@ -264,7 +274,7 @@ function AddWorkoutModal({
               })
             )}
             value={
-              exercises
+              uniqueExercises
                 .map(
                   (exercise) => ({
                     value:

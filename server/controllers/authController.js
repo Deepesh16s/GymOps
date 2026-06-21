@@ -6,6 +6,54 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const Exercise = require("../models/Exercise");
 const defaultExercises = require("../data/defaultExercises");
 
+/**
+ * seedDefaultExercisesForUser
+ * ----------------------------
+ * Seeds the default exercise library for a single user, exactly once.
+ * Used by both registerUser and googleLogin so the two signup paths
+ * can never drift apart.
+ *
+ * Guarded two ways:
+ * 1. A cheap existence check up front — skips the insert entirely for
+ *    any user who already has default exercises (covers normal flow,
+ *    and protects existing users if this function is ever called
+ *    again for them by mistake).
+ * 2. `ordered: false` on insertMany + a caught duplicate-key error —
+ *    if a race ever causes this to run twice concurrently for the same
+ *    new user, the unique (createdBy, normalizedName) index on
+ *    Exercise.js rejects the second batch's duplicates instead of
+ *    creating them, and we simply swallow that specific error.
+ *
+ * @param {ObjectId|string} userId
+ */
+const seedDefaultExercisesForUser = async (userId) => {
+  const alreadySeeded = await Exercise.exists({
+    createdBy: userId,
+    isDefault: true,
+  });
+
+  if (alreadySeeded) return;
+
+  try {
+    await Exercise.insertMany(
+      defaultExercises.map((exercise) => ({
+        ...exercise,
+        createdBy: userId,
+        isDefault: true,
+      })),
+      { ordered: false }
+    );
+  } catch (error) {
+    // E11000 = duplicate key, thrown by the unique index if a race
+    // condition let two seed attempts overlap for this user. Anything
+    // else should still surface.
+    if (error.code !== 11000 && error.code !== "E11000") {
+      throw error;
+    }
+    console.log("Default exercise seeding skipped duplicates:", error.message);
+  }
+};
+
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -29,14 +77,9 @@ exports.registerUser = async (req, res) => {
       password: hashedPassword,
     });
 
-    // ── NEW: seed default exercise library for this user ──
-    await Exercise.insertMany(
-      defaultExercises.map((exercise) => ({
-        ...exercise,
-        createdBy: user._id,
-        isDefault: true,
-      }))
-    );
+    // Seed default exercise library for this new user (guarded against
+    // duplicate seeding — see seedDefaultExercisesForUser above)
+    await seedDefaultExercisesForUser(user._id);
 
     res.status(201).json({
       message: "User Registered Successfully",
@@ -242,16 +285,14 @@ exports.googleLogin = async (req, res) => {
         picture,
       });
 
-      // ── NEW: brand-new Google sign-up — seed the same default
-      // exercise library as email/password registration ──
-      await Exercise.insertMany(
-        defaultExercises.map((exercise) => ({
-          ...exercise,
-          createdBy: user._id,
-          isDefault: true,
-        }))
-      );
+      // Brand-new Google sign-up — seed the same default exercise
+      // library as email/password registration (guarded the same way)
+      await seedDefaultExercisesForUser(user._id);
     }
+    // Existing user logging in via Google again: deliberately no
+    // seeding call here at all — seedDefaultExercisesForUser is only
+    // ever invoked once, at the moment the User doc is first created,
+    // so a returning user can never trigger a second seed attempt.
 
     const token = jwt.sign(
       { id: user._id },

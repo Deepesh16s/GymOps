@@ -1,5 +1,5 @@
 const Workout = require("../models/workout");
-const updateGoalsForWorkout = require("../utils/updateGoals");
+const { updateGoalsForWorkout } = require("../utils/updateGoals");
 const recalculateGoalsForExercise = require("../utils/recalculateGoals");
 
 /* small helper — keeps createWorkout/updateWorkout from duplicating
@@ -45,7 +45,7 @@ exports.createWorkout = async (req, res) => {
       workoutSets: cleanSets,
     });
 
-    // ── NEW: auto-update any goals tied to this exercise ──
+    // ── auto-update any goals tied to this exercise / global auto goals ──
     await updateGoalsForWorkout(req.user._id, exercise, cleanSets);
 
     res.status(201).json(workout);
@@ -208,8 +208,8 @@ exports.updateWorkout = async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    // ── NEW: if the sets or the exercise itself changed, the PR may
-    // have moved — let goals react to it the same way creation does ──
+    // if the sets or the exercise itself changed, the PR may
+    // have moved — let goals react to it the same way creation does
     if (req.body.workoutSets !== undefined || req.body.exercise !== undefined) {
       await updateGoalsForWorkout(
         req.user._id,
@@ -247,8 +247,8 @@ exports.deleteWorkout = async (req, res) => {
 
     await workout.deleteOne();
 
-    // ── NEW: weight that was the PR may have just been deleted —
-    // recompute this exercise's goals from what's left ──
+    // weight that was the PR may have just been deleted —
+    // recompute this exercise's goals (and global auto goals) from what's left
     await recalculateGoalsForExercise(req.user._id, workout.exercise);
 
     res.status(200).json({

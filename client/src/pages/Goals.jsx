@@ -25,29 +25,19 @@ import Navbar from "../components/Navbar";
 ═══════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════
-   DATA-DRIVEN OVERVIEW + ACHIEVEMENTS
-   Both are now derived from real /goals and /workouts data
-   instead of hardcoded placeholders. No goal/workout schema
-   changes were made — these are pure read-side computations.
+   DATA-DRIVEN OVERVIEW
+   Goal "type" is now a fixed set of canonical values, set by
+   the goal form below and auto-maintained on the backend for
+   AUTO goal types. Overview cards just look up the goal whose
+   type matches the card — no more keyword guessing — so this
+   is fully data-driven straight from the Goal documents.
 ═══════════════════════════════════════════════════════════ */
 
-/* Goal model has no explicit "category" field, so overview cards
-   are matched to a goal by keywords in its title (case-insensitive,
-   all keywords must appear). If no goal matches a category, the
-   OverviewCard already renders "No goal set" whenever target is 0 —
-   so an unmatched category naturally falls back to that, unchanged. */
-const findGoalForCategory = (goals, keywords) =>
-  goals.find((g) =>
-    keywords.every((kw) => g.title.toLowerCase().includes(kw))
-  );
-
 const buildOverviewStats = (goals) => {
-  const weeklyGoal = findGoalForCategory(goals, ["weekly", "workout"]);
-  const monthlyGoal = findGoalForCategory(goals, ["monthly", "volume"]);
-  const streakGoal = findGoalForCategory(goals, ["streak"]);
-  const prGoal =
-    findGoalForCategory(goals, ["personal", "record"]) ||
-    findGoalForCategory(goals, ["pr"]);
+  const weeklyGoal = goals.find((g) => g.type === "Weekly Workout");
+  const monthlyGoal = goals.find((g) => g.type === "Monthly Volume");
+  const streakGoal = goals.find((g) => g.type === "Current Streak");
+  const prGoal = goals.find((g) => g.type === "Strength PR");
 
   return {
     weeklyWorkouts: weeklyGoal
@@ -69,56 +59,51 @@ const buildOverviewStats = (goals) => {
   };
 };
 
-/* total volume + workout streak, derived from raw workout history */
-const computeWorkoutStats = (workouts) => {
-  let totalVolume = 0;
-  const dayKeys = new Set();
+/* ════════════════════════════════════════════════════════════
+   ACHIEVEMENTS — unlock automatically from raw workout history,
+   independent of any goal documents.
+═══════════════════════════════════════════════════════════ */
+
+const computeMaxWeightByExercise = (workouts) => {
+  const max = {};
 
   workouts.forEach((w) => {
-    const day = new Date(w.date || w.createdAt);
-    day.setHours(0, 0, 0, 0);
-    dayKeys.add(day.getTime());
+    if (!w.exercise) return;
+    const name = w.exercise.name;
 
-    (w.workoutSets || []).forEach((s) => {
-      totalVolume += (s.weight || 0) * (s.reps || 0);
-    });
+    const heaviestSet = (w.workoutSets || []).reduce(
+      (m, s) => (s.weight > m ? s.weight : m),
+      0
+    );
+
+    if (!max[name] || heaviestSet > max[name]) max[name] = heaviestSet;
   });
 
-  // streak = consecutive days with a workout, counting back from the
-  // most recent workout day (so an old streak doesn't linger forever,
-  // but a rest day "today" doesn't zero out yesterday's streak either)
-  const days = Array.from(dayKeys).sort((a, b) => b - a);
-  let streak = 0;
-  if (days.length) {
-    let expected = days[0];
-    const ONE_DAY = 24 * 60 * 60 * 1000;
-    for (const day of days) {
-      if (day === expected) {
-        streak += 1;
-        expected -= ONE_DAY;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return { totalWorkouts: workouts.length, totalVolume, streak };
+  return max;
 };
 
-const buildAchievements = (goals, workouts) => {
-  const { totalWorkouts, totalVolume, streak } = computeWorkoutStats(workouts);
-
-  // a "PR goal" is any goal tied to a specific exercise that has
-  // reached Completed status
-  const hasCompletedPRGoal = goals.some(
-    (g) => g.status === "Completed" && g.exercise && g.exercise.trim() !== ""
-  );
+const buildAchievements = (workouts) => {
+  const maxByExercise = computeMaxWeightByExercise(workouts);
 
   return [
-    { id: "a1", label: "First Workout", icon: "🔥", unlocked: totalWorkouts >= 1 },
-    { id: "a2", label: "1000 kg Lifted", icon: "🏋️", unlocked: totalVolume >= 1000 },
-    { id: "a3", label: "7 Day Streak", icon: "📅", unlocked: streak >= 7 },
-    { id: "a4", label: "New PR", icon: "💪", unlocked: hasCompletedPRGoal },
+    {
+      id: "a1",
+      label: "Bench Press 100kg",
+      icon: "🏋️",
+      unlocked: (maxByExercise["Bench Press"] || 0) >= 100,
+    },
+    {
+      id: "a2",
+      label: "Deadlift 150kg",
+      icon: "🔥",
+      unlocked: (maxByExercise["Deadlift"] || 0) >= 150,
+    },
+    {
+      id: "a3",
+      label: "Squat 100kg",
+      icon: "💪",
+      unlocked: (maxByExercise["Squat"] || 0) >= 100,
+    },
   ];
 };
 
@@ -254,14 +239,14 @@ function Goals() {
   const [loading, setLoading] = useState(true);
   const overviewStats = useMemo(() => buildOverviewStats(goals), [goals]);
   const achievements = useMemo(
-    () => buildAchievements(goals, workouts),
-    [goals, workouts]
+    () => buildAchievements(workouts),
+    [workouts]
   );
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
-    type: "Strength",
+    type: "Weight",
     target: "",
     unit: "",
     exercise: "",
@@ -280,8 +265,8 @@ function Goals() {
   };
 
   /* Reuses the existing GET /workouts endpoint (no backend changes) —
-     a high limit is passed so achievement math (total volume, streak)
-     sees full history rather than just the first paginated page. */
+     a high limit is passed so achievement math (max weight per
+     exercise) sees full history rather than just the first paginated page. */
   const fetchWorkouts = async () => {
     try {
       const res = await api.get("/workouts?limit=1000");
@@ -300,7 +285,7 @@ function Goals() {
     setEditingGoal(null);
     setFormData({
       title: "",
-      type: "Strength",
+      type: "Weight",
       target: "",
       unit: "",
       exercise: "",
@@ -363,7 +348,7 @@ function Goals() {
 
       setFormData({
         title: "",
-        type: "Strength",
+        type: "Weight",
         target: "",
         unit: "",
         exercise: "",
@@ -492,11 +477,12 @@ function Goals() {
                 value={formData.type}
                 onChange={handleChange}
               >
-                <option value="Strength">Strength</option>
-                <option value="Cardio">Cardio</option>
-                <option value="Endurance">Endurance</option>
-                <option value="Weight">Weight</option>
-                <option value="Habit">Habit</option>
+                <option value="Strength PR">Strength PR Goal (Auto)</option>
+                <option value="Weekly Workout">Weekly Workout Goal (Auto)</option>
+                <option value="Monthly Volume">Monthly Volume Goal (Auto)</option>
+                <option value="Current Streak">Current Streak Goal (Auto)</option>
+                <option value="Weight">Weight Goal</option>
+                <option value="Cardio">Cardio Goal</option>
               </select>
 
               <input
@@ -520,7 +506,7 @@ function Goals() {
               <input
                 type="text"
                 name="exercise"
-                placeholder="Exercise (optional)"
+                placeholder="Exercise (required for Strength PR goals)"
                 value={formData.exercise}
                 onChange={handleChange}
               />

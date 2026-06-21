@@ -1,8 +1,9 @@
 /* server/data/defaultExercises.js
    ----------------------------------------------------------------
-   Default exercise library seeded for every new user on registration.
-   `isDefault` and `createdBy` are NOT set here — they're attached
-   in authController.js at insert time (isDefault: true, createdBy: user._id).
+   Default exercise library seeded for every new user on registration
+   (email/password) or first-time Google sign-in. `isDefault` and
+   `createdBy` are NOT set here — they're attached in authController.js
+   at insert time (isDefault: true, createdBy: user._id).
    ---------------------------------------------------------------- */
 
 const defaultExercises = [
@@ -22,11 +23,13 @@ const defaultExercises = [
   { name: "Lateral Raise", muscleGroup: "Shoulders" },
   { name: "Rear Delt Fly", muscleGroup: "Shoulders" },
 
-  // ── Arms ──
-  { name: "Bicep Curl", muscleGroup: "Arms" },
-  { name: "Hammer Curl", muscleGroup: "Arms" },
-  { name: "Tricep Pushdown", muscleGroup: "Arms" },
-  { name: "Overhead Extension", muscleGroup: "Arms" },
+  // ── Biceps ──
+  { name: "Bicep Curl", muscleGroup: "Biceps" },
+  { name: "Hammer Curl", muscleGroup: "Biceps" },
+
+  // ── Triceps ──
+  { name: "Tricep Pushdown", muscleGroup: "Triceps" },
+  { name: "Overhead Extension", muscleGroup: "Triceps" },
 
   // ── Legs ──
   { name: "Squat", muscleGroup: "Legs" },
