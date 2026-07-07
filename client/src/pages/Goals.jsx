@@ -10,29 +10,16 @@ import {
   Trophy,
   Target,
   Lock,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 
 import Navbar from "../components/Navbar";
 
 /* ════════════════════════════════════════════════════════════
-   STATE-DRIVEN DATA
-   No demo/sample goals. The page starts empty and renders
-   purely from state, so wiring a real /api/goals fetch later
-   just means replacing the initial useState value (and adding
-   a loading flag), same pattern as Dashboard.jsx.
-═══════════════════════════════════════════════════════════ */
-
-/* ════════════════════════════════════════════════════════════
    DATA-DRIVEN OVERVIEW
-   Goal "type" is now a fixed set of canonical values, set by
-   the goal form below and auto-maintained on the backend for
-   AUTO goal types. Overview cards just look up the goal whose
-   type matches the card — no more keyword guessing — so this
-   is fully data-driven straight from the Goal documents.
+   FIX: goal.exercise is now a populated { _id, name, muscleGroup }
+   object (was previously a raw string) — read .name off it.
 ═══════════════════════════════════════════════════════════ */
-
 const buildOverviewStats = (goals) => {
   const weeklyGoal = goals.find((g) => g.type === "Weekly Workout");
   const monthlyGoal = goals.find((g) => g.type === "Monthly Volume");
@@ -53,17 +40,15 @@ const buildOverviewStats = (goals) => {
       ? {
           current: prGoal.current,
           target: prGoal.target,
-          exercise: prGoal.exercise || "",
+          exercise: prGoal.exercise?.name || "",
         }
       : { current: 0, target: 0, exercise: "" },
   };
 };
 
 /* ════════════════════════════════════════════════════════════
-   ACHIEVEMENTS — unlock automatically from raw workout history,
-   independent of any goal documents.
+   ACHIEVEMENTS
 ═══════════════════════════════════════════════════════════ */
-
 const computeMaxWeightByExercise = (workouts) => {
   const max = {};
 
@@ -162,7 +147,12 @@ function GoalCard({ goal, onEdit, onDelete }) {
       <div className="goal-card__head">
         <div>
           <p className="goal-card__title">{goal.title}</p>
-          <span className="goal-type-badge">{goal.type}</span>
+          <span className="goal-type-badge">
+            {goal.type}
+            {goal.type === "Strength PR" && goal.exercise?.name
+              ? ` · ${goal.exercise.name}`
+              : ""}
+          </span>
         </div>
         <span className={`goal-badge ${statusClass(goal.status)}`}>{goal.status}</span>
       </div>
@@ -231,9 +221,6 @@ function EmptyState({ onAdd }) {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
 function Goals() {
-  /* Starts empty — no demo/placeholder goals. Replace this
-     useState with a real fetch + loading state when the
-     backend goals API exists. */
   const [goals, setGoals] = useState([]);
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -253,6 +240,10 @@ function Goals() {
     deadline: "",
   });
 
+  // FIX: real exercise list for the Strength PR dropdown, same
+  // source AddWorkoutModal.jsx already uses (/exercises).
+  const [exercises, setExercises] = useState([]);
+
   const fetchGoals = async () => {
     try {
       const res = await api.get("/goals");
@@ -264,9 +255,6 @@ function Goals() {
     }
   };
 
-  /* Reuses the existing GET /workouts endpoint (no backend changes) —
-     a high limit is passed so achievement math (max weight per
-     exercise) sees full history rather than just the first paginated page. */
   const fetchWorkouts = async () => {
     try {
       const res = await api.get("/workouts?limit=1000");
@@ -276,10 +264,28 @@ function Goals() {
     }
   };
 
+  const fetchExercises = async () => {
+    try {
+      const res = await api.get("/exercises");
+      setExercises(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
     fetchGoals();
     fetchWorkouts();
+    fetchExercises();
   }, []);
+
+  // dedupe by normalized name, same defensive pattern as AddWorkoutModal.jsx
+  const uniqueExercises = exercises.filter((exercise, index, arr) => {
+    const key = exercise.name.trim().toLowerCase();
+    return (
+      arr.findIndex((e) => e.name.trim().toLowerCase() === key) === index
+    );
+  });
 
   const handleAddGoal = () => {
     setEditingGoal(null);
@@ -301,7 +307,9 @@ function Goals() {
       type: goal.type,
       target: goal.target,
       unit: goal.unit,
-      exercise: goal.exercise || "",
+      // FIX: goal.exercise is now a populated object ({_id, name, ...})
+      // or null — the form field needs just the id string.
+      exercise: goal.exercise?._id || "",
       deadline: goal.deadline ? goal.deadline.slice(0, 10) : "",
     });
     setShowModal(true);
@@ -327,6 +335,14 @@ function Goals() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // FIX: catch the "no exercise picked" case client-side too, so the
+    // person gets immediate feedback instead of waiting on the 400
+    // from the backend.
+    if (formData.type === "Strength PR" && !formData.exercise) {
+      alert("Please select an exercise for a Strength PR goal");
+      return;
+    }
 
     try {
       if (editingGoal) {
@@ -358,6 +374,7 @@ function Goals() {
       setShowModal(false);
     } catch (error) {
       console.log(error);
+      alert(error.response?.data?.message || "Failed to save goal");
     }
   };
 
@@ -503,13 +520,27 @@ function Goals() {
                 required
               />
 
-              <input
-                type="text"
-                name="exercise"
-                placeholder="Exercise (required for Strength PR goals)"
-                value={formData.exercise}
-                onChange={handleChange}
-              />
+              {/* FIX: real dropdown tied to /exercises, replacing the old
+                  free-text input. Only shown (and required) for Strength
+                  PR goals — this is what fixes goals never updating,
+                  since the stored value is now guaranteed to be a real
+                  exercise's exact _id instead of a typed string that
+                  might not match. */}
+              {formData.type === "Strength PR" && (
+                <select
+                  name="exercise"
+                  value={formData.exercise}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Exercise</option>
+                  {uniqueExercises.map((ex) => (
+                    <option key={ex._id} value={ex._id}>
+                      {ex.name}
+                    </option>
+                  ))}
+                </select>
+              )}
 
               <input
                 type="date"

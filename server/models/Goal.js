@@ -54,10 +54,15 @@ const goalSchema = new mongoose.Schema(
       default: "In Progress",
     },
 
+    // FIX: was a free-typed String (had to exactly match an exercise
+    // name via regex — fragile and silently broke on any mismatch).
+    // Now a real reference to the Exercise document, same pattern
+    // Workout.exercise already uses. Matching in updateGoals.js /
+    // recalculateGoals.js is now a plain ObjectId comparison.
     exercise: {
-      type: String,
-      default: "",
-      trim: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Exercise",
+      default: null,
     },
 
     deadline: {

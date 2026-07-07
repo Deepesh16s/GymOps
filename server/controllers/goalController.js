@@ -5,20 +5,15 @@ const Workout = require("../models/workout");
 // ================= CREATE GOAL =================
 exports.createGoal = async (req, res) => {
   try {
-    
     const {
       title,
       type,
       target,
       unit,
-      exercise,
+      exercise, // an Exercise _id (string)
       deadline,
     } = req.body;
 
-    // ================= FIX: Validation =================
-    // target=0 is a legitimate value and was previously rejected because
-    // 0 is falsy. Explicitly check for undefined/null instead of relying
-    // on truthiness.
     if (
       !title ||
       !type ||
@@ -31,62 +26,54 @@ exports.createGoal = async (req, res) => {
       });
     }
 
+    // ── Strength PR goals must reference a real, resolvable exercise ──
+    let exerciseDoc = null;
+
+    if (type === "Strength PR") {
+      if (!exercise) {
+        return res.status(400).json({
+          message: "Please select an exercise for a Strength PR goal",
+        });
+      }
+
+      // FIX: was `$or: [{ isDefault: true }, { createdBy: req.user._id }]`,
+      // which let this resolve to ANY user's default exercise document,
+      // not just the current user's own copy — the actual cause of
+      // Strength PR goals silently pointing at a different user's
+      // exercise than the one referenced by this user's workouts.
+      exerciseDoc = await Exercise.findOne({
+        _id: exercise,
+        createdBy: req.user._id,
+      });
+
+      if (!exerciseDoc) {
+        return res.status(400).json({
+          message: "Selected exercise was not found",
+        });
+      }
+    }
+
     // ================= BACKFILL: Calculate initial `current` value =================
-    // Seeds `current` from existing workout history at creation time, so a
-    // goal doesn't start at 0/target when relevant workouts already exist.
-    // This only runs once, at creation — ongoing updates after this point
-    // still flow through updateGoals.js (updateGoalsForWorkout /
-    // recalculateGlobalAutoGoals) as normal.
     let current = 0;
 
-    if (type === "Strength PR" && exercise) {
-      // ---- Strength PR: resolve the exercise via normalizedName ----
-      // Matches either the user's own custom exercise or a default one,
-      // same scoping rule used elsewhere for exercise lookups.
-      const normalizedExercise = exercise.trim().toLowerCase();
+    if (type === "Strength PR" && exerciseDoc) {
+      const workouts = await Workout.find({
+        user: req.user._id,
+        exercise: exerciseDoc._id,
+      });
 
-      const exerciseDoc = await Exercise.findOne({
-  normalizedName: normalizedExercise,
-  createdBy: req.user._id,
-});
-
-      if (exerciseDoc) {
-        // ---- Support both legacy (string) and current (ObjectId) workout formats ----
-        // Older workout docs may have stored exercise as the raw name string;
-        // newer ones reference the Exercise document by _id.
-        const workouts = await Workout.find({
-          user: req.user._id,
-          $or: [
-            { exercise: exerciseDoc._id },
-            { exercise: exerciseDoc.name },
-          ],
+      let maxWeight = 0;
+      workouts.forEach((workout) => {
+        (workout.workoutSets || []).forEach((set) => {
+          const weight = Number(set.weight) || 0;
+          if (weight > maxWeight) maxWeight = weight;
         });
+      });
 
-        let maxWeight = 0;
-
-        // Loop through every workout, then every set, tracking the heaviest set.
-        // Number(set.weight) || 0 guards against missing/malformed weight values.
-        workouts.forEach((workout) => {
-          (workout.workoutSets || []).forEach((set) => {
-            const weight = Number(set.weight) || 0;
-            if (weight > maxWeight) {
-              maxWeight = weight;
-            }
-          });
-        });
-
-        current = maxWeight;
-      } else {
-        // No matching exercise on record — nothing to backfill from
-        current = 0;
-      }
+      current = maxWeight;
     } else if (type === "Weekly Workout") {
-      // ---- Weekly Workout: count workouts since this week's Monday ----
-      // Uses the identical Monday 00:00 boundary logic as startOfWeek()
-      // in updateGoals.js, so the backfilled value matches what
-      // recalculateGlobalAutoGoals would compute right now.
       const today = new Date();
-      const dayOfWeek = today.getDay(); // 0=Sun … 6=Sat
+      const dayOfWeek = today.getDay();
       const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       const monday = new Date(today);
       monday.setDate(today.getDate() + diffToMon);
@@ -99,8 +86,6 @@ exports.createGoal = async (req, res) => {
 
       current = workoutCount;
     } else if (type === "Monthly Volume") {
-      // ---- Monthly Volume: sum (weight * reps) since the 1st of this month ----
-      // Number(...) || 0 guards on both fields avoid NaN if a set is incomplete.
       const firstOfMonth = new Date();
       firstOfMonth.setDate(1);
       firstOfMonth.setHours(0, 0, 0, 0);
@@ -111,7 +96,6 @@ exports.createGoal = async (req, res) => {
       });
 
       let monthlyVolume = 0;
-
       monthWorkouts.forEach((workout) => {
         (workout.workoutSets || []).forEach((set) => {
           const weight = Number(set.weight) || 0;
@@ -122,12 +106,6 @@ exports.createGoal = async (req, res) => {
 
       current = monthlyVolume;
     } else if (type === "Current Streak") {
-      // ---- Current Streak: identical algorithm to computeCurrentStreak() in updateGoals.js ----
-      // Build a Set of "YYYY-MM-DD" strings from workout dates, then walk
-      // backwards day by day starting from today, counting consecutive
-      // days present in the set. Stops at the first missing day. If
-      // today itself has no workout, the loop never starts and current
-      // stays 0.
       const allWorkouts = await Workout.find({ user: req.user._id }).select(
         "date createdAt"
       );
@@ -157,13 +135,9 @@ exports.createGoal = async (req, res) => {
       }
     }
 
-    // ================= BACKFILL: Determine initial status =================
-    // Number(...) on both sides guards against string-typed target/current
-    // causing incorrect comparisons.
     const status =
       Number(current) >= Number(target) ? "Completed" : "In Progress";
 
-    // ================= Create the goal with backfilled values =================
     const goal = await Goal.create({
       user: req.user._id,
       title: title.trim(),
@@ -171,12 +145,14 @@ exports.createGoal = async (req, res) => {
       target: Number(target),
       current,
       unit: unit.trim(),
-      exercise: exercise || "",
+      exercise: type === "Strength PR" ? exerciseDoc._id : null,
       deadline: deadline || null,
       status,
     });
 
-    res.status(201).json(goal);
+    const populatedGoal = await goal.populate("exercise", "name muscleGroup");
+
+    res.status(201).json(populatedGoal);
   } catch (error) {
     console.log(error);
 
@@ -191,7 +167,9 @@ exports.getGoals = async (req, res) => {
   try {
     const goals = await Goal.find({
       user: req.user._id,
-    }).sort({ createdAt: -1 });
+    })
+      .populate("exercise", "name muscleGroup")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(goals);
   } catch (error) {
@@ -214,24 +192,56 @@ exports.updateGoal = async (req, res) => {
       });
     }
 
-    if (
-      goal.user.toString() !==
-      req.user._id.toString()
-    ) {
+    if (goal.user.toString() !== req.user._id.toString()) {
       return res.status(401).json({
         message: "Not authorized",
       });
     }
 
-    const updatedGoal =
-      await Goal.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+    const updates = { ...req.body };
+
+    const willBeStrengthPR =
+      updates.type === "Strength PR" ||
+      (updates.type === undefined && goal.type === "Strength PR");
+
+    if (willBeStrengthPR) {
+      const exerciseId =
+        updates.exercise !== undefined ? updates.exercise : goal.exercise;
+
+      if (!exerciseId) {
+        return res.status(400).json({
+          message: "Please select an exercise for a Strength PR goal",
+        });
+      }
+
+      // FIX: same scoping fix as createGoal above.
+      const exerciseDoc = await Exercise.findOne({
+        _id: exerciseId,
+        createdBy: req.user._id,
+      });
+
+      if (!exerciseDoc) {
+        return res.status(400).json({
+          message: "Selected exercise was not found",
+        });
+      }
+
+      updates.exercise = exerciseDoc._id;
+    }
+
+    const mergedCurrent =
+      updates.current !== undefined ? Number(updates.current) : goal.current;
+    const mergedTarget =
+      updates.target !== undefined ? Number(updates.target) : goal.target;
+
+    updates.status =
+      mergedCurrent >= mergedTarget ? "Completed" : "In Progress";
+
+    const updatedGoal = await Goal.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    ).populate("exercise", "name muscleGroup");
 
     res.status(200).json(updatedGoal);
   } catch (error) {
@@ -246,9 +256,7 @@ exports.updateGoal = async (req, res) => {
 // ================= DELETE GOAL =================
 exports.deleteGoal = async (req, res) => {
   try {
-    const goal = await Goal.findById(
-      req.params.id
-    );
+    const goal = await Goal.findById(req.params.id);
 
     if (!goal) {
       return res.status(404).json({
@@ -256,22 +264,16 @@ exports.deleteGoal = async (req, res) => {
       });
     }
 
-    if (
-      goal.user.toString() !==
-      req.user._id.toString()
-    ) {
+    if (goal.user.toString() !== req.user._id.toString()) {
       return res.status(401).json({
         message: "Not authorized",
       });
     }
 
-    await Goal.findByIdAndDelete(
-      req.params.id
-    );
+    await Goal.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
-      message:
-        "Goal deleted successfully",
+      message: "Goal deleted successfully",
     });
   } catch (error) {
     console.log(error);

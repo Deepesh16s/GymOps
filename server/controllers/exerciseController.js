@@ -24,9 +24,16 @@ exports.createExercise = async (req, res) => {
       });
     }
 
+    // FIX: was `$or: [{ isDefault: true }, { createdBy: req.user._id }]`.
+    // Since every user gets their OWN seeded copy of default exercises
+    // at registration (isDefault: true, createdBy: thatUser._id), the
+    // isDefault branch was matching EVERY user's default exercises, not
+    // just the current user's — causing duplicate/cross-user exercise
+    // documents to be treated as "existing" for everyone. createdBy
+    // alone already covers a user's own defaults + custom exercises.
     const exerciseExists = await Exercise.findOne({
       normalizedName,
-      $or: [{ isDefault: true }, { createdBy: req.user._id }],
+      createdBy: req.user._id,
     });
 
     if (exerciseExists) {
@@ -67,8 +74,10 @@ exports.getExercises = async (req, res) => {
   try {
     const { muscleGroup } = req.query;
 
+    // FIX: same scoping fix as createExercise — only this user's own
+    // exercises (defaults + custom), not every user's defaults.
     const filter = {
-      $or: [{ isDefault: true }, { createdBy: req.user._id }],
+      createdBy: req.user._id,
     };
 
     if (muscleGroup) {

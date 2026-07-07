@@ -1,5 +1,4 @@
 const Goal = require("../models/Goal");
-const Exercise = require("../models/Exercise");
 const Workout = require("../models/workout");
 
 /* ── small date helpers ── */
@@ -55,13 +54,7 @@ const applyStatus = (goal) => {
  * recalculateGlobalAutoGoals
  * ---------------------------
  * Recomputes the three "whole-account" AUTO goal types (Weekly Workout,
- * Monthly Volume, Current Streak) from the live workout history. These
- * aren't tied to a single exercise and aren't monotonic (they can go
- * down as easily as up), so unlike the PR bump-logic below, they're
- * fully recalculated every time this runs.
- *
- * Exported so recalculateGoals.js (used on workout delete) can reuse
- * the exact same logic instead of duplicating it.
+ * Monthly Volume, Current Streak) from the live workout history.
  */
 const recalculateGlobalAutoGoals = async (userId) => {
   try {
@@ -130,46 +123,39 @@ const recalculateGlobalAutoGoals = async (userId) => {
  * updateGoalsForWorkout
  * ---------------------
  * Called right after a workout is created/updated. Bumps any matching
- * "Strength PR" goal for that exercise up (never down — a delete is
- * what's allowed to lower it, handled in recalculateGoals.js), then
- * refreshes the global AUTO goals (weekly/monthly/streak) from the
- * full workout history.
+ * "Strength PR" goal for that exercise up (never down), then refreshes
+ * the global AUTO goals.
+ *
+ * FIX: Goal.exercise is now an Exercise ObjectId (was previously matched
+ * against the exercise NAME via a fragile case-insensitive regex, which
+ * silently failed on any typo, wording mismatch, or regex-special
+ * character in the name). Matching is now a plain, exact ObjectId
+ * comparison — no lookup or regex needed.
  *
  * @param {ObjectId|string} userId
  * @param {ObjectId|string} exerciseId
- * @param {Array<{weight:number, reps:number}>} workoutSets - normalized numbers
+ * @param {Array<{weight:number, reps:number}>} workoutSets
  */
 const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
   try {
     if (Array.isArray(workoutSets) && workoutSets.length) {
       const maxWeight = Math.max(...workoutSets.map((s) => s.weight));
 
-      // Goal.exercise stores the exercise NAME (string), while
-      // Workout.exercise stores an Exercise ObjectId — resolve the name first.
-      const exerciseDoc = await Exercise.findById(exerciseId);
+      const prGoals = await Goal.find({
+        user: userId,
+        type: "Strength PR",
+        exercise: exerciseId,
+      });
 
-      if (exerciseDoc) {
-        const prGoals = await Goal.find({
-          user: userId,
-          type: "Strength PR",
-          exercise: {
-            $regex: new RegExp(
-              `^${exerciseDoc.name.trim()}$`,
-              "i"
-            ),
-          },
-        });
-
-        await Promise.all(
-          prGoals.map(async (goal) => {
-            if (maxWeight > goal.current) {
-              goal.current = maxWeight;
-              applyStatus(goal);
-              await goal.save();
-            }
-          })
-        );
-      }
+      await Promise.all(
+        prGoals.map(async (goal) => {
+          if (maxWeight > goal.current) {
+            goal.current = maxWeight;
+            applyStatus(goal);
+            await goal.save();
+          }
+        })
+      );
     }
 
     await recalculateGlobalAutoGoals(userId);
