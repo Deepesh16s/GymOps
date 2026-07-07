@@ -1,16 +1,10 @@
 const Workout = require("../models/workout");
 
-/* small helper — volume for one workout doc = sum of (reps*weight)
-   across all its sets. Used everywhere below instead of the old
-   single sets*reps*weight line. */
 const workoutVolume = (w) =>
   w.workoutSets.reduce((sum, s) => sum + s.reps * s.weight, 0);
 
 const totalSetsCount = (w) => w.workoutSets.length;
 
-/* ─────────────────────────────────────────
-   1. Total Workouts
-───────────────────────────────────────── */
 exports.getTotalWorkouts = async (req, res) => {
   try {
     const totalWorkouts = await Workout.countDocuments({
@@ -23,9 +17,6 @@ exports.getTotalWorkouts = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   2. Total Volume  (sum of reps × weight across all sets)
-───────────────────────────────────────── */
 exports.getTotalVolume = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id });
@@ -40,9 +31,6 @@ exports.getTotalVolume = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   3. Total Unique Exercises
-───────────────────────────────────────── */
 exports.getTotalExercises = async (req, res) => {
   try {
     const exercises = await Workout.distinct("exercise", {
@@ -55,11 +43,6 @@ exports.getTotalExercises = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   4. Recent Workouts  (last 5, populated)
-   workoutSets travels along automatically since we no
-   longer pick individual fields off the doc.
-───────────────────────────────────────── */
 exports.getRecentWorkouts = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id })
@@ -73,11 +56,6 @@ exports.getRecentWorkouts = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   5. Muscle Distribution  [{muscle, sets}]
-   "sets" now means total workoutSets entries for that muscle,
-   not the old single `sets` number on the doc.
-───────────────────────────────────────── */
 exports.getMuscleDistribution = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id }).populate(
@@ -103,32 +81,26 @@ exports.getMuscleDistribution = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   6. Weekly Volume  [{day, volume}]
-   Uses the workout's `date` field (not createdAt).
-   Returns Mon-Sun ordered for left-to-right display.
-───────────────────────────────────────── */
 exports.getWeeklyVolume = async (req, res) => {
   try {
-    /* Start of the current week — Monday 00:00:00 */
-    const today     = new Date();
-    const dayOfWeek = today.getDay();                    // 0=Sun … 6=Sat
+    const today = new Date();
+    const dayOfWeek = today.getDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday    = new Date(today);
+    const monday = new Date(today);
     monday.setDate(today.getDate() + diffToMon);
     monday.setHours(0, 0, 0, 0);
 
     const workouts = await Workout.find({
       user: req.user._id,
-      date:  { $gte: monday },
+      date: { $gte: monday },
     });
 
-    const DAYS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const accum = Object.fromEntries(DAYS.map((d) => [d, 0]));
 
     workouts.forEach((w) => {
-      const d = new Date(w.date).getDay(); // 0=Sun
-      const label = DAYS[d === 0 ? 6 : d - 1];  // map JS day → Mon-first index
+      const d = new Date(w.date).getDay();
+      const label = DAYS[d === 0 ? 6 : d - 1];
       accum[label] += workoutVolume(w);
     });
 
@@ -140,10 +112,6 @@ exports.getWeeklyVolume = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   7. Monthly Workouts  (last 30 days)
-   Uses `date` field for consistency.
-───────────────────────────────────────── */
 exports.getMonthlyWorkouts = async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();
@@ -162,9 +130,6 @@ exports.getMonthlyWorkouts = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   8. Favorite Exercise  (most-performed, by session count)
-───────────────────────────────────────── */
 exports.getFavoriteExercise = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id }).populate(
@@ -181,7 +146,10 @@ exports.getFavoriteExercise = async (req, res) => {
     let favoriteExercise = null;
     let count = 0;
     for (const [name, n] of Object.entries(freq)) {
-      if (n > count) { count = n; favoriteExercise = name; }
+      if (n > count) {
+        count = n;
+        favoriteExercise = name;
+      }
     }
 
     res.status(200).json({ favoriteExercise, count });
@@ -191,9 +159,6 @@ exports.getFavoriteExercise = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   9. Last Workout
-───────────────────────────────────────── */
 exports.getLastWorkout = async (req, res) => {
   try {
     const workout = await Workout.findOne({ user: req.user._id })
@@ -206,9 +171,6 @@ exports.getLastWorkout = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   10. Average Volume per workout session
-───────────────────────────────────────── */
 exports.getAverageVolume = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id });
@@ -218,7 +180,6 @@ exports.getAverageVolume = async (req, res) => {
       (sum, w) => sum + workoutVolume(w),
       0
     );
-    /* Return raw float — frontend rounds via Math.round() */
     const averageVolume = totalVolume / workouts.length;
     res.status(200).json({ averageVolume });
   } catch (error) {
@@ -227,11 +188,6 @@ exports.getAverageVolume = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   11. Personal Records  {exerciseName: maxWeight}
-   Max weight now has to be found across every set of every
-   workout, not just one weight field per doc.
-───────────────────────────────────────── */
 exports.getPersonalRecords = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id }).populate(
@@ -258,20 +214,14 @@ exports.getPersonalRecords = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   12. Current Streak — real consecutive days
-   Counts back from today through workout `date` field.
-───────────────────────────────────────── */
 exports.getCurrentStreak = async (req, res) => {
   try {
-    /* Collect all distinct workout dates for this user */
     const workouts = await Workout.find({ user: req.user._id }).select("date");
 
     if (workouts.length === 0) {
       return res.status(200).json({ currentStreak: 0 });
     }
 
-    /* Build a Set of "YYYY-MM-DD" strings */
     const dateStrings = new Set(
       workouts.map((w) => {
         const d = new Date(w.date);
@@ -279,7 +229,6 @@ exports.getCurrentStreak = async (req, res) => {
       })
     );
 
-    /* Walk backwards from today until we find a missing day */
     const cursor = new Date();
     cursor.setHours(0, 0, 0, 0);
     let streak = 0;
@@ -298,22 +247,18 @@ exports.getCurrentStreak = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   13. Weekly Workouts  (current calendar week Mon–Sun)
-   Uses `date` field for consistency with getWeeklyVolume.
-───────────────────────────────────────── */
 exports.getWeeklyWorkouts = async (req, res) => {
   try {
-    const today     = new Date();
+    const today = new Date();
     const dayOfWeek = today.getDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday    = new Date(today);
+    const monday = new Date(today);
     monday.setDate(today.getDate() + diffToMon);
     monday.setHours(0, 0, 0, 0);
 
     const weeklyWorkouts = await Workout.countDocuments({
       user: req.user._id,
-      date:  { $gte: monday },
+      date: { $gte: monday },
     });
 
     res.status(200).json({ weeklyWorkouts });
@@ -323,9 +268,6 @@ exports.getWeeklyWorkouts = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   14. Top Muscle  (most total sets)
-───────────────────────────────────────── */
 exports.getTopMuscle = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id }).populate(
@@ -342,7 +284,10 @@ exports.getTopMuscle = async (req, res) => {
     let topMuscle = null;
     let count = 0;
     for (const [muscle, n] of Object.entries(muscleSets)) {
-      if (n > count) { count = n; topMuscle = muscle; }
+      if (n > count) {
+        count = n;
+        topMuscle = muscle;
+      }
     }
 
     res.status(200).json({ topMuscle, count });
@@ -352,9 +297,6 @@ exports.getTopMuscle = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   15. Top Exercise  (most frequently performed)
-───────────────────────────────────────── */
 exports.getTopExercise = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id }).populate(
@@ -371,7 +313,10 @@ exports.getTopExercise = async (req, res) => {
     let exercise = null;
     let count = 0;
     for (const [name, n] of Object.entries(counts)) {
-      if (n > count) { count = n; exercise = name; }
+      if (n > count) {
+        count = n;
+        exercise = name;
+      }
     }
 
     res.status(200).json({ exercise, count });
@@ -380,27 +325,16 @@ exports.getTopExercise = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-exports.getCalendarWorkouts = async (
-  req,
-  res
-) => {
-  try {
-    const workouts =
-      await Workout.find({
-        user: req.user._id,
-      })
-        .populate("exercise")
-        .sort({ date: -1 });
 
-    res.status(200).json(
-      workouts
-    );
+exports.getCalendarWorkouts = async (req, res) => {
+  try {
+    const workouts = await Workout.find({ user: req.user._id })
+      .populate("exercise")
+      .sort({ date: -1 });
+
+    res.status(200).json(workouts);
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message:
-        "Server Error",
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };

@@ -1,10 +1,9 @@
 const Goal = require("../models/Goal");
 const Workout = require("../models/workout");
 
-/* ── small date helpers ── */
 const startOfWeek = () => {
   const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=Sun … 6=Sat
+  const dayOfWeek = today.getDay();
   const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(today);
   monday.setDate(today.getDate() + diffToMon);
@@ -50,12 +49,6 @@ const applyStatus = (goal) => {
   goal.status = goal.current >= goal.target ? "Completed" : "In Progress";
 };
 
-/**
- * recalculateGlobalAutoGoals
- * ---------------------------
- * Recomputes the three "whole-account" AUTO goal types (Weekly Workout,
- * Monthly Volume, Current Streak) from the live workout history.
- */
 const recalculateGlobalAutoGoals = async (userId) => {
   try {
     const [weeklyGoals, monthlyGoals, streakGoals] = await Promise.all([
@@ -119,23 +112,6 @@ const recalculateGlobalAutoGoals = async (userId) => {
   }
 };
 
-/**
- * updateGoalsForWorkout
- * ---------------------
- * Called right after a workout is created/updated. Bumps any matching
- * "Strength PR" goal for that exercise up (never down), then refreshes
- * the global AUTO goals.
- *
- * FIX: Goal.exercise is now an Exercise ObjectId (was previously matched
- * against the exercise NAME via a fragile case-insensitive regex, which
- * silently failed on any typo, wording mismatch, or regex-special
- * character in the name). Matching is now a plain, exact ObjectId
- * comparison — no lookup or regex needed.
- *
- * @param {ObjectId|string} userId
- * @param {ObjectId|string} exerciseId
- * @param {Array<{weight:number, reps:number}>} workoutSets
- */
 const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
   try {
     if (Array.isArray(workoutSets) && workoutSets.length) {
@@ -160,7 +136,6 @@ const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
 
     await recalculateGlobalAutoGoals(userId);
   } catch (error) {
-    // Never let a goal-update failure break workout creation.
     console.log(error);
   }
 };

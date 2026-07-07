@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 
-/* Each entry is one set performed for the exercise.
-   No "set number" field — order in the array IS the set order. */
 const workoutSetSchema = new mongoose.Schema(
   {
     weight: {
@@ -14,7 +12,7 @@ const workoutSetSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { _id: false } // sub-docs don't need their own id for our use case
+  { _id: false }
 );
 
 const workoutSchema = new mongoose.Schema(
@@ -31,7 +29,6 @@ const workoutSchema = new mongoose.Schema(
       required: true,
     },
 
-    // replaces old sets / reps / weight trio
     workoutSets: {
       type: [workoutSetSchema],
       required: true,

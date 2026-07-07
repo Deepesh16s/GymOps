@@ -2,17 +2,9 @@ const Goal = require("../models/Goal");
 const Exercise = require("../models/Exercise");
 const Workout = require("../models/workout");
 
-// ================= CREATE GOAL =================
 exports.createGoal = async (req, res) => {
   try {
-    const {
-      title,
-      type,
-      target,
-      unit,
-      exercise, // an Exercise _id (string)
-      deadline,
-    } = req.body;
+    const { title, type, target, unit, exercise, deadline } = req.body;
 
     if (
       !title ||
@@ -26,7 +18,6 @@ exports.createGoal = async (req, res) => {
       });
     }
 
-    // ── Strength PR goals must reference a real, resolvable exercise ──
     let exerciseDoc = null;
 
     if (type === "Strength PR") {
@@ -36,11 +27,6 @@ exports.createGoal = async (req, res) => {
         });
       }
 
-      // FIX: was `$or: [{ isDefault: true }, { createdBy: req.user._id }]`,
-      // which let this resolve to ANY user's default exercise document,
-      // not just the current user's own copy — the actual cause of
-      // Strength PR goals silently pointing at a different user's
-      // exercise than the one referenced by this user's workouts.
       exerciseDoc = await Exercise.findOne({
         _id: exercise,
         createdBy: req.user._id,
@@ -53,7 +39,6 @@ exports.createGoal = async (req, res) => {
       }
     }
 
-    // ================= BACKFILL: Calculate initial `current` value =================
     let current = 0;
 
     if (type === "Strength PR" && exerciseDoc) {
@@ -162,7 +147,6 @@ exports.createGoal = async (req, res) => {
   }
 };
 
-// ================= GET GOALS =================
 exports.getGoals = async (req, res) => {
   try {
     const goals = await Goal.find({
@@ -181,7 +165,6 @@ exports.getGoals = async (req, res) => {
   }
 };
 
-// ================= UPDATE GOAL =================
 exports.updateGoal = async (req, res) => {
   try {
     const goal = await Goal.findById(req.params.id);
@@ -214,7 +197,6 @@ exports.updateGoal = async (req, res) => {
         });
       }
 
-      // FIX: same scoping fix as createGoal above.
       const exerciseDoc = await Exercise.findOne({
         _id: exerciseId,
         createdBy: req.user._id,
@@ -253,7 +235,6 @@ exports.updateGoal = async (req, res) => {
   }
 };
 
-// ================= DELETE GOAL =================
 exports.deleteGoal = async (req, res) => {
   try {
     const goal = await Goal.findById(req.params.id);

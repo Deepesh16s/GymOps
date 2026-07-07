@@ -2,9 +2,6 @@ const Workout = require("../models/workout");
 const { updateGoalsForWorkout } = require("../utils/updateGoals");
 const recalculateGoalsForExercise = require("../utils/recalculateGoals");
 
-/* small helper — keeps createWorkout/updateWorkout from duplicating
-   the same checks. Throws a plain Error with a .status attached
-   so the route handlers can just catch and respond. */
 const validateWorkoutSets = (workoutSets) => {
   if (!Array.isArray(workoutSets) || workoutSets.length === 0) {
     const err = new Error("workoutSets must be a non-empty array");
@@ -26,14 +23,12 @@ const validateWorkoutSets = (workoutSets) => {
   });
 };
 
-// Create Workout
 exports.createWorkout = async (req, res) => {
   try {
     const { exercise, workoutSets } = req.body;
 
     validateWorkoutSets(workoutSets);
 
-    // normalize to numbers in case the client sent strings
     const cleanSets = workoutSets.map((s) => ({
       weight: Number(s.weight),
       reps: Number(s.reps),
@@ -45,7 +40,6 @@ exports.createWorkout = async (req, res) => {
       workoutSets: cleanSets,
     });
 
-    // ── auto-update any goals tied to this exercise / global auto goals ──
     await updateGoalsForWorkout(req.user._id, exercise, cleanSets);
 
     res.status(201).json(workout);
@@ -58,18 +52,9 @@ exports.createWorkout = async (req, res) => {
   }
 };
 
-// Get All Workouts of Logged In User
-exports.getWorkouts = async (
-  req,
-  res
-) => {
+exports.getWorkouts = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      start,
-      end,
-    } = req.query;
+    const { page = 1, limit = 10, start, end } = req.query;
 
     let query = {
       user: req.user._id,
@@ -82,100 +67,66 @@ exports.getWorkouts = async (
       };
     }
 
-    const workouts =
-      await Workout.find(query)
-        .populate("exercise")
-        .sort({
-          createdAt: -1,
-        })
-        .skip(
-          (page - 1) * limit
-        )
-        .limit(Number(limit));
+    const workouts = await Workout.find(query)
+      .populate("exercise")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
 
-    res.status(200).json(
-      workouts
-    );
+    res.status(200).json(workouts);
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
-      message:
-        "Server Error",
+      message: "Server Error",
     });
   }
 };
-// Search Workouts
-exports.searchWorkouts = async (
-  req,
-  res
-) => {
+
+exports.searchWorkouts = async (req, res) => {
   try {
-    const { exercise } =
-      req.query;
+    const { exercise } = req.query;
 
-    const workouts =
-      await Workout.find({
-        user: req.user._id,
-      }).populate("exercise");
+    const workouts = await Workout.find({
+      user: req.user._id,
+    }).populate("exercise");
 
-    const filtered =
-      workouts.filter(
-        (workout) =>
-          workout.exercise.name
-            .toLowerCase()
-            .includes(
-              exercise.toLowerCase()
-            )
-      );
-
-    res.status(200).json(
-      filtered
+    const filtered = workouts.filter((workout) =>
+      workout.exercise.name.toLowerCase().includes(exercise.toLowerCase())
     );
+
+    res.status(200).json(filtered);
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
-      message:
-        "Server Error",
+      message: "Server Error",
     });
   }
 };
-// Filter By Muscle
-exports.filterByMuscle = async (
-  req,
-  res
-) => {
+
+exports.filterByMuscle = async (req, res) => {
   try {
-    const { muscle } =
-      req.query;
+    const { muscle } = req.query;
 
-    const workouts =
-      await Workout.find({
-        user: req.user._id,
-      }).populate("exercise");
+    const workouts = await Workout.find({
+      user: req.user._id,
+    }).populate("exercise");
 
-    const filtered =
-      workouts.filter(
-        (workout) =>
-          workout.exercise.muscleGroup ===
-          muscle
-      );
-
-    res.status(200).json(
-      filtered
+    const filtered = workouts.filter(
+      (workout) => workout.exercise.muscleGroup === muscle
     );
+
+    res.status(200).json(filtered);
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
-      message:
-        "Server Error",
+      message: "Server Error",
     });
   }
 };
 
-// Update Workout
 exports.updateWorkout = async (req, res) => {
   try {
     const workout = await Workout.findById(req.params.id);
@@ -192,8 +143,6 @@ exports.updateWorkout = async (req, res) => {
       });
     }
 
-    // only validate workoutSets if the caller is actually changing them —
-    // partial updates (e.g. just swapping exercise) shouldn't require it
     if (req.body.workoutSets !== undefined) {
       validateWorkoutSets(req.body.workoutSets);
       req.body.workoutSets = req.body.workoutSets.map((s) => ({
@@ -208,8 +157,6 @@ exports.updateWorkout = async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    // if the sets or the exercise itself changed, the PR may
-    // have moved — let goals react to it the same way creation does
     if (req.body.workoutSets !== undefined || req.body.exercise !== undefined) {
       await updateGoalsForWorkout(
         req.user._id,
@@ -228,7 +175,6 @@ exports.updateWorkout = async (req, res) => {
   }
 };
 
-// Delete Workout
 exports.deleteWorkout = async (req, res) => {
   try {
     const workout = await Workout.findById(req.params.id);
@@ -247,8 +193,6 @@ exports.deleteWorkout = async (req, res) => {
 
     await workout.deleteOne();
 
-    // weight that was the PR may have just been deleted —
-    // recompute this exercise's goals (and global auto goals) from what's left
     await recalculateGoalsForExercise(req.user._id, workout.exercise);
 
     res.status(200).json({

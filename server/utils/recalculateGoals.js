@@ -6,20 +6,6 @@ const applyStatus = (goal) => {
   goal.status = goal.current >= goal.target ? "Completed" : "In Progress";
 };
 
-/**
- * recalculateGoalsForExercise
- * ----------------------------
- * Called after a workout is DELETED. Fully recalculates the "Strength PR"
- * goal's `current` from remaining workout history, since deleting a
- * workout can legitimately lower the true max weight.
- *
- * FIX: same as updateGoals.js — Goal.exercise is now an Exercise
- * ObjectId, so matching is a direct equality check instead of a
- * name-based regex lookup.
- *
- * @param {ObjectId|string} userId
- * @param {ObjectId|string} exerciseId - the Exercise _id the deleted workout referenced
- */
 const recalculateGoalsForExercise = async (userId, exerciseId) => {
   try {
     if (exerciseId) {
@@ -54,7 +40,6 @@ const recalculateGoalsForExercise = async (userId, exerciseId) => {
 
     await recalculateGlobalAutoGoals(userId);
   } catch (error) {
-    // Never let goal recalculation break workout deletion.
     console.log(error);
   }
 };

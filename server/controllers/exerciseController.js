@@ -1,7 +1,5 @@
 const Exercise = require("../models/Exercise");
 
-// ================= CREATE EXERCISE =================
-
 exports.createExercise = async (req, res) => {
   try {
     const { name, muscleGroup } = req.body;
@@ -12,10 +10,6 @@ exports.createExercise = async (req, res) => {
       });
     }
 
-    // ── normalize: trim + lowercase, so "Bench Press", "bench press",
-    // "BENCH PRESS", and "  Bench Press" are all treated as duplicates.
-    // This mirrors Exercise.normalizedName exactly (kept in sync by the
-    // model's pre("validate") hook), so we can query it directly. ──
     const normalizedName = name.trim().toLowerCase();
 
     if (!normalizedName) {
@@ -24,13 +18,6 @@ exports.createExercise = async (req, res) => {
       });
     }
 
-    // FIX: was `$or: [{ isDefault: true }, { createdBy: req.user._id }]`.
-    // Since every user gets their OWN seeded copy of default exercises
-    // at registration (isDefault: true, createdBy: thatUser._id), the
-    // isDefault branch was matching EVERY user's default exercises, not
-    // just the current user's — causing duplicate/cross-user exercise
-    // documents to be treated as "existing" for everyone. createdBy
-    // alone already covers a user's own defaults + custom exercises.
     const exerciseExists = await Exercise.findOne({
       normalizedName,
       createdBy: req.user._id,
@@ -53,9 +40,6 @@ exports.createExercise = async (req, res) => {
   } catch (error) {
     console.log(error);
 
-    // Defensive: if a race condition let two identical creates through
-    // app-level checks, the unique index on Exercise.js will reject
-    // the second one at the DB layer with a duplicate-key error.
     if (error.code === 11000) {
       return res.status(400).json({
         message: "Exercise already exists",
@@ -68,14 +52,10 @@ exports.createExercise = async (req, res) => {
   }
 };
 
-// ================= GET EXERCISES =================
-
 exports.getExercises = async (req, res) => {
   try {
     const { muscleGroup } = req.query;
 
-    // FIX: same scoping fix as createExercise — only this user's own
-    // exercises (defaults + custom), not every user's defaults.
     const filter = {
       createdBy: req.user._id,
     };
@@ -86,9 +66,6 @@ exports.getExercises = async (req, res) => {
 
     const exercises = await Exercise.find(filter).sort({ name: 1 });
 
-    // ── dedupe by normalizedName so the dropdown never shows the same
-    // exercise twice, even if duplicates still exist in the database
-    // from before this fix ──
     const seen = new Set();
     const unique = [];
 
@@ -109,8 +86,6 @@ exports.getExercises = async (req, res) => {
     });
   }
 };
-
-// ================= UPDATE EXERCISE =================
 
 exports.updateExercise = async (req, res) => {
   try {
@@ -158,8 +133,6 @@ exports.updateExercise = async (req, res) => {
     });
   }
 };
-
-// ================= DELETE EXERCISE =================
 
 exports.deleteExercise = async (req, res) => {
   try {

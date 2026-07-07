@@ -1,19 +1,3 @@
-/* server/scripts/migrateGoalExerciseRefs.js
-   ----------------------------------------------------------------
-   ONE-TIME MIGRATION — safe to run multiple times (idempotent).
-
-   Converts existing "Strength PR" Goal documents' `exercise` field
-   from a free-typed string (e.g. "Bench Press") to the matching
-   Exercise document's ObjectId — required after the Goal.exercise
-   schema change from String -> ObjectId ref.
-
-   Uses the raw MongoDB driver (not the Mongoose Goal model) so this
-   is safe to run whether the schema file has been swapped yet or not.
-
-   Run with:
-     node server/scripts/migrateGoalExerciseRefs.js
-   ---------------------------------------------------------------- */
-
 require("dotenv").config();
 const mongoose = require("mongoose");
 const Exercise = require("../models/Exercise");
@@ -38,13 +22,11 @@ async function migrate() {
   for (const goal of goals) {
     const raw = goal.exercise;
 
-    // Already an ObjectId — nothing to do
     if (raw && raw._bsontype === "ObjectID") {
       alreadyDone++;
       continue;
     }
 
-    // Empty / missing exercise on a Strength PR goal — nothing to convert
     if (!raw || typeof raw !== "string" || !raw.trim()) {
       skipped++;
       continue;
@@ -54,12 +36,12 @@ async function migrate() {
 
     const exerciseDoc = await Exercise.findOne({
       normalizedName,
-      $or: [{ isDefault: true }, { createdBy: goal.user }],
+      createdBy: goal.user,
     });
 
     if (!exerciseDoc) {
       console.log(
-        `No matching exercise for goal "${goal.title}" (typed="${raw}") — left as-is, please check/fix manually in the Goals UI.`
+        `No matching exercise for goal "${goal.title}" (typed="${raw}") — left as-is.`
       );
       skipped++;
       continue;
@@ -84,9 +66,7 @@ async function migrate() {
 
 async function run() {
   if (!MONGO_URI) {
-    console.error(
-      "No MongoDB connection string found. Set MONGO_URI (or MONGODB_URI / DATABASE_URL) in your environment."
-    );
+    console.error("No MongoDB connection string found.");
     process.exit(1);
   }
 

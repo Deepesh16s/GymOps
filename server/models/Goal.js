@@ -1,8 +1,5 @@
 const mongoose = require("mongoose");
 
-/* The only goal types the app supports now. Anything in this list
-   is calculated automatically from workout history; anything else
-   (Weight, Cardio) is set/edited by the user. */
 const AUTO_TYPES = [
   "Strength PR",
   "Weekly Workout",
@@ -54,11 +51,6 @@ const goalSchema = new mongoose.Schema(
       default: "In Progress",
     },
 
-    // FIX: was a free-typed String (had to exactly match an exercise
-    // name via regex — fragile and silently broke on any mismatch).
-    // Now a real reference to the Exercise document, same pattern
-    // Workout.exercise already uses. Matching in updateGoals.js /
-    // recalculateGoals.js is now a plain ObjectId comparison.
     exercise: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Exercise",
@@ -70,14 +62,12 @@ const goalSchema = new mongoose.Schema(
       default: null,
     },
 
-    // Automatically decided based on goal type
     updateType: {
       type: String,
       enum: ["AUTO", "MANUAL"],
       default: "MANUAL",
     },
 
-    // Last time current value changed
     lastUpdated: {
       type: Date,
       default: Date.now,
@@ -88,7 +78,6 @@ const goalSchema = new mongoose.Schema(
   }
 );
 
-// ❌ DO NOT USE next()
 goalSchema.pre("save", function () {
   this.updateType = AUTO_TYPES.includes(this.type)
     ? "AUTO"

@@ -8,10 +8,6 @@ const exerciseSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ── NEW: trimmed + lowercased mirror of `name`, kept in sync
-    // automatically below. Lets us enforce case/whitespace
-    // -insensitive uniqueness per user without changing how `name`
-    // is displayed anywhere in the UI.
     normalizedName: {
       type: String,
       required: true,
@@ -38,11 +34,9 @@ const exerciseSchema = new mongoose.Schema(
   }
 );
 
-// Keep normalizedName in sync with name on every validation pass.
-// IMPORTANT: this is pre("validate"), not pre("save") — insertMany()
-// (used to bulk-seed default exercises) runs validation but does NOT
-// run save middleware, so pre("save") would silently leave
-// normalizedName unset for every seeded default exercise.
+// pre("validate"), not pre("save") — insertMany() runs validation
+// but skips save middleware, so pre("save") would miss bulk-seeded
+// default exercises.
 exerciseSchema.pre("validate", function (next) {
   if (this.name) {
     this.normalizedName = this.name.trim().toLowerCase();
@@ -50,12 +44,8 @@ exerciseSchema.pre("validate", function (next) {
   next();
 });
 
-// ── Uniqueness per user ──────────────────────────────────────────
-// A user (createdBy) can't have two exercises with the same
-// normalizedName. Since default exercises are seeded per-user with
-// createdBy: user._id (not a shared global doc), this index also
-// protects against duplicate default-exercise seeding for that same
-// user, on top of protecting their own custom exercises.
+// one exercise per (user, normalizedName) — also blocks duplicate
+// default-exercise seeding for the same user
 exerciseSchema.index(
   { createdBy: 1, normalizedName: 1 },
   {

@@ -18,66 +18,28 @@ const {
   getTopMuscle,
   getTopExercise,
   getCalendarWorkouts,
-} = require(
-  "../controllers/dashboardController"
-);
+} = require("../controllers/dashboardController");
 
 const { protect } = require("../middleware/authMiddleware");
 
-// Dashboard Cards
 router.get("/total-workouts", protect, getTotalWorkouts);
 router.get("/total-volume", protect, getTotalVolume);
 router.get("/total-exercises", protect, getTotalExercises);
 
-// Analytics
 router.get("/recent-workouts", protect, getRecentWorkouts);
-router.get(
-  "/muscle-distribution",
-  protect,
-  getMuscleDistribution
-);
+router.get("/muscle-distribution", protect, getMuscleDistribution);
 router.get("/weekly-volume", protect, getWeeklyVolume);
-router.get(
-  "/monthly-workouts",
-  protect,
-  getMonthlyWorkouts
-);
+router.get("/monthly-workouts", protect, getMonthlyWorkouts);
 
-// Advanced Analytics
-router.get(
-  "/favorite-exercise",
-  protect,
-  getFavoriteExercise
-);
+router.get("/favorite-exercise", protect, getFavoriteExercise);
 router.get("/last-workout", protect, getLastWorkout);
-router.get(
-  "/average-volume",
-  protect,
-  getAverageVolume
-);
-router.get(
-  "/personal-records",
-  protect,
-  getPersonalRecords
-);
-router.get(
-  "/current-streak",
-  protect,
-  getCurrentStreak
-);
+router.get("/average-volume", protect, getAverageVolume);
+router.get("/personal-records", protect, getPersonalRecords);
+router.get("/current-streak", protect, getCurrentStreak);
 
-// Day 4 Analytics
-router.get(
-  "/weekly-workouts",
-  protect,
-  getWeeklyWorkouts
-);
+router.get("/weekly-workouts", protect, getWeeklyWorkouts);
 router.get("/top-muscle", protect, getTopMuscle);
 router.get("/top-exercise", protect, getTopExercise);
+router.get("/calendar-workouts", protect, getCalendarWorkouts);
 
 module.exports = router;
-router.get(
-  "/calendar-workouts",
-  protect,
-  getCalendarWorkouts
-);
