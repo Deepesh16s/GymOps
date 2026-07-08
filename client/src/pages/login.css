@@ -458,3 +458,28 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+/* Add/update in login.css */
+
+.gl-socials {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.google-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.google-wrapper > div {
+  width: 100% !important;
+}
+
+.google-wrapper iframe {
+  width: 100% !important;
+}
