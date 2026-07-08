@@ -1,10 +1,12 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const Exercise = require("../models/Exercise");
 const defaultExercises = require("../data/defaultExercises");
+const sendEmail = require("../utils/sendEmail");
 
 const seedDefaultExercisesForUser = async (userId) => {
   const alreadySeeded = await Exercise.exists({
@@ -245,5 +247,70 @@ exports.googleLogin = async (req, res) => {
     res.status(500).json({
       message: "Google Login Failed",
     });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+      user.resetPasswordToken = hashedToken;
+      user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+      await user.save();
+
+      const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your GymOps password",
+        html: `<p>Click the link below to reset your password. This link expires in 15 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+      });
+    }
+
+    res.status(200).json({
+      message: "If an account with that email exists, a reset link has been sent.",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset link" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
   }
 };

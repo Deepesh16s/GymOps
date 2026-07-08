@@ -1,10 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* ============================================================
-   GymOps Dashboard — premium SaaS stylesheet
-   Palette: emerald (--go-emerald) · surface (--go-surface) · text (--go-text)
-   ============================================================ */
-
 *,
 *::before,
 *::after {
@@ -13,7 +8,6 @@
   padding: 0;
 }
 
-/* ── page shell ─────────────────────────────────────────────── */
 .dash-page {
   min-height: 100vh;
   background: var(--go-bg);
@@ -23,7 +17,6 @@
   overflow-x: hidden;
 }
 
-/* ── ambient orbs ───────────────────────────────────────────── */
 .dash-bg {
   position: fixed;
   inset: 0;
@@ -62,7 +55,6 @@
   left: 38%;
 }
 
-/* ── main content ───────────────────────────────────────────── */
 .dash-main {
   position: relative;
   z-index: 1;
@@ -74,7 +66,6 @@
   gap: 28px;
 }
 
-/* ── section wrapper ────────────────────────────────────────── */
 .section {
   display: flex;
   flex-direction: column;
@@ -89,9 +80,6 @@
   color: var(--go-text-faint);
 }
 
-/* ============================================================
-   HERO CARD
-   ============================================================ */
 .hero-card {
   background: color-mix(in srgb, var(--go-surface) 78%, transparent);
   backdrop-filter: blur(24px);
@@ -111,7 +99,6 @@
   overflow: hidden;
 }
 
-/* decorative mesh strip */
 .hero-card::before {
   content: "";
   position: absolute;
@@ -210,9 +197,6 @@
   transform: translateY(0);
 }
 
-/* ============================================================
-   PRIMARY STAT CARDS
-   ============================================================ */
 .primary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -229,13 +213,18 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  cursor: default;
+  cursor: pointer;
   transition: transform 0.22s ease, box-shadow 0.22s ease;
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-emerald) 5%, transparent);
   position: relative;
   overflow: hidden;
+}
+
+.primary-card:focus-visible {
+  outline: 2px solid var(--go-emerald);
+  outline-offset: 2px;
 }
 
 .primary-card::after {
@@ -263,6 +252,10 @@
   box-shadow:
     var(--go-shadow-sm),
     0 16px 40px color-mix(in srgb, var(--go-emerald) 12%, transparent);
+}
+
+.primary-card:active {
+  transform: translateY(-1px);
 }
 
 .primary-card__icon {
@@ -311,9 +304,6 @@
   color: var(--go-emerald);
 }
 
-/* ============================================================
-   CHARTS
-   ============================================================ */
 .charts-row {
   display: grid;
   grid-template-columns: 1.55fr 1fr;
@@ -395,10 +385,6 @@
   color: var(--go-surface);
 }
 
-/* ── muscle split card (body map) ──────────────────────────────
-   Pie chart used to self-size via Recharts' ResponsiveContainer;
-   the body map is plain markup so this card needs explicit sizing
-   to match the bar chart card's height and center its content. */
 .chart-card--pie {
   display: flex;
   flex-direction: column;
@@ -410,9 +396,6 @@
   min-height: 220px;
 }
 
-/* ============================================================
-   SECONDARY STAT CARDS
-   ============================================================ */
 .secondary-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -475,14 +458,8 @@
   color: var(--go-text-faint);
 }
 
-/* ============================================================
-   ACTIVITY ROW
-   "activity-row" is now the sole class on its <section> element
-   in the JSX (the shared "section" class was removed there to
-   eliminate a same-specificity cascade collision that could make
-   display:flex win over display:grid). We add the gap/margin
-   rhythm that "section" used to provide directly here instead.
-   ============================================================ */
+/* activity-row is the sole layout class on this section — avoids a
+   cascade collision with the shared .section class */
 .activity-row {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -583,11 +560,7 @@
   opacity: 0.7;
 }
 
-/* ─── "View all" button (Recent Workouts → Calendar) ───────────
-   Styled to match the existing emerald theme used by
-   .activity-card__link, .chart-badge, and .hero-streak. Kept as
-   its own class (not a reuse of .activity-card__link) since it's
-   now a real navigation action rather than a plain text label. ── */
+/* "View all" — Recent Workouts → Workout History */
 .view-all-btn {
   display: inline-flex;
   align-items: center;
@@ -612,7 +585,6 @@
   transform: scale(0.96);
 }
 
-/* ─── workout list ─────────────────── */
 .activity-list {
   display: flex;
   flex-direction: column;
@@ -671,7 +643,6 @@
   flex-shrink: 0;
 }
 
-/* ─── delete button ─────────────────── */
 .delete-btn {
   display: flex;
   align-items: center;
@@ -712,13 +683,11 @@
   to   { transform: rotate(360deg); }
 }
 
-/* row fades + collapses slightly while its delete request is in flight */
 .workout-row--deleting {
   opacity: 0.55;
   pointer-events: none;
 }
 
-/* inline delete error banner above the Recent Workouts list */
 .delete-error {
   font-size: 12.5px;
   font-weight: 500;
@@ -730,7 +699,6 @@
   margin-bottom: 14px;
 }
 
-/* ─── empty state ──────────────────── */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -763,7 +731,6 @@
   background: var(--go-emerald-50);
 }
 
-/* ─── favorite card ─────────────────── */
 .activity-card--fav {
   background: linear-gradient(145deg, color-mix(in srgb, var(--go-emerald) 14%, transparent) 0%, color-mix(in srgb, var(--go-surface) 85%, transparent) 70%);
   border-color: color-mix(in srgb, var(--go-emerald) 20%, transparent);
@@ -805,7 +772,6 @@
   color: var(--go-emerald);
 }
 
-/* ─── PR card ──────────────────────── */
 .pr-trophy {
   color: var(--go-emerald);
 }
@@ -846,7 +812,6 @@
   flex-shrink: 0;
 }
 
-/* ─── skeleton ─────────────────────── */
 .skeleton {
   border-radius: 6px;
   background: linear-gradient(
@@ -864,11 +829,6 @@
   100% { background-position: -200% 0; }
 }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-
-/* ── 1280px ──── */
 @media (max-width: 1280px) {
   .primary-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -887,7 +847,6 @@
   }
 }
 
-/* ── 960px ───── */
 @media (max-width: 960px) {
   .dash-main {
     padding: 24px 28px 56px;
@@ -910,7 +869,6 @@
   }
 }
 
-/* ── 720px ───── */
 @media (max-width: 720px) {
   .dash-main {
     padding: 20px 18px 48px;
@@ -947,7 +905,6 @@
   }
 }
 
-/* ── 480px ───── */
 @media (max-width: 480px) {
   .hero-card__title {
     font-size: 1.7rem;
@@ -970,4 +927,46 @@
   font-size: 11px;
   color: var(--go-text-faint);
   margin-top: 2px;
+}
+/* Append to dashboard.css — segmented control for the Muscle Split range filter */
+
+.range-toggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.range-toggle__btn {
+  border: none;
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.range-toggle__btn:hover {
+  color: #10b981;
+}
+
+.range-toggle__btn--active {
+  background: #10b981;
+  color: #fff;
+}
+
+.range-toggle__btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.muscle-map--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
 }

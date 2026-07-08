@@ -15,11 +15,6 @@ import {
 
 import Navbar from "../components/Navbar";
 
-/* ════════════════════════════════════════════════════════════
-   DATA-DRIVEN OVERVIEW
-   FIX: goal.exercise is now a populated { _id, name, muscleGroup }
-   object (was previously a raw string) — read .name off it.
-═══════════════════════════════════════════════════════════ */
 const buildOverviewStats = (goals) => {
   const weeklyGoal = goals.find((g) => g.type === "Weekly Workout");
   const monthlyGoal = goals.find((g) => g.type === "Monthly Volume");
@@ -46,9 +41,6 @@ const buildOverviewStats = (goals) => {
   };
 };
 
-/* ════════════════════════════════════════════════════════════
-   ACHIEVEMENTS
-═══════════════════════════════════════════════════════════ */
 const computeMaxWeightByExercise = (workouts) => {
   const max = {};
 
@@ -92,7 +84,6 @@ const buildAchievements = (workouts) => {
   ];
 };
 
-/* ── helpers ── */
 const pct = (current, target) =>
   target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
 
@@ -102,9 +93,6 @@ const statusClass = (status) => {
   return "goal-badge--progress";
 };
 
-/* ════════════════════════════════════════════════════════════
-   SMALL COMPONENTS
-═══════════════════════════════════════════════════════════ */
 function ProgressBar({ value, variant }) {
   return (
     <div className={`progress-track ${variant ? `progress-track--${variant}` : ""}`}>
@@ -217,9 +205,6 @@ function EmptyState({ onAdd }) {
   );
 }
 
-/* ════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════════════════════════ */
 function Goals() {
   const [goals, setGoals] = useState([]);
   const [workouts, setWorkouts] = useState([]);
@@ -237,11 +222,8 @@ function Goals() {
     target: "",
     unit: "",
     exercise: "",
-    deadline: "",
   });
 
-  // FIX: real exercise list for the Strength PR dropdown, same
-  // source AddWorkoutModal.jsx already uses (/exercises).
   const [exercises, setExercises] = useState([]);
 
   const fetchGoals = async () => {
@@ -279,7 +261,6 @@ function Goals() {
     fetchExercises();
   }, []);
 
-  // dedupe by normalized name, same defensive pattern as AddWorkoutModal.jsx
   const uniqueExercises = exercises.filter((exercise, index, arr) => {
     const key = exercise.name.trim().toLowerCase();
     return (
@@ -295,7 +276,6 @@ function Goals() {
       target: "",
       unit: "",
       exercise: "",
-      deadline: "",
     });
     setShowModal(true);
   };
@@ -307,10 +287,7 @@ function Goals() {
       type: goal.type,
       target: goal.target,
       unit: goal.unit,
-      // FIX: goal.exercise is now a populated object ({_id, name, ...})
-      // or null — the form field needs just the id string.
       exercise: goal.exercise?._id || "",
-      deadline: goal.deadline ? goal.deadline.slice(0, 10) : "",
     });
     setShowModal(true);
   };
@@ -336,9 +313,6 @@ function Goals() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // FIX: catch the "no exercise picked" case client-side too, so the
-    // person gets immediate feedback instead of waiting on the 400
-    // from the backend.
     if (formData.type === "Strength PR" && !formData.exercise) {
       alert("Please select an exercise for a Strength PR goal");
       return;
@@ -368,7 +342,6 @@ function Goals() {
         target: "",
         unit: "",
         exercise: "",
-        deadline: "",
       });
 
       setShowModal(false);
@@ -390,7 +363,6 @@ function Goals() {
 
       <main className="goals-main">
 
-        {/* ── HEADER ── */}
         <section className="goals-header">
           <div>
             <h1 className="goals-header__title">Fitness Goals</h1>
@@ -402,7 +374,6 @@ function Goals() {
           </button>
         </section>
 
-        {/* ── OVERVIEW CARDS ── */}
         <section className="section">
           <p className="section__label">Overview</p>
           <div className="overview-grid">
@@ -438,7 +409,6 @@ function Goals() {
           </div>
         </section>
 
-        {/* ── MAIN GOALS GRID ── */}
         <section className="section">
           <p className="section__label">Your Goals</p>
           {loading ? (
@@ -459,7 +429,6 @@ function Goals() {
           )}
         </section>
 
-        {/* ── ACHIEVEMENTS ── */}
         <section className="section">
           <p className="section__label">
             <TrendingUp size={12} strokeWidth={2.2} style={{ marginRight: 5, verticalAlign: -1 }} />
@@ -474,7 +443,6 @@ function Goals() {
 
       </main>
 
-      {/* ── ADD / EDIT GOAL MODAL ── */}
       {showModal && (
         <div className="goal-modal-overlay">
           <div className="goal-modal">
@@ -520,12 +488,6 @@ function Goals() {
                 required
               />
 
-              {/* FIX: real dropdown tied to /exercises, replacing the old
-                  free-text input. Only shown (and required) for Strength
-                  PR goals — this is what fixes goals never updating,
-                  since the stored value is now guaranteed to be a real
-                  exercise's exact _id instead of a typed string that
-                  might not match. */}
               {formData.type === "Strength PR" && (
                 <select
                   name="exercise"
@@ -541,13 +503,6 @@ function Goals() {
                   ))}
                 </select>
               )}
-
-              <input
-                type="date"
-                name="deadline"
-                value={formData.deadline}
-                onChange={handleChange}
-              />
 
               <div className="modal-buttons">
                 <button

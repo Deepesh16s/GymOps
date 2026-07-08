@@ -10,27 +10,13 @@ import {
 } from "lucide-react";
 
 const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
-// FIX: Use local date instead of UTC
 const getLocalDateKey = (date) => {
   const d = new Date(date);
-
-  return `${d.getFullYear()}-${String(
-    d.getMonth() + 1
-  ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 function CalendarPage() {
@@ -58,22 +44,12 @@ function CalendarPage() {
     fetchWorkouts();
   }, []);
 
-  // FIXED
   const workoutDates = new Set(
     workouts.map((w) => getLocalDateKey(w.date))
   );
 
-  const firstDay = new Date(
-    viewYear,
-    viewMonth,
-    1
-  ).getDay();
-
-  const daysInMonth = new Date(
-    viewYear,
-    viewMonth + 1,
-    0
-  ).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
   const calendarDays = [];
 
@@ -86,23 +62,13 @@ function CalendarPage() {
   }
 
   const getDateKey = (day) => {
-    return `${viewYear}-${String(
-      viewMonth + 1
-    ).padStart(2, "0")}-${String(day).padStart(
-      2,
-      "0"
-    )}`;
+    return `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   };
 
-  // FIXED
   const todayKey = getLocalDateKey(today);
 
-  // FIXED
   const selectedWorkouts = selectedDate
-    ? workouts.filter(
-        (w) =>
-          getLocalDateKey(w.date) === selectedDate
-      )
+    ? workouts.filter((w) => getLocalDateKey(w.date) === selectedDate)
     : [];
 
   const goToPrevMonth = () => {
@@ -181,185 +147,90 @@ function CalendarPage() {
 
           {loading ? (
             <div className="calendar-grid">
-              {Array.from({ length: 35 }).map(
-                (_, i) => (
-                  <div
-                    key={i}
-                    className="calendar-cell go-skeleton"
-                  />
-                )
-              )}
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="calendar-cell go-skeleton" />
+              ))}
             </div>
           ) : (
             <div className="calendar-grid">
-              {[
-                "Sun",
-                "Mon",
-                "Tue",
-                "Wed",
-                "Thu",
-                "Fri",
-                "Sat",
-              ].map((day) => (
-                <div
-                  key={day}
-                  className="calendar-weekday"
-                >
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div key={day} className="calendar-weekday">
                   {day}
                 </div>
               ))}
 
-              {calendarDays.map(
-                (day, index) => {
-                  if (!day) {
-                    return (
-                      <div
-                        key={index}
-                        className="calendar-cell empty"
-                      />
-                    );
-                  }
-
-                  const dateKey =
-                    getDateKey(day);
-
-                  const hasWorkout =
-                    workoutDates.has(dateKey);
-
-                  const isToday =
-                    dateKey === todayKey;
-
-                  const isSelected =
-                    dateKey === selectedDate;
-
-                  return (
-                    <button
-                      type="button"
-                      key={index}
-                      className={[
-                        "calendar-cell",
-                        hasWorkout
-                          ? "workout-day"
-                          : "",
-                        isToday
-                          ? "is-today"
-                          : "",
-                        isSelected
-                          ? "is-selected"
-                          : "",
-                      ]
-                        .join(" ")
-                        .trim()}
-                      onClick={() =>
-                        setSelectedDate(
-                          dateKey
-                        )
-                      }
-                    >
-                      <span className="calendar-cell-day">
-                        {day}
-                      </span>
-
-                      {hasWorkout && (
-                        <div className="calendar-dot" />
-                      )}
-                    </button>
-                  );
+              {calendarDays.map((day, index) => {
+                if (!day) {
+                  return <div key={index} className="calendar-cell empty" />;
                 }
-              )}
+
+                const dateKey = getDateKey(day);
+                const hasWorkout = workoutDates.has(dateKey);
+                const isToday = dateKey === todayKey;
+                const isSelected = dateKey === selectedDate;
+
+                return (
+                  <button
+                    type="button"
+                    key={index}
+                    className={[
+                      "calendar-cell",
+                      hasWorkout ? "workout-day" : "",
+                      isToday ? "is-today" : "",
+                      isSelected ? "is-selected" : "",
+                    ].join(" ").trim()}
+                    onClick={() => setSelectedDate(dateKey)}
+                  >
+                    <span className="calendar-cell-day">{day}</span>
+                    {hasWorkout && <div className="calendar-dot" />}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
         <div className="calendar-details-card go-card">
           <div className="calendar-details-header">
-            <CalendarDays
-              size={16}
-              strokeWidth={1.8}
-            />
-
-            <h2>
-              {selectedDate
-                ? formatLongDate(
-                    selectedDate
-                  )
-                : "Select a day"}
-            </h2>
+            <CalendarDays size={16} strokeWidth={1.8} />
+            <h2>{selectedDate ? formatLongDate(selectedDate) : "Select a day"}</h2>
           </div>
 
           {!selectedDate && (
             <div className="go-empty">
               <div className="go-empty-icon">
-                <CalendarDays
-                  size={20}
-                  strokeWidth={1.8}
-                />
+                <CalendarDays size={20} strokeWidth={1.8} />
               </div>
-
-              <p className="go-empty-title">
-                No date selected
-              </p>
-
+              <p className="go-empty-title">No date selected</p>
               <p className="go-empty-sub">
-                Tap any day on the calendar
-                to see what you trained.
+                Tap any day on the calendar to see what you trained.
               </p>
             </div>
           )}
 
-          {selectedDate &&
-            selectedWorkouts.length ===
-              0 && (
-              <div className="go-empty">
-                <div className="go-empty-icon">
-                  <Flame
-                    size={20}
-                    strokeWidth={1.8}
-                  />
-                </div>
-
-                <p className="go-empty-title">
-                  Rest day
-                </p>
-
-                <p className="go-empty-sub">
-                  No workouts logged on this
-                  day.
-                </p>
+          {selectedDate && selectedWorkouts.length === 0 && (
+            <div className="go-empty">
+              <div className="go-empty-icon">
+                <Flame size={20} strokeWidth={1.8} />
               </div>
-            )}
+              <p className="go-empty-title">Rest day</p>
+              <p className="go-empty-sub">No workouts logged on this day.</p>
+            </div>
+          )}
 
           <div className="workout-entry-list">
-            {selectedWorkouts.map(
-              (workout) => (
-                <div
-                  key={workout._id}
-                  className="workout-entry"
-                >
-                  <h3>
-                    {
-                      workout.exercise
-                        ?.name
-                    }
-                  </h3>
-
-                  <div className="workout-entry-sets">
-                    {workout.workoutSets.map(
-                      (set, i) => (
-                        <span
-                          key={i}
-                          className="workout-set-chip"
-                        >
-                          Set {i + 1} ·{" "}
-                          {set.weight}kg ×{" "}
-                          {set.reps}
-                        </span>
-                      )
-                    )}
-                  </div>
+            {selectedWorkouts.map((workout) => (
+              <div key={workout._id} className="workout-entry">
+                <h3>{workout.exercise?.name}</h3>
+                <div className="workout-entry-sets">
+                  {workout.workoutSets.map((set, i) => (
+                    <span key={i} className="workout-set-chip">
+                      Set {i + 1} · {set.weight}kg × {set.reps}
+                    </span>
+                  ))}
                 </div>
-              )
-            )}
+              </div>
+            ))}
           </div>
         </div>
       </main>
@@ -368,24 +239,13 @@ function CalendarPage() {
 }
 
 function formatLongDate(dateKey) {
-  const [y, m, d] = dateKey
-    .split("-")
-    .map(Number);
-
-  const date = new Date(
-    y,
-    m - 1,
-    d
-  );
-
-  return date.toLocaleDateString(
-    undefined,
-    {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    }
-  );
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 export default CalendarPage;

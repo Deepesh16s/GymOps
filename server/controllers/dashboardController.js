@@ -5,6 +5,20 @@ const workoutVolume = (w) =>
 
 const totalSetsCount = (w) => w.workoutSets.length;
 
+const RANGE_DAYS = {
+  week: 7,
+  month: 30,
+  year: 365,
+};
+
+const buildDateFilter = (range) => {
+  if (!RANGE_DAYS[range]) return null;
+  const since = new Date();
+  since.setDate(since.getDate() - RANGE_DAYS[range]);
+  since.setHours(0, 0, 0, 0);
+  return since;
+};
+
 exports.getTotalWorkouts = async (req, res) => {
   try {
     const totalWorkouts = await Workout.countDocuments({
@@ -58,9 +72,15 @@ exports.getRecentWorkouts = async (req, res) => {
 
 exports.getMuscleDistribution = async (req, res) => {
   try {
-    const workouts = await Workout.find({ user: req.user._id }).populate(
-      "exercise"
-    );
+    const { range } = req.query;
+    const filter = { user: req.user._id };
+
+    const since = buildDateFilter(range);
+    if (since) {
+      filter.date = { $gte: since };
+    }
+
+    const workouts = await Workout.find(filter).populate("exercise");
 
     const distribution = {};
     workouts.forEach((w) => {

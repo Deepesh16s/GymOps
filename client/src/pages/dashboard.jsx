@@ -32,21 +32,32 @@ import AddWorkoutModal from "../components/AddWorkoutModal";
 import MuscleBodyMap from "../components/MuscleBodyMap";
 import api from "../services/api";
 
-/* ─── colour tokens for Recharts ─── */
 const EMERALD = "#10b981";
-
-/* ─── Ordered days for the bar chart (Sun-first from backend, reordered Mon-first) ─── */
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-/* ─── small helper — volume for a single workout doc.
-   Sums reps × weight across every set in workoutSets. ─── */
+const RANGE_OPTIONS = [
+  { key: "week", label: "Week" },
+  { key: "month", label: "Month" },
+  { key: "year", label: "Year" },
+];
+
 const getWorkoutVolume = (w) =>
   (w.workoutSets || []).reduce((sum, s) => sum + s.reps * s.weight, 0);
 
-/* ─── Stat card variants ─── */
-function PrimaryCard({ title, value, icon: Icon, accent }) {
+function PrimaryCard({ title, value, icon: Icon, accent, onClick }) {
   return (
-    <div className={`primary-card ${accent ? "primary-card--accent" : ""}`}>
+    <div
+      className={`primary-card ${accent ? "primary-card--accent" : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <div className="primary-card__icon">
         <Icon size={22} strokeWidth={1.8} />
       </div>
@@ -72,128 +83,129 @@ function SecondaryCard({ title, value, sub, icon: Icon }) {
   );
 }
 
-/* ─── Inline skeleton for individual values ─── */
 function SkeletonVal() {
-  return <span className="skeleton" style={{ width: 64, height: 22, display: "inline-block", borderRadius: 6 }} />;
+  return (
+    <span
+      className="skeleton"
+      style={{ width: 64, height: 22, display: "inline-block", borderRadius: 6 }}
+    />
+  );
 }
 
-/* ─── Custom Recharts tooltip (bar chart only now) ─── */
 function CustomBarTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="chart-tooltip">
       <p className="chart-tooltip__label">{label}</p>
-      <p className="chart-tooltip__value">{Number(payload[0].value).toLocaleString()} kg</p>
+      <p className="chart-tooltip__value">
+        {Number(payload[0].value).toLocaleString()} kg
+      </p>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════ */
 function Dashboard() {
   const navigate = useNavigate();
 
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  /* ── delete-flow state ──
-     deletingId: which workout row shows a spinner right now
-     deleteError: surfaced inline above Recent Workouts if a delete fails */
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
 
   const [stats, setStats] = useState({
-    totalWorkouts:    null,
-    totalVolume:      null,
-    totalExercises:   null,
-    recentWorkouts:   [],
-    currentStreak:    null,
+    totalWorkouts: null,
+    totalVolume: null,
+    totalExercises: null,
+    recentWorkouts: [],
+    currentStreak: null,
     favoriteExercise: "",
-    favoriteCount:    0,
-    averageVolume:    null,
-    topExercise:      "",
+    favoriteCount: 0,
+    averageVolume: null,
+    topExercise: "",
     topExerciseCount: 0,
-    topMuscle:        "",
-    topMuscleCount:   0,
-    weeklyWorkouts:   null,
-    monthlyWorkouts:  null,
-    personalRecords:  {},
+    topMuscle: "",
+    topMuscleCount: 0,
+    weeklyWorkouts: null,
+    monthlyWorkouts: null,
+    personalRecords: {},
   });
 
-  /* chart data lives separately — arrays, not scalars */
   const [weeklyVolumeData, setWeeklyVolumeData] = useState([]);
-  const [muscleData, setMuscleData]             = useState([]);
+
+  // Muscle Split has its own state so switching the range doesn't reload the whole dashboard
+  const [muscleRange, setMuscleRange] = useState("month"); // "week" | "month" | "year"
+  const [muscleData, setMuscleData] = useState([]);
+  const [muscleLoading, setMuscleLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    fetchMuscleDistribution(muscleRange);
+  }, [muscleRange]);
+
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const token  = localStorage.getItem("token");
+      const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       const [
-        workouts, volume, exercises, recent,
-        streak, favorite, average,
-        topExercise, topMuscle, weekly, monthly, records,
-        weeklyVol, muscleDist,
+        workouts,
+        volume,
+        exercises,
+        recent,
+        streak,
+        favorite,
+        average,
+        topExercise,
+        topMuscle,
+        weekly,
+        monthly,
+        records,
+        weeklyVol,
       ] = await Promise.all([
-        api.get("/dashboard/total-workouts",     config),
-        api.get("/dashboard/total-volume",       config),
-        api.get("/dashboard/total-exercises",    config),
-        api.get("/dashboard/recent-workouts",    config),
-        api.get("/dashboard/current-streak",     config),
-        api.get("/dashboard/favorite-exercise",  config),
-        api.get("/dashboard/average-volume",     config),
-        api.get("/dashboard/top-exercise",       config),
-        api.get("/dashboard/top-muscle",         config),
-        api.get("/dashboard/weekly-workouts",    config),
-        api.get("/dashboard/monthly-workouts",   config),
-        api.get("/dashboard/personal-records",   config),
-        api.get("/dashboard/weekly-volume",      config),
-        api.get("/dashboard/muscle-distribution",config),
+        api.get("/dashboard/total-workouts", config),
+        api.get("/dashboard/total-volume", config),
+        api.get("/dashboard/total-exercises", config),
+        api.get("/dashboard/recent-workouts", config),
+        api.get("/dashboard/current-streak", config),
+        api.get("/dashboard/favorite-exercise", config),
+        api.get("/dashboard/average-volume", config),
+        api.get("/dashboard/top-exercise", config),
+        api.get("/dashboard/top-muscle", config),
+        api.get("/dashboard/weekly-workouts", config),
+        api.get("/dashboard/monthly-workouts", config),
+        api.get("/dashboard/personal-records", config),
+        api.get("/dashboard/weekly-volume", config),
       ]);
 
       setStats({
-        totalWorkouts:    workouts.data.totalWorkouts,
-        totalVolume:      volume.data.totalVolume,
-        totalExercises:   exercises.data.totalExercises,
-        recentWorkouts:   recent.data,
-        currentStreak:    streak.data.currentStreak,
+        totalWorkouts: workouts.data.totalWorkouts,
+        totalVolume: volume.data.totalVolume,
+        totalExercises: exercises.data.totalExercises,
+        recentWorkouts: recent.data,
+        currentStreak: streak.data.currentStreak,
         favoriteExercise: favorite.data.favoriteExercise,
-        favoriteCount:    favorite.data.count,
-        /* round to avoid floats like 3847.333... */
-        averageVolume:    Math.round(average.data.averageVolume),
-        topExercise:      topExercise.data.exercise,
+        favoriteCount: favorite.data.count,
+        averageVolume: Math.round(average.data.averageVolume),
+        topExercise: topExercise.data.exercise,
         topExerciseCount: topExercise.data.count,
-        topMuscle:        topMuscle.data.topMuscle,
-        topMuscleCount:   topMuscle.data.count,
-        weeklyWorkouts:   weekly.data.weeklyWorkouts,
-        monthlyWorkouts:  monthly.data.monthlyWorkouts,
-        personalRecords:  records.data,
+        topMuscle: topMuscle.data.topMuscle,
+        topMuscleCount: topMuscle.data.count,
+        weeklyWorkouts: weekly.data.weeklyWorkouts,
+        monthlyWorkouts: monthly.data.monthlyWorkouts,
+        personalRecords: records.data,
       });
 
-      /* ── weekly volume: backend returns [{day, volume}] Mon-first.
-         Re-map defensively in case ordering ever changes. ── */
-      const rawWeekly = weeklyVol.data; // [{day:"Mon",volume:0}, ...]
+      const rawWeekly = weeklyVol.data;
       const sortedWeekly = DAY_ORDER.map((d) => {
         const found = rawWeekly.find((r) => r.day === d);
         return { day: d, volume: found ? found.volume : 0 };
       });
       setWeeklyVolumeData(sortedWeekly);
-
-      /* ── muscle distribution: backend returns [{muscle, sets}].
-         Body map needs [{name, value}]. ── */
-      const rawMuscle = muscleDist.data; // [{muscle:"Chest", sets:18}, ...]
-      const mappedMuscle = rawMuscle.map((m) => ({
-        name:  m.muscle,
-        value: m.sets,
-      }));
-      setMuscleData(mappedMuscle);
-
     } catch (err) {
       console.error("Dashboard Error:", err);
     } finally {
@@ -201,13 +213,29 @@ function Dashboard() {
     }
   };
 
-  /* ─────────────────────────────────────────
-     DELETE WORKOUT
-     1. confirm()
-     2. DELETE /api/workouts/:id with Bearer token
-     3. on success → re-run fetchDashboardData() to refresh
-        every stat, both charts, and the recent list in one go
-  ───────────────────────────────────────── */
+  const fetchMuscleDistribution = async (range) => {
+    setMuscleLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      const res = await api.get(
+        `/dashboard/muscle-distribution?range=${range}`,
+        config
+      );
+
+      const mapped = res.data.map((m) => ({
+        name: m.muscle,
+        value: m.sets,
+      }));
+      setMuscleData(mapped);
+    } catch (err) {
+      console.error("Muscle Distribution Error:", err);
+    } finally {
+      setMuscleLoading(false);
+    }
+  };
+
   const handleDeleteWorkout = async (workoutId) => {
     const confirmed = window.confirm("Delete this workout?");
     if (!confirmed) return;
@@ -216,14 +244,11 @@ function Dashboard() {
     setDeletingId(workoutId);
 
     try {
-      const token  = localStorage.getItem("token");
+      const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       await api.delete(`/workouts/${workoutId}`, config);
 
-      /* full refresh — reuses the exact same fetch that powers
-         every card and chart on first load, so nothing drifts
-         out of sync with the rest of the dashboard */
       await fetchDashboardData();
     } catch (err) {
       console.error("Delete Workout Error:", err);
@@ -235,14 +260,13 @@ function Dashboard() {
 
   const prEntries = Object.entries(stats.personalRecords);
 
-  /* ── chart empty-state placeholder so charts don't show blank ── */
-  const barChartData = weeklyVolumeData.length > 0
-    ? weeklyVolumeData
-    : DAY_ORDER.map((d) => ({ day: d, volume: 0 }));
+  const barChartData =
+    weeklyVolumeData.length > 0
+      ? weeklyVolumeData
+      : DAY_ORDER.map((d) => ({ day: d, volume: 0 }));
 
   return (
     <div className="dash-page">
-      {/* ambient orbs */}
       <div className="dash-bg" aria-hidden="true">
         <div className="orb orb--1" />
         <div className="orb orb--2" />
@@ -252,8 +276,6 @@ function Dashboard() {
       <Navbar />
 
       <main className="dash-main">
-
-        {/* ── HERO ── */}
         <section className="hero-card">
           <div className="hero-card__left">
             <span className="hero-card__eyebrow">
@@ -281,7 +303,6 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* ── PRIMARY STATS ── */}
         <section className="section">
           <p className="section__label">Overview</p>
           <div className="primary-grid">
@@ -290,29 +311,30 @@ function Dashboard() {
               value={loading ? null : stats.totalWorkouts}
               icon={Dumbbell}
               accent
+              onClick={() => navigate("/workouts")}
             />
             <PrimaryCard
               title="Total Volume"
               value={loading ? null : `${stats.totalVolume?.toLocaleString()} kg`}
               icon={Flame}
+              onClick={() => navigate("/analytics")}
             />
             <PrimaryCard
               title="Exercises Logged"
               value={loading ? null : stats.totalExercises}
               icon={Activity}
+              onClick={() => navigate("/workouts")}
             />
             <PrimaryCard
               title="Current Streak"
               value={loading ? null : `${stats.currentStreak}d`}
               icon={CalendarDays}
+              onClick={() => navigate("/calendar")}
             />
           </div>
         </section>
 
-        {/* ── CHARTS ── */}
         <section className="section charts-row">
-
-          {/* Weekly Volume Bar Chart */}
           <div className="chart-card chart-card--bar">
             <div className="chart-card__head">
               <div>
@@ -349,20 +371,31 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Muscle Split Body Map */}
           <div className="chart-card chart-card--pie">
             <div className="chart-card__head">
               <div>
                 <p className="chart-card__title">Muscle Split</p>
                 <p className="chart-card__sub">Sets distribution by muscle group</p>
               </div>
+              <div className="range-toggle">
+                {RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    className={`range-toggle__btn ${
+                      muscleRange === opt.key ? "range-toggle__btn--active" : ""
+                    }`}
+                    onClick={() => setMuscleRange(opt.key)}
+                    disabled={muscleLoading && muscleRange === opt.key}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <MuscleBodyMap muscleData={muscleData} />
+            <MuscleBodyMap muscleData={muscleData} loading={muscleLoading} />
           </div>
-
         </section>
 
-        {/* ── SECONDARY STATS ── */}
         <section className="section">
           <p className="section__label">Breakdown</p>
           <div className="secondary-grid">
@@ -373,14 +406,18 @@ function Dashboard() {
             />
             <SecondaryCard
               title="Top Muscle"
-              value={loading ? null : (stats.topMuscle || "—")}
+              value={loading ? null : stats.topMuscle || "—"}
               sub={stats.topMuscleCount ? `${stats.topMuscleCount} sets` : null}
               icon={Zap}
             />
             <SecondaryCard
               title="Top Exercise"
-              value={loading ? null : (stats.topExercise || "—")}
-              sub={stats.topExerciseCount ? `${stats.topExerciseCount}× performed` : null}
+              value={loading ? null : stats.topExercise || "—"}
+              sub={
+                stats.topExerciseCount
+                  ? `${stats.topExerciseCount}× performed`
+                  : null
+              }
               icon={Trophy}
             />
             <SecondaryCard
@@ -396,44 +433,41 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* ════════════════════════════════════════════════════
-            ACTIVITY SECTION
-            NOTE: this <section> intentionally does NOT carry the
-            shared "section" class anymore. "section" sets
-            display:flex / flex-direction:column, which was
-            colliding (same specificity) with "activity-row"'s
-            display:grid and intermittently winning the cascade,
-            collapsing the two-column layout. "activity-row" is
-            now the sole class controlling this element's layout.
-        ═══════════════════════════════════════════════════════ */}
         <section className="activity-row">
-
-          {/* Recent Workouts — left column */}
           <div className="activity-card activity-card--recent">
             <div className="activity-card__head">
               <p className="activity-card__title">Recent Workouts</p>
-              {/* "View all" now navigates to the full Workout History
-                  page instead of being a static, non-functional button. */}
-              <button
-                className="view-all-btn"
-                onClick={() => navigate("/workouts")}
-              >
+              <button className="view-all-btn" onClick={() => navigate("/workouts")}>
                 View all <ChevronRight size={14} />
               </button>
             </div>
 
-            {deleteError && (
-              <p className="delete-error">{deleteError}</p>
-            )}
+            {deleteError && <p className="delete-error">{deleteError}</p>}
 
             {loading ? (
               <div className="activity-list">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="workout-row workout-row--skeleton">
-                    <span className="skeleton" style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0 }} />
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span className="skeleton" style={{ width: "55%", height: 13, borderRadius: 5 }} />
-                      <span className="skeleton" style={{ width: "38%", height: 11, borderRadius: 5 }} />
+                    <span
+                      className="skeleton"
+                      style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0 }}
+                    />
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      <span
+                        className="skeleton"
+                        style={{ width: "55%", height: 13, borderRadius: 5 }}
+                      />
+                      <span
+                        className="skeleton"
+                        style={{ width: "38%", height: 11, borderRadius: 5 }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -448,14 +482,11 @@ function Dashboard() {
               </div>
             ) : (
               <div className="activity-list">
-                {/* Dashboard only ever shows the latest 5 workouts —
-                    the Workout History page remains the full history view. */}
                 {stats.recentWorkouts.slice(0, 5).map((w) => {
                   const isDeleting = deletingId === w._id;
-                  const setCount   = w.workoutSets?.length || 0;
-                  const volume     = getWorkoutVolume(w);
+                  const setCount = w.workoutSets?.length || 0;
+                  const volume = getWorkoutVolume(w);
 
-                  // quick per-set string, e.g. "60kg×8, 65kg×6, 65kg×5"
                   const setBreakdown = (w.workoutSets || [])
                     .map((s) => `${s.weight}kg×${s.reps}`)
                     .join(", ");
@@ -463,7 +494,9 @@ function Dashboard() {
                   return (
                     <div
                       key={w._id}
-                      className={`workout-row ${isDeleting ? "workout-row--deleting" : ""}`}
+                      className={`workout-row ${
+                        isDeleting ? "workout-row--deleting" : ""
+                      }`}
                     >
                       <div className="workout-row__icon">
                         <Dumbbell size={15} strokeWidth={1.8} />
@@ -471,9 +504,9 @@ function Dashboard() {
                       <div className="workout-row__info">
                         <p className="workout-row__name">{w.exercise?.name}</p>
                         <p className="workout-row__meta">
-                          {setCount} {setCount === 1 ? "set" : "sets"} · {volume.toLocaleString()} kg volume
+                          {setCount} {setCount === 1 ? "set" : "sets"} ·{" "}
+                          {volume.toLocaleString()} kg volume
                         </p>
-                        {/* per-set breakdown, small and secondary */}
                         <p className="workout-row__sets">{setBreakdown}</p>
                       </div>
                       <span className="workout-row__vol">
@@ -487,7 +520,11 @@ function Dashboard() {
                         onClick={() => handleDeleteWorkout(w._id)}
                       >
                         {isDeleting ? (
-                          <Loader2 size={15} strokeWidth={2} className="delete-btn__spinner" />
+                          <Loader2
+                            size={15}
+                            strokeWidth={2}
+                            className="delete-btn__spinner"
+                          />
                         ) : (
                           <Trash2 size={15} strokeWidth={1.8} />
                         )}
@@ -499,10 +536,7 @@ function Dashboard() {
             )}
           </div>
 
-          {/* Right column — Top Pick stacked above Personal Records */}
           <div className="activity-side">
-
-            {/* Favorite Exercise */}
             <div className="activity-card activity-card--fav">
               <p className="activity-card__title">Top Pick</p>
               <div className="fav-body">
@@ -516,7 +550,6 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Personal Records */}
             <div className="activity-card activity-card--pr">
               <div className="activity-card__head">
                 <p className="activity-card__title">Personal Records</p>
@@ -538,11 +571,8 @@ function Dashboard() {
                 </div>
               )}
             </div>
-
           </div>
-
         </section>
-
       </main>
 
       {showModal && (

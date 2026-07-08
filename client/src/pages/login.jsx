@@ -189,9 +189,9 @@ export default function Login() {
                 <label className="gl-label" htmlFor="password">
                   Password
                 </label>
-                <a href="#" className="gl-forgot">
+                <Link to="/forgot-password" className="gl-forgot">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <input
                 className="gl-input"

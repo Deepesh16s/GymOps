@@ -1,9 +1,6 @@
 import { useMemo, useState, useRef } from "react";
 import "./MuscleBodyMap.css";
 
-/* maps each dashboard muscle group name to the svg region(s) that
-   should light up for it. some groups touch more than one region
-   (legs covers both quads + calves outlines) */
 const MUSCLE_TO_REGIONS = {
   Chest: ["chest"],
   Back: ["upperBack", "lowerBack"],
@@ -15,9 +12,6 @@ const MUSCLE_TO_REGIONS = {
   Abs: ["abs"],
 };
 
-/* 5-step intensity scale, light -> dark. index 0 = no sets logged
-   (kept neutral/very light so it doesn't read as "trained").
-   index 5 = highest volume group, darkest/most saturated green. */
 const INTENSITY_COLORS = [
   "#e2f5ee",
   "#a7f3d0",
@@ -38,7 +32,7 @@ function bucketFor(sets, max) {
   return 1;
 }
 
-function MuscleBodyMap({ muscleData }) {
+function MuscleBodyMap({ muscleData, loading = false }) {
   const [hovered, setHovered] = useState(null);
   const wrapRef = useRef(null);
 
@@ -65,7 +59,6 @@ function MuscleBodyMap({ muscleData }) {
     return fills;
   }, [setsByMuscle, maxSets]);
 
-  /* sorted list for the side legend - highest volume first */
   const legendEntries = useMemo(() => {
     return Object.keys(MUSCLE_TO_REGIONS)
       .map((muscle) => ({ muscle, sets: setsByMuscle[muscle] || 0 }))
@@ -99,28 +92,37 @@ function MuscleBodyMap({ muscleData }) {
   const hasData = muscleData.length > 0;
   const legendMax = legendEntries.length > 0 ? legendEntries[0].sets : 0;
 
+  // First load (or a range switch) with nothing to show yet: render a skeleton
+  // instead of flashing the "no data" empty state.
+  if (loading && !hasData) {
+    return (
+      <div className="muscle-map muscle-map--loading">
+        <span
+          className="skeleton"
+          style={{ width: "100%", height: 220, borderRadius: 12, display: "block" }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="muscle-map" ref={wrapRef}>
       {!hasData ? (
         <div className="muscle-map__empty">
-          <p>No muscle data yet.</p>
+          <p>No sets logged for this period.</p>
         </div>
       ) : (
         <>
           <div className="muscle-map__main">
             <div className="muscle-map__bodies">
-              {/* FRONT VIEW */}
               <div className="muscle-map__body">
                 <svg viewBox="0 0 160 340" className="body-svg">
-                  {/* head + neck - static, not a tracked group */}
                   <circle cx="80" cy="20" r="15" className="body-static" />
                   <rect x="73" y="33" width="14" height="12" className="body-static" />
 
-                  {/* shoulders end at y=69 (cy58 + ry11) */}
                   <ellipse cx="44" cy="58" rx="15" ry="11" {...regionProps("shoulderL")} />
                   <ellipse cx="116" cy="58" rx="15" ry="11" {...regionProps("shoulderR")} />
 
-                  {/* chest starts at y=64, clearing the shoulder seam */}
                   <path
                     d="M60 64 H100 V98 Q80 108 60 98 Z"
                     {...regionProps("chest")}
@@ -128,7 +130,6 @@ function MuscleBodyMap({ muscleData }) {
 
                   <rect x="64" y="100" width="32" height="46" rx="4" {...regionProps("abs")} />
 
-                  {/* biceps start at y=72, clear of shoulder bottom edge */}
                   <rect x="28" y="72" width="14" height="44" rx="6" {...regionProps("bicepL")} />
                   <rect x="118" y="72" width="14" height="44" rx="6" {...regionProps("bicepR")} />
 
@@ -144,14 +145,11 @@ function MuscleBodyMap({ muscleData }) {
                 <p className="muscle-map__label">Front</p>
               </div>
 
-              {/* BACK VIEW */}
               <div className="muscle-map__body">
                 <svg viewBox="0 0 160 340" className="body-svg">
                   <circle cx="80" cy="20" r="15" className="body-static" />
                   <rect x="73" y="33" width="14" height="12" className="body-static" />
 
-                  {/* upper back / traps - no separate shoulder ellipse on
-                     this view, so no seam to manage */}
                   <path
                     d="M54 58 H106 V94 Q80 102 54 94 Z"
                     {...regionProps("upperBack")}
@@ -159,7 +157,6 @@ function MuscleBodyMap({ muscleData }) {
 
                   <rect x="64" y="96" width="32" height="38" rx="4" {...regionProps("lowerBack")} />
 
-                  {/* triceps match the front-view bicep y-range exactly */}
                   <rect x="28" y="72" width="14" height="44" rx="6" {...regionProps("tricepL")} />
                   <rect x="118" y="72" width="14" height="44" rx="6" {...regionProps("tricepR")} />
 
@@ -178,7 +175,6 @@ function MuscleBodyMap({ muscleData }) {
               </div>
             </div>
 
-            {/* side legend: muscle name + mini proportional bar */}
             <div className="muscle-map__sidelist">
               {legendEntries.map((e) => (
                 <div className="muscle-map__sidelist-row" key={e.muscle}>

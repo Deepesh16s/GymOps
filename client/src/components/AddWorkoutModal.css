@@ -117,30 +117,7 @@
 .save-btn:active {
   transform: scale(0.98);
 }
-.modal-overlay {
-  /* styles here */
-}
 
-.modal-card {
-  /* styles here */
-}
-
-.modal-card form {
-  /* styles here */
-}
-
-.modal-card input,
-.modal-card select {
-  /* styles here */
-}
-
-.save-btn {
-  /* styles here */
-}
-
-.save-btn:hover {
-  /* styles here */
-}
 .custom-btn {
   margin-top: 12px;
   border: none;
@@ -160,18 +137,11 @@
 
   padding: 15px;
 
-  border: 1px solid
-    rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.15);
 
   border-radius: 18px;
 
-  background:
-    rgba(
-      16,
-      185,
-      129,
-      0.03
-    );
+  background: rgba(16, 185, 129, 0.03);
 }
 
 .save-custom-btn {
@@ -189,6 +159,7 @@
 .save-custom-btn:hover {
   background: #059669;
 }
+
 .sets-list {
   display: flex;
   flex-direction: column;

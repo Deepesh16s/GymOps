@@ -9,6 +9,8 @@ import WorkoutHistory from "./pages/WorkoutHistory";
 import Analytics from "./pages/Analytics";
 import CalendarPage from "./pages/Calendar";
 import Goals from "./pages/goals";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/goals" element={<Goals />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
