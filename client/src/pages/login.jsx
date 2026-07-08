@@ -6,28 +6,6 @@ import "./login.css";
 import api from "../services/api";
 
 export default function Login() {
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      const res = await api.post("/auth/google", {
-        token: credentialResponse.credential,
-      });
-
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify(res.data.user)
-      );
-
-      navigate("/dashboard");
-    } catch (error) {
-      console.log(error);
-      setError("Google Login Failed");
-    }
-  };
-
-  const handleGoogleError = () => {
-    setError("Google Login Failed");
-  };
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -41,12 +19,31 @@ export default function Login() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const res = await api.post("/auth/google", {
+        token: credentialResponse.credential,
+      });
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.log(error);
+      setError("Google Login Failed");
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError("Google Login Failed");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(formData.email.trim())) {
       setError("Please enter a valid email address.");
@@ -59,40 +56,24 @@ export default function Login() {
     }
 
     try {
-      const response = await api.post(
-        "/auth/login",
-        {
-          email: formData.email.trim(),
-          password: formData.password,
-        }
-      );
+      const response = await api.post("/auth/login", {
+        email: formData.email.trim(),
+        password: formData.password,
+      });
 
-      localStorage.setItem(
-        "token",
-        response.data.token
-      );
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(response.data.user)
-      );
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
 
       setError("");
       navigate("/dashboard");
     } catch (error) {
       console.log(error);
-      console.log(error.response);
-      console.log(error.response?.data);
-
-      setError(
-        error.response?.data?.message ||
-        "Login Failed"
-      );
+      setError(error.response?.data?.message || "Login Failed");
     }
   };
+
   return (
     <div className="gl-root">
-      {/* Ambient background effects */}
       <div className="gl-bg">
         <div className="gl-orb gl-orb-1" />
         <div className="gl-orb gl-orb-2" />
@@ -143,7 +124,6 @@ export default function Login() {
         <div className="gl-card">
           <div className="gl-card-glow" />
 
-          {/* Card Logo */}
           <div className="gl-card-logo">
             <div className="gl-card-logo-icon">
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -164,94 +144,82 @@ export default function Login() {
           <h1 className="gl-heading">Welcome back 👋</h1>
           <p className="gl-sub">Sign in to continue your fitness journey</p>
 
-          {/* Social Buttons */}
-          {/* Social Buttons */}
-<div className="gl-socials">
-  <div className="gl-social-btn google-wrapper">
-    <GoogleLogin
-      onSuccess={handleGoogleSuccess}
-      onError={handleGoogleError}
-    />
-  </div>
-
-  <button className="gl-social-btn" type="button">
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="#0f172a"
-    >
-      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-    </svg>
-
-    Apple
-  </button>
-</div>
-
-        <div className="gl-divider">
-          <div className="gl-divider-line" />
-          <span className="gl-divider-text">or sign in with email</span>
-          <div className="gl-divider-line" />
-        </div>
-
-        <form className="gl-form" onSubmit={handleSubmit} noValidate>
-          <div className="gl-field">
-            <label className="gl-label" htmlFor="email">
-              Email address
-            </label>
-            <input
-              className="gl-input"
-              id="email"
-              type="email"
-              name="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              autoComplete="email"
-              required
-            />
-          </div>
-
-          <div className="gl-field">
-            <div className="gl-label-row">
-              <label className="gl-label" htmlFor="password">
-                Password
-              </label>
-              <a href="#" className="gl-forgot">
-                Forgot password?
-              </a>
+          <div className="gl-socials">
+            <div className="gl-social-btn google-wrapper">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+              />
             </div>
-            <input
-              className="gl-input"
-              id="password"
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          {error && (
-            <p className="gl-error">
-              {error}
-            </p>
-          )}
-          <button className="gl-btn" type="submit">
-            <span className="gl-btn-shimmer" />
-            Sign In
-          </button>
-        </form>
 
-        <p className="gl-register">
-          Don't have an account?{" "}
-          <Link to="/register" className="gl-register-link">
-            Register
-          </Link>
-        </p>
+            <button className="gl-social-btn" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#0f172a">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+              </svg>
+              Apple
+            </button>
+          </div>
+
+          <div className="gl-divider">
+            <div className="gl-divider-line" />
+            <span className="gl-divider-text">or sign in with email</span>
+            <div className="gl-divider-line" />
+          </div>
+
+          <form className="gl-form" onSubmit={handleSubmit} noValidate>
+            <div className="gl-field">
+              <label className="gl-label" htmlFor="email">
+                Email address
+              </label>
+              <input
+                className="gl-input"
+                id="email"
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className="gl-field">
+              <div className="gl-label-row">
+                <label className="gl-label" htmlFor="password">
+                  Password
+                </label>
+                <a href="#" className="gl-forgot">
+                  Forgot password?
+                </a>
+              </div>
+              <input
+                className="gl-input"
+                id="password"
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            {error && <p className="gl-error">{error}</p>}
+            <button className="gl-btn" type="submit">
+              <span className="gl-btn-shimmer" />
+              Sign In
+            </button>
+          </form>
+
+          <p className="gl-register">
+            Don't have an account?{" "}
+            <Link to="/register" className="gl-register-link">
+              Register
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
-    </div >
   );
 }
