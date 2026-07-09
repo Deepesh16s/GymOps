@@ -1,0 +1,33 @@
+.exercise-illustration-wrap {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  margin-bottom: 4px;
+}
+
+.exercise-illustration-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 720px;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+  margin: 0 auto;
+  border-radius: var(--go-radius-sm);
+}
+
+@media (max-width: 900px) {
+  .exercise-illustration-image {
+    max-height: 560px;
+  }
+}
+
+@media (max-width: 600px) {
+  .exercise-illustration-image {
+    max-height: 440px;
+  }
+}

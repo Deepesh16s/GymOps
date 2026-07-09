@@ -6,6 +6,7 @@ import {
   BarChart3,
   Calendar,
   Target,
+  BookOpen,
   Menu,
   X,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const NAV_LINKS = [
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/goals", label: "Goals", icon: Target },
+  { to: "/guide", label: "Guide", icon: BookOpen },
 ];
 
 function Navbar() {
