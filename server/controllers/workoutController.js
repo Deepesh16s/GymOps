@@ -13,10 +13,35 @@ const validateWorkoutSets = (workoutSets) => {
     if (
       s.weight === undefined ||
       s.reps === undefined ||
+      s.weight === null ||
+      s.reps === null ||
+      s.weight === "" ||
+      s.reps === "" ||
       isNaN(Number(s.weight)) ||
       isNaN(Number(s.reps))
     ) {
       const err = new Error(`Set ${i + 1} needs a valid weight and reps`);
+      err.status = 400;
+      throw err;
+    }
+
+    const weight = Number(s.weight);
+    const reps = Number(s.reps);
+
+    if (weight < 0) {
+      const err = new Error(`Set ${i + 1}: weight cannot be negative`);
+      err.status = 400;
+      throw err;
+    }
+
+    if (reps < 1) {
+      const err = new Error(`Set ${i + 1}: reps must be at least 1`);
+      err.status = 400;
+      throw err;
+    }
+
+    if (!Number.isInteger(reps)) {
+      const err = new Error(`Set ${i + 1}: reps must be a whole number`);
       err.status = 400;
       throw err;
     }

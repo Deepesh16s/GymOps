@@ -2,86 +2,85 @@ import "./goals.css";
 import { useEffect, useMemo } from "react";
 import api from "../services/api";
 import { useState } from "react";
-import {
-  Plus,
-  Dumbbell,
-  Flame,
-  CalendarDays,
-  Trophy,
-  Target,
-  Lock,
-  TrendingUp,
-} from "lucide-react";
+import { Plus, Target } from "lucide-react";
 
-import Navbar from "../components/Navbar";
+// ---- Category configuration (single source of truth for grouping + modal) ----
+const GOAL_CATEGORIES = [
+  {
+    key: "strength",
+    label: "Strength Goals",
+    shortLabel: "Strength",
+    types: ["Strength PR"],
+  },
+  {
+    key: "activity",
+    label: "Activity Goals",
+    shortLabel: "Activity",
+    types: ["Weekly Workout", "Monthly Volume"],
+  },
+  {
+    key: "consistency",
+    label: "Consistency Goals",
+    shortLabel: "Consistency",
+    types: ["Current Streak"],
+  },
+  {
+    key: "body",
+    label: "Body Goals",
+    shortLabel: "Body",
+    types: ["Weight"],
+  },
+  {
+    key: "health",
+    label: "Health Goals",
+    shortLabel: "Health",
+    types: ["Cardio"],
+  },
+  {
+    key: "other",
+    label: "Other",
+    shortLabel: "Other",
+    types: [], // catch-all for any type not listed above; excluded from modal dropdowns
+  },
+];
 
-const buildOverviewStats = (goals) => {
-  const weeklyGoal = goals.find((g) => g.type === "Weekly Workout");
-  const monthlyGoal = goals.find((g) => g.type === "Monthly Volume");
-  const streakGoal = goals.find((g) => g.type === "Current Streak");
-  const prGoal = goals.find((g) => g.type === "Strength PR");
-
-  return {
-    weeklyWorkouts: weeklyGoal
-      ? { current: weeklyGoal.current, target: weeklyGoal.target }
-      : { current: 0, target: 0 },
-    monthlyVolume: monthlyGoal
-      ? { current: monthlyGoal.current, target: monthlyGoal.target }
-      : { current: 0, target: 0 },
-    streak: streakGoal
-      ? { current: streakGoal.current, target: streakGoal.target }
-      : { current: 0, target: 0 },
-    pr: prGoal
-      ? {
-          current: prGoal.current,
-          target: prGoal.target,
-          exercise: prGoal.exercise?.name || "",
-        }
-      : { current: 0, target: 0, exercise: "" },
-  };
+const TYPE_LABELS = {
+  "Strength PR": "Strength PR Goal",
+  "Weekly Workout": "Weekly Workout Goal",
+  "Monthly Volume": "Monthly Volume Goal",
+  "Current Streak": "Current Streak Goal",
+  Weight: "Weight Goal",
+  Cardio: "Cardio Goal",
 };
 
-const computeMaxWeightByExercise = (workouts) => {
-  const max = {};
+// Categories that are actually selectable when creating/editing a goal
+const SELECTABLE_CATEGORIES = GOAL_CATEGORIES.filter((c) => c.types.length > 0);
 
-  workouts.forEach((w) => {
-    if (!w.exercise) return;
-    const name = w.exercise.name;
+const getKnownTypes = () => SELECTABLE_CATEGORIES.flatMap((c) => c.types);
 
-    const heaviestSet = (w.workoutSets || []).reduce(
-      (m, s) => (s.weight > m ? s.weight : m),
-      0
-    );
-
-    if (!max[name] || heaviestSet > max[name]) max[name] = heaviestSet;
-  });
-
-  return max;
+// Given a goal type, find which category it belongs to (used to preselect
+// Dropdown 1 when editing an existing goal).
+const getCategoryKeyForType = (type) => {
+  const match = SELECTABLE_CATEGORIES.find((c) => c.types.includes(type));
+  return match ? match.key : SELECTABLE_CATEGORIES[0].key;
 };
 
-const buildAchievements = (workouts) => {
-  const maxByExercise = computeMaxWeightByExercise(workouts);
+const getTypesForCategory = (categoryKey) => {
+  const cat = SELECTABLE_CATEGORIES.find((c) => c.key === categoryKey);
+  return cat ? cat.types : [];
+};
 
-  return [
-    {
-      id: "a1",
-      label: "Bench Press 100kg",
-      icon: "🏋️",
-      unlocked: (maxByExercise["Bench Press"] || 0) >= 100,
-    },
-    {
-      id: "a2",
-      label: "Deadlift 150kg",
-      icon: "🔥",
-      unlocked: (maxByExercise["Deadlift"] || 0) >= 150,
-    },
-    {
-      id: "a3",
-      label: "Squat 100kg",
-      icon: "💪",
-      unlocked: (maxByExercise["Squat"] || 0) >= 100,
-    },
-  ];
+// Groups goals into categories, skipping empty categories entirely.
+const groupGoalsByCategory = (goals) => {
+  const knownTypes = getKnownTypes();
+
+  return GOAL_CATEGORIES.map((cat) => ({
+    ...cat,
+    goals:
+      cat.key === "other"
+        ? goals.filter((g) => !knownTypes.includes(g.type))
+        : goals.filter((g) => cat.types.includes(g.type)),
+  })).filter((cat) => cat.goals.length > 0);
 };
 
 const pct = (current, target) =>
@@ -97,33 +96,6 @@ function ProgressBar({ value, variant }) {
   return (
     <div className={`progress-track ${variant ? `progress-track--${variant}` : ""}`}>
       <div className="progress-fill" style={{ width: `${value}%` }} />
-    </div>
-  );
-}
-
-function OverviewCard({ icon: Icon, label, current, target, suffix, footnote }) {
-  const hasTarget = target > 0;
-  const percent = pct(current, target);
-  return (
-    <div className="go-card overview-card">
-      <div className="overview-card__head">
-        <div className="overview-card__icon">
-          <Icon size={20} strokeWidth={1.8} />
-        </div>
-        <span className="overview-card__label">{label}</span>
-      </div>
-      <p className="overview-card__value">
-        {hasTarget ? (
-          <>
-            {current} <span className="overview-card__target">/ {target}{suffix ? ` ${suffix}` : ""}</span>
-          </>
-        ) : (
-          <span className="overview-card__target">No goal set</span>
-        )}
-      </p>
-      {footnote && <p className="overview-card__footnote">{footnote}</p>}
-      <ProgressBar value={percent} />
-      <span className="overview-card__pct">{percent}%</span>
     </div>
   );
 }
@@ -177,17 +149,25 @@ function GoalCard({ goal, onEdit, onDelete }) {
   );
 }
 
-function AchievementCard({ achievement }) {
+// Renders one category's heading (with goal count) + grid. Skipped entirely
+// by the caller if the category has no goals.
+function GoalCategorySection({ label, goals, onEdit, onDelete }) {
   return (
-    <div className={`achievement-card ${achievement.unlocked ? "achievement-card--unlocked" : "achievement-card--locked"}`}>
-      <div className="achievement-card__icon">
-        {achievement.unlocked ? achievement.icon : <Lock size={18} strokeWidth={1.8} />}
+    <section className="section">
+      <p className="section__label">
+        {label} ({goals.length})
+      </p>
+      <div className="goals-grid">
+        {goals.map((goal) => (
+          <GoalCard
+            key={goal._id}
+            goal={goal}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
-      <p className="achievement-card__label">{achievement.label}</p>
-      <span className="achievement-card__status">
-        {achievement.unlocked ? "Unlocked" : "Locked"}
-      </span>
-    </div>
+    </section>
   );
 }
 
@@ -205,20 +185,24 @@ function EmptyState({ onAdd }) {
   );
 }
 
+const DEFAULT_CATEGORY_KEY = SELECTABLE_CATEGORIES[0].key;
+const DEFAULT_TYPE = getTypesForCategory(DEFAULT_CATEGORY_KEY)[0];
+
 function Goals() {
   const [goals, setGoals] = useState([]);
-  const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const overviewStats = useMemo(() => buildOverviewStats(goals), [goals]);
-  const achievements = useMemo(
-    () => buildAchievements(workouts),
-    [workouts]
-  );
+
+  const categorizedGoals = useMemo(() => groupGoalsByCategory(goals), [goals]);
+
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
+
+  // selectedCategory drives Dropdown 1 and is local UI state only —
+  // it is never sent to the backend, only formData.type is.
+  const [selectedCategory, setSelectedCategory] = useState(DEFAULT_CATEGORY_KEY);
   const [formData, setFormData] = useState({
     title: "",
-    type: "Weight",
+    type: DEFAULT_TYPE,
     target: "",
     unit: "",
     exercise: "",
@@ -237,15 +221,6 @@ function Goals() {
     }
   };
 
-  const fetchWorkouts = async () => {
-    try {
-      const res = await api.get("/workouts?limit=1000");
-      setWorkouts(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
   const fetchExercises = async () => {
     try {
       const res = await api.get("/exercises");
@@ -257,7 +232,6 @@ function Goals() {
 
   useEffect(() => {
     fetchGoals();
-    fetchWorkouts();
     fetchExercises();
   }, []);
 
@@ -268,11 +242,14 @@ function Goals() {
     );
   });
 
+  const availableTypes = getTypesForCategory(selectedCategory);
+
   const handleAddGoal = () => {
     setEditingGoal(null);
+    setSelectedCategory(DEFAULT_CATEGORY_KEY);
     setFormData({
       title: "",
-      type: "Weight",
+      type: DEFAULT_TYPE,
       target: "",
       unit: "",
       exercise: "",
@@ -282,6 +259,7 @@ function Goals() {
 
   const handleEditGoal = (goal) => {
     setEditingGoal(goal);
+    setSelectedCategory(getCategoryKeyForType(goal.type));
     setFormData({
       title: goal.title,
       type: goal.type,
@@ -308,6 +286,22 @@ function Goals() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  // Dropdown 1 (category) handler: updates selectedCategory and resets
+  // Dropdown 2 (type) to the first type available in the new category.
+  const handleCategoryChange = (e) => {
+    const newCategoryKey = e.target.value;
+    const newTypes = getTypesForCategory(newCategoryKey);
+    const newType = newTypes[0];
+
+    setSelectedCategory(newCategoryKey);
+    setFormData((prev) => ({
+      ...prev,
+      type: newType,
+      // Only Strength goals use an exercise picker; clear it otherwise
+      exercise: newType === "Strength PR" ? prev.exercise : "",
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -338,11 +332,12 @@ function Goals() {
 
       setFormData({
         title: "",
-        type: "Weight",
+        type: DEFAULT_TYPE,
         target: "",
         unit: "",
         exercise: "",
       });
+      setSelectedCategory(DEFAULT_CATEGORY_KEY);
 
       setShowModal(false);
     } catch (error) {
@@ -359,8 +354,6 @@ function Goals() {
         <div className="orb orb--3" />
       </div>
 
-      <Navbar />
-
       <main className="goals-main">
 
         <section className="goals-header">
@@ -374,72 +367,21 @@ function Goals() {
           </button>
         </section>
 
-        <section className="section">
-          <p className="section__label">Overview</p>
-          <div className="overview-grid">
-            <OverviewCard
-              icon={Dumbbell}
-              label="Weekly Workout Goal"
-              current={overviewStats.weeklyWorkouts.current}
-              target={overviewStats.weeklyWorkouts.target}
-              suffix="workouts"
+        {loading ? (
+          <p className="goals-empty__sub">Loading goals...</p>
+        ) : goals.length === 0 ? (
+          <EmptyState onAdd={handleAddGoal} />
+        ) : (
+          categorizedGoals.map((cat) => (
+            <GoalCategorySection
+              key={cat.key}
+              label={cat.label}
+              goals={cat.goals}
+              onEdit={handleEditGoal}
+              onDelete={handleDeleteGoal}
             />
-            <OverviewCard
-              icon={Flame}
-              label="Monthly Volume Goal"
-              current={overviewStats.monthlyVolume.current}
-              target={overviewStats.monthlyVolume.target}
-              suffix="kg"
-            />
-            <OverviewCard
-              icon={CalendarDays}
-              label="Current Streak Goal"
-              current={overviewStats.streak.current}
-              target={overviewStats.streak.target}
-              suffix="days"
-            />
-            <OverviewCard
-              icon={Trophy}
-              label="Personal Record Goal"
-              current={overviewStats.pr.current}
-              target={overviewStats.pr.target}
-              suffix="kg"
-              footnote={overviewStats.pr.exercise || null}
-            />
-          </div>
-        </section>
-
-        <section className="section">
-          <p className="section__label">Your Goals</p>
-          {loading ? (
-            <p className="goals-empty__sub">Loading goals...</p>
-          ) : goals.length === 0 ? (
-            <EmptyState onAdd={handleAddGoal} />
-          ) : (
-            <div className="goals-grid">
-              {goals.map((goal) => (
-                <GoalCard
-                  key={goal._id}
-                  goal={goal}
-                  onEdit={handleEditGoal}
-                  onDelete={handleDeleteGoal}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="section">
-          <p className="section__label">
-            <TrendingUp size={12} strokeWidth={2.2} style={{ marginRight: 5, verticalAlign: -1 }} />
-            Achievements
-          </p>
-          <div className="achievements-row">
-            {achievements.map((a) => (
-              <AchievementCard key={a.id} achievement={a} />
-            ))}
-          </div>
-        </section>
+          ))
+        )}
 
       </main>
 
@@ -457,17 +399,30 @@ function Goals() {
                 required
               />
 
+              {/* Dropdown 1: Goal Category */}
+              <select
+                name="category"
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+              >
+                {SELECTABLE_CATEGORIES.map((cat) => (
+                  <option key={cat.key} value={cat.key}>
+                    {cat.shortLabel}
+                  </option>
+                ))}
+              </select>
+
+              {/* Dropdown 2: Goal Type, filtered by selected category */}
               <select
                 name="type"
                 value={formData.type}
                 onChange={handleChange}
               >
-                <option value="Strength PR">Strength PR Goal (Auto)</option>
-                <option value="Weekly Workout">Weekly Workout Goal (Auto)</option>
-                <option value="Monthly Volume">Monthly Volume Goal (Auto)</option>
-                <option value="Current Streak">Current Streak Goal (Auto)</option>
-                <option value="Weight">Weight Goal</option>
-                <option value="Cardio">Cardio Goal</option>
+                {availableTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {TYPE_LABELS[type]}
+                  </option>
+                ))}
               </select>
 
               <input

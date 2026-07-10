@@ -1,43 +1,28 @@
-.dashboard-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-
-  border: 1px solid rgba(16, 185, 129, 0.1);
-  border-radius: 30px;
-
-  padding: 30px;
-  min-height: 180px;
-
-  box-shadow:
-    0 15px 40px rgba(15, 23, 42, 0.05);
-
-  transition: all 0.3s ease;
-}
-
-.dashboard-card:hover {
-  transform: translateY(-5px);
-
-  box-shadow:
-    0 20px 50px rgba(16, 185, 129, 0.15);
-}
-
-.card-top span {
-  font-size: 1.8rem;
-}
-
-.dashboard-card h3 {
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--go-border-strong);
+  background: var(--go-primary-50);
+  color: var(--go-icon-accent);
   cursor: pointer;
-  font-size: 2.6rem;
-  font-weight: 700;
-
-  margin-top: 15px;
-  margin-bottom: 8px;
-
-  color: #0f172a;
+  transition: background var(--go-fast), transform var(--go-fast), border-color var(--go-fast);
+  flex-shrink: 0;
 }
 
-.dashboard-card p {
-  color: #64748b;
-  font-size: 1rem;
-  font-weight: 500;
+.theme-toggle:hover {
+  background: var(--go-primary-100);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:active {
+  transform: translateY(0);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
 }

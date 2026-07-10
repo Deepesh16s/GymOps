@@ -19,7 +19,7 @@
   width: 44px;
   height: 44px;
   border-radius: var(--go-radius-sm);
-  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
+  background: linear-gradient(135deg, var(--go-brand), var(--go-brand-dark));
   color: #fff;
   display: flex;
   align-items: center;
@@ -39,6 +39,7 @@
   font-size: 0.92rem;
   color: var(--go-text-muted);
   margin: 0;
+  line-height: 1.5;
 }
 
 .guide-tabs {
@@ -68,18 +69,27 @@
 
 .guide-tab:hover {
   color: var(--go-text);
+  background: var(--go-primary-50);
 }
 
 .guide-tab-active {
   background: var(--go-surface);
-  color: var(--go-emerald-dark);
+  color: var(--go-primary-dark);
   box-shadow: var(--go-shadow-xs);
 }
 
+[data-theme="dark"] .guide-tab-active {
+  background: var(--go-surface-sunken);
+  color: var(--go-primary-light);
+  box-shadow: none;
+  border: 1px solid var(--go-border-strong);
+}
+
 .guide-callout {
-  background: var(--go-emerald-50);
+  background: var(--go-surface-sunken);
   border: 1px solid var(--go-border-soft);
-  border-radius: var(--go-radius-md);
+  border-left: 3px solid var(--go-primary);
+  border-radius: var(--go-radius-sm);
   padding: 14px 16px;
   font-size: 0.87rem;
   color: var(--go-text);
@@ -88,8 +98,12 @@
 }
 
 .guide-callout-strong {
-  color: var(--go-emerald-dark);
+  color: var(--go-primary-dark);
   font-weight: 600;
+}
+
+[data-theme="dark"] .guide-callout-strong {
+  color: var(--go-primary-light);
 }
 
 .guide-list {
@@ -104,6 +118,20 @@
   border-radius: var(--go-radius-md);
   overflow: hidden;
   box-shadow: var(--go-shadow-xs);
+  transition: background var(--go-base), border-color var(--go-base), box-shadow var(--go-base);
+}
+
+.guide-card:hover {
+  border-color: var(--go-border-strong);
+  box-shadow: var(--go-shadow-sm);
+}
+
+[data-theme="dark"] .guide-card:hover {
+  background: var(--go-surface-raised);
+}
+
+.guide-card-open {
+  border-color: var(--go-border-strong);
 }
 
 .guide-card-header {
@@ -118,6 +146,11 @@
   cursor: pointer;
   text-align: left;
   font-family: var(--go-font);
+  transition: background var(--go-fast);
+}
+
+.guide-card-header:hover {
+  background: var(--go-primary-50);
 }
 
 .guide-card-title {
@@ -134,7 +167,7 @@
 }
 
 .guide-chevron {
-  color: var(--go-emerald);
+  color: var(--go-icon-accent);
   flex-shrink: 0;
   transition: transform var(--go-base);
 }
@@ -167,12 +200,21 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--go-emerald-dark);
+  color: var(--go-primary-dark);
   margin-bottom: 8px;
 }
 
-.guide-label-good { color: var(--go-emerald-dark); }
-.guide-label-warn { color: #b45309; }
+[data-theme="dark"] .guide-section-label {
+  color: var(--go-primary-light);
+}
+
+.guide-label-good { color: var(--go-success-dark); }
+
+[data-theme="dark"] .guide-label-good {
+  color: var(--go-success-light);
+}
+
+.guide-label-warn { color: var(--go-warning); }
 
 .guide-freq-row {
   display: flex;
@@ -183,9 +225,13 @@
 }
 
 .guide-freq-days {
-  color: var(--go-emerald-dark);
+  color: var(--go-primary-dark);
   font-weight: 600;
   flex-shrink: 0;
+}
+
+[data-theme="dark"] .guide-freq-days {
+  color: var(--go-primary-light);
 }
 
 .guide-two-col {
@@ -222,18 +268,18 @@
   content: "•";
   position: absolute;
   left: 0;
-  color: var(--go-emerald);
+  color: var(--go-success);
 }
 
 .guide-li-warn::before {
   content: "•";
   position: absolute;
   left: 0;
-  color: #d97706;
+  color: var(--go-warning);
 }
 
 .guide-suitability {
-  background: var(--go-emerald-50);
+  background: var(--go-success-50);
   border: 1px solid var(--go-border-soft);
   border-radius: var(--go-radius-sm);
   padding: 12px 14px;
@@ -246,18 +292,8 @@
   line-height: 1.5;
 }
 
-[data-theme="dark"] .guide-tab-active {
-  background: var(--go-surface-sunken);
-}
-
-[data-theme="dark"] .guide-label-warn {
-  color: #fbbf24;
-}
-
-[data-theme="dark"] .guide-li-warn::before {
-  color: #fbbf24;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .guide-chevron { transition: none; }
+  .guide-chevron,
+  .guide-card,
+  .guide-card-header { transition: none; }
 }

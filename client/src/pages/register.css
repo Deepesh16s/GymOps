@@ -1,3 +1,5 @@
+@import "../styles/design-tokens.css";
+
 * {
   box-sizing: border-box;
 }
@@ -5,10 +7,8 @@
 .register-container {
   display: flex;
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--go-bg);
 }
-
-/* LEFT */
 
 .register-left {
   flex: 1;
@@ -25,12 +25,7 @@
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(
-    0,
-    0,
-    0,
-    0.45
-  );
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .hero-content {
@@ -55,7 +50,7 @@
 .logo-icon {
   width: 50px;
   height: 50px;
-  background: #10b981;
+  background: var(--go-brand);
   border-radius: 15px;
 
   display: flex;
@@ -64,14 +59,7 @@
 
   font-size: 25px;
 
-  box-shadow:
-    0 0 20px
-    rgba(
-      16,
-      185,
-      129,
-      0.3
-    );
+  box-shadow: 0 0 20px color-mix(in srgb, var(--go-brand) 30%, transparent);
 }
 
 .hero-content p {
@@ -81,109 +69,55 @@
 
 .hero-tags {
   margin-top: 25px;
-
   display: flex;
   gap: 16px;
-
   flex-wrap: wrap;
 }
 
 .hero-tags span {
-  background: rgba(
-    255,
-    255,
-    255,
-    0.15
-  );
-
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(12px);
-
   padding: 12px 22px;
-
   border-radius: 50px;
-
   transition: all 0.3s ease;
 }
 
 .hero-tags span:hover {
-  transform:
-    translateY(-3px);
+  transform: translateY(-3px);
 }
-
-/* RIGHT */
 
 .register-right {
   flex: 1;
-
-  background:
-    linear-gradient(
-      135deg,
-      #f8fafc,
-      #ffffff
-    );
-
+  background: linear-gradient(135deg, var(--go-bg), var(--go-surface));
   display: flex;
   justify-content: center;
   align-items: center;
-
   position: relative;
 }
 
 .register-right::before {
   content: "";
-
   position: absolute;
   inset: 0;
-
-  background-image:
-    radial-gradient(
-      #10b98122 1px,
-      transparent 1px
-    );
-
-  background-size:
-    35px 35px;
-
+  background-image: radial-gradient(color-mix(in srgb, var(--go-brand) 13%, transparent) 1px, transparent 1px);
+  background-size: 35px 35px;
   opacity: 0.5;
 }
 
-/* CARD */
-
 .register-card {
   width: 460px;
-
-  background: rgba(
-    255,
-    255,
-    255,
-    0.94
-  );
-
+  background: color-mix(in srgb, var(--go-surface) 94%, transparent);
   backdrop-filter: blur(20px);
-
   padding: 35px;
-
   border-radius: 30px;
-
-  box-shadow:
-    0 20px 60px
-    rgba(
-      0,
-      0,
-      0,
-      0.08
-    );
-
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
   position: relative;
   z-index: 10;
-
-  transition:
-    transform 0.3s ease;
+  transition: transform 0.3s ease;
 }
 
 .register-card:hover {
-  transform:
-    translateY(-4px);
+  transform: translateY(-4px);
 }
 
 .card-logo {
@@ -194,21 +128,19 @@
 
 .card-logo h3 {
   font-size: 2rem;
-  color: #0f172a;
+  color: var(--go-text);
 }
 
 .register-card h2 {
   margin-top: 20px;
   font-size: 2.2rem;
-  color: #0f172a;
+  color: var(--go-text);
 }
 
 .register-card p {
   margin-top: 8px;
-  color: #64748b;
+  color: var(--go-text-muted);
 }
-
-/* FORM */
 
 form {
   margin-top: 25px;
@@ -216,102 +148,65 @@ form {
 
 label {
   display: block;
-
   margin-top: 12px;
   margin-bottom: 5px;
-
   font-size: 0.85rem;
   font-weight: 700;
-
-  color: #64748b;
+  color: var(--go-text-muted);
 }
 
 input {
   width: 100%;
   height: 50px;
-
   padding: 0 18px;
-
   border-radius: 16px;
-  border:
-    1px solid #e2e8f0;
-
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
   font-size: 1rem;
-
   outline: none;
-
-  transition:
-    all 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 input:focus {
-  border-color: #10b981;
-
-  box-shadow:
-    0 0 0 4px
-    rgba(
-      16,
-      185,
-      129,
-      0.15
-    );
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 4px var(--go-primary-100);
 }
 
 .register-btn {
   width: 100%;
   height: 50px;
-
   margin-top: 25px;
-
   border: none;
   border-radius: 16px;
-
-  background:
-    linear-gradient(
-      90deg,
-      #10b981,
-      #059669
-    );
-
+  background: linear-gradient(90deg, var(--go-primary), var(--go-primary-dark));
   color: white;
-
   font-size: 1rem;
   font-weight: 700;
-
   cursor: pointer;
-
-  transition:
-    all 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .register-btn:hover {
-  transform:
-    translateY(-2px);
-
-  box-shadow:
-    0 15px 30px
-    rgba(
-      16,
-      185,
-      129,
-      0.25
-    );
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px color-mix(in srgb, var(--go-primary) 25%, transparent);
 }
 
 .login-link {
   text-align: center;
   margin-top: 18px;
-
-  color: #64748b;
+  color: var(--go-text-muted);
 }
 
 .login-link a {
-  color: #10b981;
+  color: var(--go-primary);
   text-decoration: none;
   font-weight: 700;
 }
 
-/* RESPONSIVE */
+[data-theme="dark"] .register-card h2,
+[data-theme="dark"] .card-logo h3 { color: var(--go-text); }
+[data-theme="dark"] input { background: var(--go-surface-sunken); border-color: var(--go-border-strong); color: var(--go-text); }
 
 @media (max-width: 1000px) {
   .register-left {

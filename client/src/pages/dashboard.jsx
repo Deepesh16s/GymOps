@@ -27,12 +27,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import Navbar from "../components/Navbar";
 import AddWorkoutModal from "../components/AddWorkoutModal";
 import MuscleBodyMap from "../components/MuscleBodyMap";
+import WorkoutSession from "../components/WorkoutSession";
+import useWorkoutSession from "../hooks/useWorkoutSession";
 import api from "../services/api";
 
-const EMERALD = "#10b981";
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const RANGE_OPTIONS = [
@@ -113,6 +113,8 @@ function Dashboard() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
 
+  const workoutSession = useWorkoutSession();
+
   const [stats, setStats] = useState({
     totalWorkouts: null,
     totalVolume: null,
@@ -133,8 +135,7 @@ function Dashboard() {
 
   const [weeklyVolumeData, setWeeklyVolumeData] = useState([]);
 
-  // Muscle Split has its own state so switching the range doesn't reload the whole dashboard
-  const [muscleRange, setMuscleRange] = useState("month"); // "week" | "month" | "year"
+  const [muscleRange, setMuscleRange] = useState("month");
   const [muscleData, setMuscleData] = useState([]);
   const [muscleLoading, setMuscleLoading] = useState(true);
 
@@ -258,6 +259,41 @@ function Dashboard() {
     }
   };
 
+  // Existing "save immediately" workflow, now owned by Dashboard instead
+  // of the modal. Posts a single-set workout, same endpoint/shape as before.
+  const saveStandaloneWorkout = async ({ exercise, firstSet }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      await api.post(
+        "/workouts",
+        {
+          exercise: exercise._id,
+          workoutSets: [firstSet],
+        },
+        config
+      );
+
+      alert("Workout Added Successfully!");
+      await fetchDashboardData();
+    } catch (error) {
+      console.log(error);
+      alert("Failed To Add Workout");
+    }
+  };
+
+  // Single entry point for whatever the modal returns. Dashboard decides
+  // whether that goes into the active session or straight to the backend.
+  const handleAddExercise = async (payload) => {
+    if (workoutSession.active) {
+      workoutSession.addExercise(payload);
+    } else {
+      await saveStandaloneWorkout(payload);
+    }
+    setShowModal(false);
+  };
+
   const prEntries = Object.entries(stats.personalRecords);
 
   const barChartData =
@@ -272,8 +308,6 @@ function Dashboard() {
         <div className="orb orb--2" />
         <div className="orb orb--3" />
       </div>
-
-      <Navbar />
 
       <main className="dash-main">
         <section className="hero-card">
@@ -296,12 +330,24 @@ function Dashboard() {
                   : "—"}
               </span>
             </div>
-            <button className="cta-btn" onClick={() => setShowModal(true)}>
+            <button
+              className="cta-btn"
+              onClick={() => workoutSession.startSession()}
+            >
               <Plus size={16} strokeWidth={2.5} />
               New Workout
             </button>
           </div>
         </section>
+
+        {workoutSession.active && (
+          <WorkoutSession
+            startTime={workoutSession.startTime}
+            exerciseCount={workoutSession.exercises.length}
+            onAddExercise={() => setShowModal(true)}
+            onDiscard={() => workoutSession.discardSession()}
+          />
+        )}
 
         <section className="section">
           <p className="section__label">Overview</p>
@@ -353,20 +399,20 @@ function Dashboard() {
               >
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 12, fill: "#94a3b8" }}
+                  tick={{ fontSize: 12, fill: "var(--go-text-faint)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  tick={{ fontSize: 11, fill: "var(--go-text-faint)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   content={<CustomBarTooltip />}
-                  cursor={{ fill: "rgba(16,185,129,0.06)" }}
+                  cursor={{ fill: "var(--go-primary-50)" }}
                 />
-                <Bar dataKey="volume" fill={EMERALD} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="volume" fill="var(--go-primary)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -578,7 +624,7 @@ function Dashboard() {
       {showModal && (
         <AddWorkoutModal
           closeModal={() => setShowModal(false)}
-          fetchDashboardData={fetchDashboardData}
+          onAddExercise={handleAddExercise}
         />
       )}
     </div>

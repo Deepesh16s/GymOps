@@ -20,7 +20,6 @@
   padding: 28px;
 }
 
-/* ---- Header / month nav ---- */
 .calendar-header {
   display: flex;
   align-items: flex-start;
@@ -57,7 +56,7 @@
 
 .calendar-nav-btn:hover {
   background: var(--go-surface);
-  color: var(--go-emerald-dark);
+  color: var(--go-primary-dark);
   box-shadow: var(--go-shadow-xs);
 }
 
@@ -78,18 +77,17 @@
   margin-left: 4px;
   border: none;
   border-radius: var(--go-radius-sm);
-  background: var(--go-emerald-100);
-  color: var(--go-emerald-dark);
+  background: var(--go-primary-100);
+  color: var(--go-primary-dark);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--go-fast), transform var(--go-fast);
 }
 
-.calendar-today-btn:hover { background: var(--go-emerald-200); }
+.calendar-today-btn:hover { background: var(--go-primary-200); }
 .calendar-today-btn:active { transform: scale(0.96); }
 
-/* ---- Grid ---- */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -130,7 +128,7 @@
 .calendar-cell:hover {
   transform: translateY(-2px);
   box-shadow: var(--go-shadow-sm);
-  border-color: var(--go-emerald-200);
+  border-color: var(--go-primary-200);
 }
 
 .calendar-cell.empty {
@@ -140,20 +138,20 @@
 }
 
 .workout-day {
-  background: linear-gradient(135deg, var(--go-emerald-200), var(--go-emerald-100));
-  border-color: var(--go-emerald-300);
+  background: linear-gradient(135deg, var(--go-success-100), var(--go-success-50));
+  border-color: color-mix(in srgb, var(--go-success) 30%, transparent);
 }
 
-.workout-day .calendar-cell-day { font-weight: 700; color: var(--go-emerald-dark); }
+.workout-day .calendar-cell-day { font-weight: 700; color: var(--go-success-dark); }
 
 .calendar-cell.is-today {
-  border-color: var(--go-emerald);
-  box-shadow: 0 0 0 3px var(--go-emerald-100);
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-100);
 }
 
 .calendar-cell.is-selected {
-  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
-  border-color: var(--go-emerald-dark);
+  background: linear-gradient(135deg, var(--go-primary), var(--go-primary-dark));
+  border-color: var(--go-primary-dark);
   box-shadow: var(--go-shadow-glow);
 }
 
@@ -163,12 +161,11 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--go-emerald-dark);
+  background: var(--go-success-dark);
 }
 
 .calendar-cell.is-selected .calendar-dot { background: #fff; }
 
-/* ---- Details panel ---- */
 .calendar-details-card {
   position: sticky;
   top: 92px;
@@ -216,17 +213,15 @@
 
 .workout-set-chip {
   font-size: 0.76rem;
-  color: var(--go-emerald-dark);
-  background: var(--go-emerald-100);
+  color: var(--go-success-dark);
+  background: var(--go-success-100);
   border-radius: var(--go-radius-pill);
   padding: 4px 10px;
   font-weight: 500;
 }
 
-/* ---- Skeleton ---- */
 .go-skeleton.calendar-cell { cursor: default; }
 
-/* ---- Dark mode ---- */
 [data-theme="dark"] .calendar-month-label,
 [data-theme="dark"] .calendar-cell,
 [data-theme="dark"] .calendar-cell-day { color: var(--go-text); }
@@ -234,15 +229,15 @@
 [data-theme="dark"] .calendar-weekday { color: var(--go-text-muted); }
 
 [data-theme="dark"] .calendar-nav-btn { color: var(--go-text-muted); }
-[data-theme="dark"] .calendar-nav-btn:hover { color: var(--go-emerald-light); }
+[data-theme="dark"] .calendar-nav-btn:hover { color: var(--go-primary-light); }
 
 [data-theme="dark"] .calendar-today-btn {
-  background: var(--go-emerald-200);
-  color: var(--go-emerald-light);
+  background: var(--go-primary-200);
+  color: var(--go-primary-light);
 }
-[data-theme="dark"] .calendar-today-btn:hover { background: var(--go-emerald-300); }
+[data-theme="dark"] .calendar-today-btn:hover { background: var(--go-primary-300); }
 
-[data-theme="dark"] .workout-day .calendar-cell-day { color: var(--go-emerald-light); }
+[data-theme="dark"] .workout-day .calendar-cell-day { color: var(--go-success-light); }
 
 [data-theme="dark"] .calendar-cell.is-selected,
 [data-theme="dark"] .calendar-cell.is-selected .calendar-cell-day { color: #fff; }
@@ -252,21 +247,16 @@
 [data-theme="dark"] .workout-entry h3 { color: var(--go-text); }
 
 [data-theme="dark"] .workout-set-chip {
-  background: var(--go-emerald-200);
-  color: var(--go-emerald-light);
+  background: var(--go-success-100);
+  color: var(--go-success-light);
 }
 
-/* Shared/global classes (go-page-title, go-page-subtitle, go-empty-*)
-   don't have dark-mode rules in their own stylesheet, so they were
-   rendering in a near-black color on the dark surface here. Scoped
-   to .calendar-page only — does not affect these classes anywhere else. */
 [data-theme="dark"] .calendar-page .go-page-title { color: var(--go-text); }
 [data-theme="dark"] .calendar-page .go-page-subtitle { color: var(--go-text-muted); }
 [data-theme="dark"] .calendar-page .go-empty-title { color: var(--go-text); }
 [data-theme="dark"] .calendar-page .go-empty-sub { color: var(--go-text-muted); }
 [data-theme="dark"] .calendar-page .go-empty-icon { color: var(--go-text-faint); }
 
-/* ---- Responsive ---- */
 @media (max-width: 1000px) {
   .calendar-main { grid-template-columns: 1fr; padding: 24px 20px 110px; }
   .calendar-details-card { position: static; }

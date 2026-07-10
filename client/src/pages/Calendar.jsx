@@ -1,5 +1,4 @@
 import "./calendar.css";
-import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import {
@@ -97,8 +96,6 @@ function CalendarPage() {
 
   return (
     <div className="calendar-page">
-      <Navbar />
-
       <main className="calendar-main">
         <div className="calendar-card go-card">
           <div className="calendar-header">

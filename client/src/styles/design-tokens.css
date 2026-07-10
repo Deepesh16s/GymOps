@@ -3,34 +3,53 @@
 
   --go-surface: #ffffff;
   --go-surface-sunken: #f7faf9;
+  --go-surface-raised: #ffffff;
 
   --go-text: #0f172a;
   --go-text-muted: #64748b;
   --go-text-faint: #94a3b8;
 
-  --go-border-soft: rgba(16,185,129,0.1);
+  --go-border-soft: rgba(16, 185, 129, 0.1);
+  --go-border-strong: rgba(16, 185, 129, 0.25);
 
-  --go-emerald: #10b981;
-  --go-emerald-dark: #059669;
-  --go-emerald-light: #6ee7b7;
+  --go-brand: #10b981;
+  --go-brand-dark: #059669;
+  --go-brand-light: #6ee7b7;
 
-  --go-emerald-50: rgba(16,185,129,0.08);
-  --go-emerald-100: rgba(16,185,129,0.08);
-  --go-emerald-200: rgba(16,185,129,0.16);
-  --go-emerald-300: rgba(16,185,129,0.25);
+  --go-primary: #10b981;
+  --go-primary-dark: #059669;
+  --go-primary-light: #6ee7b7;
+
+  --go-primary-50: rgba(16, 185, 129, 0.08);
+  --go-primary-100: rgba(16, 185, 129, 0.12);
+  --go-primary-200: rgba(16, 185, 129, 0.16);
+  --go-primary-300: rgba(16, 185, 129, 0.25);
+
+  --go-success: #10b981;
+  --go-success-dark: #059669;
+  --go-success-light: #6ee7b7;
+  --go-success-50: rgba(16, 185, 129, 0.08);
+  --go-success-100: rgba(16, 185, 129, 0.12);
+
+  --go-icon-accent: var(--go-primary-dark);
 
   --go-danger-dark: #dc2626;
   --go-danger-50: rgba(239, 68, 68, 0.08);
+
+  --go-warning: #b45309;
+  --go-warning-50: rgba(217, 119, 6, 0.08);
+
+  --go-illustration-surface: #f4f8f6;
 
   --go-radius-sm: 12px;
   --go-radius-md: 20px;
   --go-radius-pill: 999px;
 
-  --go-shadow-xs: 0 2px 8px rgba(0,0,0,0.05);
-  --go-shadow-sm: 0 8px 24px rgba(0,0,0,0.08);
-  --go-shadow-md: 0 12px 30px rgba(0,0,0,0.12);
+  --go-shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --go-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --go-shadow-md: 0 12px 30px rgba(0, 0, 0, 0.12);
   --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.16);
-  --go-shadow-glow: 0 0 25px rgba(16,185,129,0.22);
+  --go-shadow-glow: 0 0 25px rgba(16, 185, 129, 0.22);
 
   --go-fast: 0.15s ease;
   --go-base: 0.25s ease;
@@ -42,6 +61,14 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+
+  --go-emerald: var(--go-primary);
+  --go-emerald-dark: var(--go-primary-dark);
+  --go-emerald-light: var(--go-primary-light);
+  --go-emerald-50: var(--go-primary-50);
+  --go-emerald-100: var(--go-primary-100);
+  --go-emerald-200: var(--go-primary-200);
+  --go-emerald-300: var(--go-primary-300);
 }
 
 [data-theme="dark"] {
@@ -49,17 +76,53 @@
 
   --go-surface: #111827;
   --go-surface-sunken: #1a2320;
+  --go-surface-raised: #16202e;
 
   --go-text: #e2f5ee;
   --go-text-muted: #94a3b8;
   --go-text-faint: #64748b;
 
-  --go-border-soft: rgba(16,185,129,0.18);
+  --go-border-soft: rgba(79, 124, 255, 0.16);
+  --go-border-strong: rgba(79, 124, 255, 0.3);
 
-  --go-emerald-50: rgba(16, 185, 129, 0.14);
+  --go-brand: #10b981;
+  --go-brand-dark: #059669;
+  --go-brand-light: #6ee7b7;
+
+  --go-primary: #4f7cff;
+  --go-primary-dark: #3358d6;
+  --go-primary-light: #8fa8ff;
+
+  --go-primary-50: rgba(79, 124, 255, 0.12);
+  --go-primary-100: rgba(79, 124, 255, 0.18);
+  --go-primary-200: rgba(79, 124, 255, 0.24);
+  --go-primary-300: rgba(79, 124, 255, 0.34);
+
+  --go-success: #34d399;
+  --go-success-dark: #10b981;
+  --go-success-light: #6ee7b7;
+  --go-success-50: rgba(16, 185, 129, 0.14);
+  --go-success-100: rgba(16, 185, 129, 0.2);
+
+  --go-icon-accent: var(--go-primary-light);
 
   --go-danger-dark: #f87171;
   --go-danger-50: rgba(239, 68, 68, 0.16);
 
-  --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.45);
+  --go-warning: #fbbf24;
+  --go-warning-50: rgba(251, 191, 36, 0.12);
+
+  --go-shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --go-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --go-shadow-md: 0 12px 30px rgba(0, 0, 0, 0.45);
+  --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.55);
+  --go-shadow-glow: 0 0 25px rgba(79, 124, 255, 0.28);
+
+  --go-emerald: var(--go-primary);
+  --go-emerald-dark: var(--go-primary-dark);
+  --go-emerald-light: var(--go-primary-light);
+  --go-emerald-50: var(--go-primary-50);
+  --go-emerald-100: var(--go-primary-100);
+  --go-emerald-200: var(--go-primary-200);
+  --go-emerald-300: var(--go-primary-300);
 }

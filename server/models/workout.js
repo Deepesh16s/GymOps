@@ -5,11 +5,13 @@ const workoutSetSchema = new mongoose.Schema(
     weight: {
       type: Number,
       required: true,
+      min: [0, "Weight cannot be negative"],
     },
 
     reps: {
       type: Number,
       required: true,
+      min: [1, "Reps must be at least 1"],
     },
   },
   { _id: false }

@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import "./profile.css";
-import Navbar from "../components/Navbar";
 import api from "../services/api";
 
 function Profile() {
@@ -200,8 +199,6 @@ function Profile() {
   if (loading) {
     return (
       <div className="profile-page">
-        <Navbar />
-
         <main className="profile-main">
           <div className="profile-placeholder">
             <h1>Profile</h1>
@@ -217,8 +214,6 @@ function Profile() {
 
   return (
     <div className="profile-page">
-      <Navbar />
-
       <main className="profile-main">
         <div className="profile-grid">
           {/* HERO CARD */}

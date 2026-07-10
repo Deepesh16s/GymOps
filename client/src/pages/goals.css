@@ -1,18 +1,11 @@
 @import "../styles/design-tokens.css";
 
-/* ============================================================
-   GymOps — Goals page
-   Built on the same emerald SaaS system as Dashboard/Analytics.
-   No hardcoded colors — everything derives from design tokens.
-   ============================================================ */
-
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* ── page shell ─────────────────────────────────────────────── */
 .goals-page {
   min-height: 100vh;
   background: var(--go-bg);
@@ -22,7 +15,6 @@
   overflow-x: hidden;
 }
 
-/* ── ambient orbs (same treatment as dashboard) ───────────────── */
 .goals-bg {
   position: fixed;
   inset: 0;
@@ -40,7 +32,7 @@
 .goals-bg .orb--1 {
   width: 420px;
   height: 420px;
-  background: color-mix(in srgb, var(--go-emerald) 13%, transparent);
+  background: color-mix(in srgb, var(--go-brand) 13%, transparent);
   top: -140px;
   left: -120px;
 }
@@ -48,7 +40,7 @@
 .goals-bg .orb--2 {
   width: 320px;
   height: 320px;
-  background: color-mix(in srgb, var(--go-emerald) 9%, transparent);
+  background: color-mix(in srgb, var(--go-brand) 9%, transparent);
   top: 46%;
   right: -100px;
 }
@@ -56,12 +48,11 @@
 .goals-bg .orb--3 {
   width: 280px;
   height: 280px;
-  background: color-mix(in srgb, var(--go-emerald-light) 9%, transparent);
+  background: color-mix(in srgb, var(--go-brand-light) 9%, transparent);
   bottom: -80px;
   left: 38%;
 }
 
-/* ── main content ───────────────────────────────────────────── */
 .goals-main {
   position: relative;
   z-index: 1;
@@ -89,9 +80,6 @@
   align-items: center;
 }
 
-/* ============================================================
-   HEADER
-   ============================================================ */
 .goals-header {
   display: flex;
   align-items: center;
@@ -118,7 +106,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--go-emerald);
+  background: var(--go-primary);
   color: #fff;
   border: none;
   border-radius: 14px;
@@ -127,14 +115,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-emerald) 30%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-primary) 30%, transparent);
   white-space: nowrap;
 }
 
 .cta-btn:hover {
-  background: var(--go-emerald-dark);
+  background: var(--go-primary-dark);
   transform: translateY(-3px);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--go-emerald) 38%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent);
 }
 
 .cta-btn:active {
@@ -148,18 +136,13 @@
   width: fit-content;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--go-emerald-dark);
-  background: var(--go-emerald-50, color-mix(in srgb, var(--go-emerald) 8%, transparent));
-  border: 1px solid color-mix(in srgb, var(--go-emerald) 18%, transparent);
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--go-primary) 18%, transparent);
   border-radius: 100px;
   padding: 7px 14px;
 }
 
-/* ============================================================
-   SHARED CARD BASE — go-card
-   Reused by overview cards, goal cards; matches Dashboard's
-   glass-card treatment (frosted surface + soft emerald shadow).
-   ============================================================ */
 .go-card {
   background: color-mix(in srgb, var(--go-surface) 82%, transparent);
   backdrop-filter: blur(20px);
@@ -169,7 +152,7 @@
   padding: 22px 24px;
   box-shadow:
     var(--go-shadow-xs),
-    0 6px 24px color-mix(in srgb, var(--go-emerald) 5%, transparent);
+    0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
   transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 
@@ -177,12 +160,9 @@
   transform: translateY(-4px);
   box-shadow:
     var(--go-shadow-sm),
-    0 16px 40px color-mix(in srgb, var(--go-emerald) 12%, transparent);
+    0 16px 40px color-mix(in srgb, var(--go-primary) 12%, transparent);
 }
 
-/* ============================================================
-   OVERVIEW CARDS (4-up)
-   ============================================================ */
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -205,8 +185,8 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: var(--go-emerald-50, color-mix(in srgb, var(--go-emerald) 10%, transparent));
-  color: var(--go-emerald);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 10%, transparent));
+  color: var(--go-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -245,12 +225,9 @@
   align-self: flex-end;
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--go-emerald-dark);
+  color: var(--go-success-dark);
 }
 
-/* ============================================================
-   PROGRESS BAR — shared by overview + goal cards
-   ============================================================ */
 .progress-track {
   width: 100%;
   height: 8px;
@@ -262,7 +239,7 @@
 .progress-fill {
   height: 100%;
   border-radius: 100px;
-  background: linear-gradient(90deg, var(--go-emerald), var(--go-emerald-dark));
+  background: linear-gradient(90deg, var(--go-success), var(--go-success-dark));
   transition: width 0.4s ease;
 }
 
@@ -271,12 +248,9 @@
 }
 
 .progress-track--completed .progress-fill {
-  background: linear-gradient(90deg, var(--go-emerald-light), var(--go-emerald));
+  background: linear-gradient(90deg, var(--go-success-light), var(--go-success));
 }
 
-/* ============================================================
-   MAIN GOALS GRID
-   ============================================================ */
 .goals-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -308,9 +282,9 @@
   display: inline-block;
   font-size: 11px;
   font-weight: 600;
-  color: var(--go-emerald-dark);
-  background: var(--go-emerald-50, color-mix(in srgb, var(--go-emerald) 8%, transparent));
-  border: 1px solid color-mix(in srgb, var(--go-emerald) 18%, transparent);
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--go-primary) 18%, transparent);
   border-radius: 100px;
   padding: 3px 10px;
 }
@@ -325,15 +299,15 @@
 }
 
 .goal-badge--progress {
-  color: var(--go-emerald-dark);
-  background: var(--go-emerald-50, color-mix(in srgb, var(--go-emerald) 10%, transparent));
-  border: 1px solid color-mix(in srgb, var(--go-emerald) 20%, transparent);
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
 }
 
 .goal-badge--completed {
-  color: var(--go-emerald-dark);
-  background: color-mix(in srgb, var(--go-emerald-light) 30%, transparent);
-  border: 1px solid color-mix(in srgb, var(--go-emerald) 25%, transparent);
+  color: var(--go-success-dark);
+  background: color-mix(in srgb, var(--go-success-light) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--go-success) 25%, transparent);
 }
 
 .goal-badge--behind {
@@ -357,12 +331,9 @@
 .goal-card__pct {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--go-emerald-dark);
+  color: var(--go-success-dark);
 }
 
-/* ── goal card actions (Edit / Delete) ───────────────────────
-   Minimal addition only — reuses existing token language,
-   does not alter card layout, colors, or spacing elsewhere. */
 .goal-card-actions {
   display: flex;
   gap: 8px;
@@ -382,13 +353,13 @@
 }
 
 .goal-edit-btn {
-  background: var(--go-emerald-50, color-mix(in srgb, var(--go-emerald) 10%, transparent));
-  color: var(--go-emerald-dark);
-  border: 1px solid color-mix(in srgb, var(--go-emerald) 20%, transparent);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 10%, transparent));
+  color: var(--go-primary-dark);
+  border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
 }
 
 .goal-edit-btn:hover {
-  background: color-mix(in srgb, var(--go-emerald) 16%, transparent);
+  background: color-mix(in srgb, var(--go-primary) 16%, transparent);
 }
 
 .goal-delete-btn {
@@ -401,9 +372,6 @@
   background: color-mix(in srgb, var(--go-danger-dark, #dc2626) 14%, transparent);
 }
 
-/* ============================================================
-   ACHIEVEMENTS
-   ============================================================ */
 .achievements-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -425,14 +393,14 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   box-shadow:
     var(--go-shadow-xs),
-    0 4px 16px color-mix(in srgb, var(--go-emerald) 4%, transparent);
+    0 4px 16px color-mix(in srgb, var(--go-success) 4%, transparent);
 }
 
 .achievement-card--unlocked:hover {
   transform: translateY(-3px);
   box-shadow:
     var(--go-shadow-sm),
-    0 12px 32px color-mix(in srgb, var(--go-emerald) 10%, transparent);
+    0 12px 32px color-mix(in srgb, var(--go-success) 10%, transparent);
 }
 
 .achievement-card__icon {
@@ -443,7 +411,7 @@
   justify-content: center;
   font-size: 22px;
   border-radius: 14px;
-  background: var(--go-emerald-50, color-mix(in srgb, var(--go-emerald) 10%, transparent));
+  background: var(--go-success-50, color-mix(in srgb, var(--go-success) 10%, transparent));
   color: var(--go-text-faint, var(--go-text-muted));
 }
 
@@ -470,12 +438,9 @@
 }
 
 .achievement-card--unlocked .achievement-card__status {
-  color: var(--go-emerald-dark);
+  color: var(--go-success-dark);
 }
 
-/* ============================================================
-   EMPTY STATE
-   ============================================================ */
 .goals-empty {
   display: flex;
   flex-direction: column;
@@ -502,12 +467,6 @@
   margin-top: -6px;
 }
 
-/* ============================================================
-   RESPONSIVE
-   Desktop: 4 overview cards / 3 goal cards
-   Tablet:  2 columns
-   Mobile:  1 column
-   ============================================================ */
 @media (max-width: 1280px) {
   .overview-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -580,11 +539,6 @@
   }
 }
 
-/* ============================================================
-   ADD GOAL MODAL
-   Minimal additions only — reuses existing design tokens,
-   go-card-style surface, and cta-btn color language.
-   ============================================================ */
 .goal-modal-overlay {
   position: fixed;
   inset: 0;
@@ -640,8 +594,8 @@
 
 .goal-modal input:focus,
 .goal-modal select:focus {
-  border-color: var(--go-emerald);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-emerald) 18%, transparent);
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-primary) 18%, transparent);
 }
 
 .modal-buttons {
@@ -673,13 +627,13 @@
 }
 
 .modal-btn--submit {
-  background: var(--go-emerald);
+  background: var(--go-primary);
   color: #fff;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-emerald) 30%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-primary) 30%, transparent);
 }
 
 .modal-btn--submit:hover {
-  background: var(--go-emerald-dark);
+  background: var(--go-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--go-emerald) 35%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--go-primary) 35%, transparent);
 }

@@ -5,16 +5,16 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  border: 1px solid rgba(16, 185, 129, 0.16);
-  background: rgba(16, 185, 129, 0.08);
-  color: #059669;
+  border: 1px solid var(--go-border-strong);
+  background: var(--go-primary-50);
+  color: var(--go-icon-accent);
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: background var(--go-fast), transform var(--go-fast), border-color var(--go-fast);
   flex-shrink: 0;
 }
 
 .theme-toggle:hover {
-  background: rgba(16, 185, 129, 0.14);
+  background: var(--go-primary-100);
   transform: translateY(-1px);
 }
 
@@ -22,8 +22,7 @@
   transform: translateY(0);
 }
 
-[data-theme="dark"] .theme-toggle {
-  border-color: rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.14);
-  color: #34d399;
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
 }

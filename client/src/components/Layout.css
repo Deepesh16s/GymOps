@@ -1,0 +1,11 @@
+@import "../styles/design-tokens.css";
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--go-bg);
+  color: var(--go-text);
+}
+
+.app-shell__content {
+  min-height: 100%;
+}

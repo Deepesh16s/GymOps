@@ -277,7 +277,10 @@ function Guide() {
           {SPLITS.map((split) => {
             const isOpen = openSplit === split.id;
             return (
-              <div key={split.id} className="guide-card">
+              <div
+                key={split.id}
+                className={`guide-card ${isOpen ? "guide-card-open" : ""}`}
+              >
                 <button
                   className="guide-card-header"
                   onClick={() => setOpenSplit(isOpen ? null : split.id)}
@@ -362,7 +365,10 @@ function Guide() {
           {EXERCISES.map((ex) => {
             const isOpen = openExercise === ex.id;
             return (
-              <div key={ex.id} className="guide-card">
+              <div
+                key={ex.id}
+                className={`guide-card ${isOpen ? "guide-card-open" : ""}`}
+              >
                 <button
                   className="guide-card-header"
                   onClick={() => setOpenExercise(isOpen ? null : ex.id)}

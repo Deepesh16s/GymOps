@@ -1,15 +1,8 @@
-/* ============================================================
-   GymOps – Login (aligned to shared design tokens)
-   Only visual values changed — markup/handlers untouched.
-   ============================================================ */
 @import "../styles/design-tokens.css";
 
 :root {
   --white:        #ffffff;
   --surface:      var(--go-surface-sunken);
-  --emerald:      var(--go-emerald);
-  --emerald-dark: var(--go-emerald-dark);
-  --emerald-soft: var(--go-emerald-100);
   --slate:        var(--go-text-muted);
   --text:         var(--go-text);
   --text-muted:   var(--go-text-faint);
@@ -29,9 +22,6 @@ body {
   font-family: var(--font);
 }
 
-/* ============================================================
-   Root
-   ============================================================ */
 .gl-root {
   display: flex;
   min-height: 100vh;
@@ -41,9 +31,6 @@ body {
   position: relative;
 }
 
-/* ============================================================
-   Background effects (right panel only)
-   ============================================================ */
 .gl-bg {
   position: absolute;
   inset: 0;
@@ -62,7 +49,7 @@ body {
 .gl-orb-1 {
   width: 380px;
   height: 380px;
-  background: rgba(16, 185, 129, 0.10);
+  background: color-mix(in srgb, var(--go-brand) 10%, transparent);
   top: -80px;
   right: 10%;
   animation-delay: 0s;
@@ -71,7 +58,7 @@ body {
 .gl-orb-2 {
   width: 260px;
   height: 260px;
-  background: rgba(59, 130, 246, 0.07);
+  background: color-mix(in srgb, var(--go-primary) 7%, transparent);
   bottom: -40px;
   right: 5%;
   animation-delay: -4s;
@@ -80,7 +67,7 @@ body {
 .gl-orb-3 {
   width: 180px;
   height: 180px;
-  background: rgba(16, 185, 129, 0.08);
+  background: color-mix(in srgb, var(--go-brand) 8%, transparent);
   top: 45%;
   right: 40%;
   animation-delay: -7s;
@@ -97,7 +84,7 @@ body {
   right: 0;
   width: 55%;
   height: 100%;
-  background-image: radial-gradient(circle, rgba(16, 185, 129, 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--go-brand) 12%, transparent) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(ellipse 80% 80% at 60% 50%, black 40%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 80% 80% at 60% 50%, black 40%, transparent 100%);
@@ -109,7 +96,7 @@ body {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--emerald);
+  background: var(--go-brand);
   opacity: 0;
   animation: gl-float-up 6s ease-in infinite;
 }
@@ -121,9 +108,6 @@ body {
   100% { opacity: 0; transform: translateY(-340px) scale(0.3); }
 }
 
-/* ============================================================
-   LEFT – Hero
-   ============================================================ */
 .gl-hero {
   position: relative;
   width: 45%;
@@ -169,7 +153,7 @@ body {
 .gl-logo-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+  background: linear-gradient(135deg, var(--go-brand), var(--go-brand-dark));
   border-radius: var(--go-radius-sm);
   display: flex;
   align-items: center;
@@ -179,9 +163,9 @@ body {
 }
 
 @keyframes gl-pulse-ring {
-  0%   { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 0 rgba(16, 185, 129, 0.5); }
-  70%  { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 10px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 0 rgba(16, 185, 129, 0); }
+  0%   { box-shadow: 0 4px 16px color-mix(in srgb, var(--go-brand) 40%, transparent), 0 0 0 0 color-mix(in srgb, var(--go-brand) 50%, transparent); }
+  70%  { box-shadow: 0 4px 16px color-mix(in srgb, var(--go-brand) 40%, transparent), 0 0 0 10px color-mix(in srgb, var(--go-brand) 0%, transparent); }
+  100% { box-shadow: 0 4px 16px color-mix(in srgb, var(--go-brand) 40%, transparent), 0 0 0 0 color-mix(in srgb, var(--go-brand) 0%, transparent); }
 }
 
 .gl-logo-text {
@@ -191,7 +175,7 @@ body {
   letter-spacing: -0.04em;
 }
 
-.gl-logo-dot { color: var(--emerald); }
+.gl-logo-dot { color: var(--go-brand); }
 
 .gl-tagline {
   font-size: 0.88rem;
@@ -221,9 +205,6 @@ body {
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* ============================================================
-   RIGHT – Auth panel
-   ============================================================ */
 .gl-panel {
   flex: 1;
   display: flex;
@@ -243,7 +224,7 @@ body {
   border-radius: var(--go-radius-xl);
   border: 1px solid var(--go-border-soft);
   padding: 44px 40px 40px;
-  box-shadow: var(--go-shadow-sm), 0 20px 48px rgba(16, 185, 129, 0.08), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  box-shadow: var(--go-shadow-sm), 0 20px 48px color-mix(in srgb, var(--go-brand) 8%, transparent), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
 .gl-card-glow {
@@ -252,7 +233,7 @@ body {
   left: 10%;
   right: 10%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--emerald), transparent);
+  background: linear-gradient(90deg, transparent, var(--go-brand), transparent);
   border-radius: 0 0 2px 2px;
 }
 
@@ -266,12 +247,12 @@ body {
 .gl-card-logo-icon {
   width: 30px;
   height: 30px;
-  background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+  background: linear-gradient(135deg, var(--go-brand), var(--go-brand-dark));
   border-radius: var(--go-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.30);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--go-brand) 30%, transparent);
 }
 
 .gl-card-logo-text {
@@ -281,7 +262,7 @@ body {
   letter-spacing: -0.04em;
 }
 
-.gl-card-logo-dot { color: var(--emerald); }
+.gl-card-logo-dot { color: var(--go-brand); }
 
 .gl-heading {
   font-size: 1.65rem;
@@ -301,8 +282,26 @@ body {
 
 .gl-socials {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  width: 100%;
   margin-bottom: 20px;
+}
+
+.google-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.google-wrapper > div {
+  width: 100% !important;
+}
+
+.google-wrapper iframe {
+  width: 100% !important;
 }
 
 .gl-social-btn {
@@ -356,12 +355,12 @@ body {
 
 .gl-forgot {
   font-size: 12px;
-  color: var(--emerald);
+  color: var(--go-primary);
   font-weight: 500;
   text-decoration: none;
   transition: color var(--go-fast);
 }
-.gl-forgot:hover { color: var(--emerald-dark); }
+.gl-forgot:hover { color: var(--go-primary-dark); }
 
 .gl-input {
   width: 100%;
@@ -381,8 +380,8 @@ body {
 .gl-input:hover { border-color: #cbd5e1; background: #f1f5f9; }
 .gl-input:focus {
   background: var(--white);
-  border-color: var(--emerald);
-  box-shadow: 0 0 0 3px var(--go-emerald-200);
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-200);
 }
 
 .gl-btn {
@@ -398,7 +397,7 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--white);
-  background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-dark) 100%);
+  background: linear-gradient(135deg, var(--go-primary) 0%, var(--go-primary-dark) 100%);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -420,30 +419,24 @@ body {
 }
 
 .gl-btn:hover .gl-btn-shimmer { left: 160%; }
-.gl-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(16, 185, 129, 0.38); }
-.gl-btn:active { transform: translateY(0); box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25); }
-.gl-btn:focus-visible { outline: 3px solid var(--emerald); outline-offset: 2px; }
+.gl-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px color-mix(in srgb, var(--go-primary) 38%, transparent); }
+.gl-btn:active { transform: translateY(0); box-shadow: 0 2px 10px color-mix(in srgb, var(--go-primary) 25%, transparent); }
+.gl-btn:focus-visible { outline: 3px solid var(--go-primary); outline-offset: 2px; }
 
 .gl-register { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--slate); }
-.gl-register-link { color: var(--emerald); font-weight: 600; text-decoration: none; transition: color var(--go-fast); }
-.gl-register-link:hover { color: var(--emerald-dark); text-decoration: underline; }
+.gl-register-link { color: var(--go-primary); font-weight: 600; text-decoration: none; transition: color var(--go-fast); }
+.gl-register-link:hover { color: var(--go-primary-dark); text-decoration: underline; }
 
-/* ============================================================
-   Dark mode (new — login previously had no dark variant)
-   ============================================================ */
 [data-theme="dark"] .gl-root,
 [data-theme="dark"] .gl-panel { background: var(--go-bg); }
 [data-theme="dark"] .gl-card { background: var(--go-surface); border-color: var(--go-border-soft); }
 [data-theme="dark"] .gl-heading,
 [data-theme="dark"] .gl-card-logo-text { color: var(--go-text); }
-[data-theme="dark"] .gl-input { background: var(--go-surface-sunken); border-color: var(--go-border); color: var(--go-text); }
+[data-theme="dark"] .gl-input { background: var(--go-surface-sunken); border-color: var(--go-border-strong); color: var(--go-text); }
 [data-theme="dark"] .gl-input:focus { background: var(--go-surface); }
-[data-theme="dark"] .gl-social-btn { background: var(--go-surface); border-color: var(--go-border); color: var(--go-text); }
+[data-theme="dark"] .gl-social-btn { background: var(--go-surface); border-color: var(--go-border-strong); color: var(--go-text); }
 [data-theme="dark"] .gl-social-btn:hover { background: var(--go-surface-sunken); }
 
-/* ============================================================
-   Responsive
-   ============================================================ */
 @media (max-width: 999px) {
   .gl-hero { display: none; }
   .gl-panel { width: 100%; padding: 48px 20px; }
@@ -457,29 +450,4 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-}
-/* Add/update in login.css */
-
-.gl-socials {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  margin-bottom: 20px;
-}
-
-.google-wrapper {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  border: none;
-  padding: 0;
-  background: transparent;
-}
-
-.google-wrapper > div {
-  width: 100% !important;
-}
-
-.google-wrapper iframe {
-  width: 100% !important;
 }

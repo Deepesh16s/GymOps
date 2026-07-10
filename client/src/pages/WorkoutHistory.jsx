@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import "./workoutHistory.css";
-import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { formatDate } from "../utils/dateUtils";
 import {
@@ -64,7 +63,6 @@ function WorkoutHistory() {
 
   return (
     <div className="history-page">
-      <Navbar />
       <main className="history-main">
         <div className="history-header">
           <h1>Workout History</h1>

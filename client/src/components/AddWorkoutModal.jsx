@@ -3,7 +3,12 @@ import Select from "react-select";
 import "./AddWorkoutModal.css";
 import api from "../services/api";
 
-function AddWorkoutModal({ closeModal, fetchDashboardData }) {
+// Dumb component: exercise picker + first-set form + validation only.
+// It has no idea whether a workout session exists, no localStorage
+// awareness, and makes no "save this workout" API call. It only fetches
+// the exercise list / creates custom exercises, which is part of the
+// picker itself, not the save workflow.
+function AddWorkoutModal({ closeModal, onAddExercise }) {
   const [muscleGroup, setMuscleGroup] = useState("");
   const [exercises, setExercises] = useState([]);
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -13,6 +18,19 @@ function AddWorkoutModal({ closeModal, fetchDashboardData }) {
   });
   const [selectedExercise, setSelectedExercise] = useState("");
   const [workoutSets, setWorkoutSets] = useState([{ weight: "", reps: "" }]);
+  const [validationMessage, setValidationMessage] = useState("");
+
+  const isSetValid = (s) =>
+    s.weight !== "" &&
+    s.reps !== "" &&
+    !isNaN(Number(s.weight)) &&
+    !isNaN(Number(s.reps)) &&
+    Number(s.weight) >= 0 &&
+    Number(s.reps) >= 1 &&
+    Number.isInteger(Number(s.reps));
+
+  const isWorkoutValid =
+    selectedExercise !== "" && workoutSets.every(isSetValid);
 
   useEffect(() => {
     fetchExercises();
@@ -85,43 +103,79 @@ function AddWorkoutModal({ closeModal, fetchDashboardData }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+
+    setValidationMessage("");
+
+    if (!selectedExercise) {
+      setValidationMessage("Please select an exercise");
+      return;
+    }
 
     const hasEmptySet = workoutSets.some(
       (s) => s.weight === "" || s.reps === ""
     );
 
-    if (!selectedExercise) {
-      alert("Please select an exercise");
-      return;
-    }
-
     if (hasEmptySet) {
-      alert("Please fill in weight and reps for every set");
+      setValidationMessage("Please fill in weight and reps for every set");
       return;
     }
 
-    try {
-      await api.post(
-        "/workouts",
-        {
-          exercise: selectedExercise,
-          workoutSets: workoutSets.map((s) => ({
-            weight: Number(s.weight),
-            reps: Number(s.reps),
-          })),
-        },
-        getConfig()
-      );
+    const hasNegativeWeight = workoutSets.some((s) => Number(s.weight) < 0);
+    const hasInvalidReps = workoutSets.some(
+      (s) => Number(s.reps) < 1 || !Number.isInteger(Number(s.reps))
+    );
 
-      alert("Workout Added Successfully!");
-      await fetchDashboardData();
-      closeModal();
-    } catch (error) {
-      console.log(error);
-      alert("Failed To Add Workout");
+    if (hasNegativeWeight) {
+      setValidationMessage("Weight cannot be negative");
+      return;
     }
+
+    if (hasInvalidReps) {
+      setValidationMessage("Reps must be a whole number of at least 1");
+      return;
+    }
+
+    const exerciseObj = uniqueExercises.find(
+      (ex) => ex._id === selectedExercise
+    );
+    const firstSet = workoutSets[0];
+
+    // Return data only. No branching on session state, no API call here —
+    // that decision belongs to whoever opened this modal.
+    onAddExercise({
+      exercise: exerciseObj
+        ? {
+            _id: exerciseObj._id,
+            name: exerciseObj.name,
+            muscleGroup: exerciseObj.muscleGroup,
+          }
+        : { _id: selectedExercise },
+      firstSet: {
+        weight: Number(firstSet.weight),
+        reps: Number(firstSet.reps),
+      },
+    });
+  };
+
+  // react-select theme: only non-color tokens go here (radius/spacing).
+  // Colors are handled entirely by the go-select__* CSS classes so that
+  // light/dark mode stays in sync with the rest of GymOps via [data-theme].
+  const selectTheme = (theme) => ({
+    ...theme,
+    borderRadius: 12,
+    spacing: {
+      ...theme.spacing,
+      controlHeight: 52,
+      baseUnit: 4,
+    },
+  });
+
+  // Only the portal wrapper needs an inline z-index (it renders on
+  // document.body, outside the modal's stacking context).
+  const selectStyles = {
+    menuPortal: (base) => ({ ...base, zIndex: 1200 }),
   };
 
   return (
@@ -154,8 +208,14 @@ function AddWorkoutModal({ closeModal, fetchDashboardData }) {
           <label>Exercise</label>
 
           <Select
+            classNamePrefix="go-select"
             placeholder="Search Exercise..."
             isSearchable
+            menuPosition="fixed"
+            menuPortalTarget={document.body}
+            menuShouldScrollIntoView={false}
+            theme={selectTheme}
+            styles={selectStyles}
             options={uniqueExercises.map((exercise) => ({
               value: exercise._id,
               label: exercise.name,
@@ -227,6 +287,8 @@ function AddWorkoutModal({ closeModal, fetchDashboardData }) {
                   placeholder="Weight (kg)"
                   value={set.weight}
                   onChange={(e) => handleSetChange(index, "weight", e.target.value)}
+                  min="0"
+                  step="0.5"
                   required
                 />
 
@@ -235,6 +297,8 @@ function AddWorkoutModal({ closeModal, fetchDashboardData }) {
                   placeholder="Reps"
                   value={set.reps}
                   onChange={(e) => handleSetChange(index, "reps", e.target.value)}
+                  min="1"
+                  step="1"
                   required
                 />
 
@@ -254,7 +318,11 @@ function AddWorkoutModal({ closeModal, fetchDashboardData }) {
             + Add Set
           </button>
 
-          <button className="save-btn" type="submit">
+          {validationMessage && (
+            <p className="form-error">{validationMessage}</p>
+          )}
+
+          <button className="save-btn" type="submit" disabled={!isWorkoutValid}>
             Save Workout
           </button>
         </form>

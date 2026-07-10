@@ -27,15 +27,11 @@
   color: var(--go-text-muted);
 }
 
-/* ================= GRID ================= */
-
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
-
-/* ================= CARDS ================= */
 
 .profile-card {
   background: var(--go-surface);
@@ -45,15 +41,13 @@
   box-shadow: var(--go-shadow-xs);
 }
 
-/* ================= HERO CARD ================= */
-
 .profile-hero-card {
   grid-column: 1 / -1;
   text-align: center;
   padding: 36px 32px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--go-emerald) 8%, transparent),
+    color-mix(in srgb, var(--go-primary) 8%, transparent),
     var(--go-surface) 65%
   );
 }
@@ -63,14 +57,14 @@
   height: 72px;
   margin: 0 auto 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--go-emerald), var(--go-emerald-dark));
+  background: linear-gradient(135deg, var(--go-primary), var(--go-primary-dark));
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.6rem;
   font-weight: 700;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--go-emerald) 30%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--go-primary) 30%, transparent);
 }
 
 .profile-name {
@@ -96,8 +90,6 @@
   color: var(--go-text-faint);
 }
 
-/* ================= SECTION HEADER ================= */
-
 .profile-section-header {
   display: flex;
   align-items: center;
@@ -106,7 +98,7 @@
 }
 
 .profile-section-header svg {
-  color: var(--go-emerald);
+  color: var(--go-primary);
 }
 
 .profile-card-title {
@@ -114,8 +106,6 @@
   font-weight: 600;
   color: var(--go-text);
 }
-
-/* ================= FORMS ================= */
 
 .profile-form {
   display: flex;
@@ -154,19 +144,17 @@
 
 .profile-input:focus {
   outline: none;
-  border-color: var(--go-emerald);
-  box-shadow: 0 0 0 3px var(--go-emerald-50);
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-50);
   background: var(--go-surface);
 }
-
-/* ================= BUTTONS ================= */
 
 .profile-btn {
   margin-top: 22px;
   border: none;
   border-radius: var(--go-radius-sm);
   padding: 12px;
-  background: var(--go-emerald);
+  background: var(--go-primary);
   color: #fff;
   font-weight: 600;
   font-size: 0.9rem;
@@ -176,7 +164,7 @@
 }
 
 .profile-btn:hover:not(:disabled) {
-  background: var(--go-emerald-dark);
+  background: var(--go-primary-dark);
 }
 
 .profile-btn:active:not(:disabled) {
@@ -189,19 +177,15 @@
 }
 
 .profile-btn:focus-visible {
-  outline: 2px solid var(--go-emerald);
+  outline: 2px solid var(--go-primary);
   outline-offset: 2px;
 }
-
-/* ================= MESSAGE ================= */
 
 .profile-msg {
   margin-top: 12px;
   font-size: 0.85rem;
-  color: var(--go-emerald-dark);
+  color: var(--go-success-dark);
 }
-
-/* ================= DANGER ZONE ================= */
 
 .profile-danger {
   border-color: color-mix(in srgb, var(--go-danger-dark) 20%, var(--go-border-soft));
@@ -248,8 +232,6 @@
   margin-top: 0;
   flex: 1;
 }
-
-/* ================= RESPONSIVE ================= */
 
 @media (max-width: 900px) {
   .profile-grid {

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import "./analytics.css";
-import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { startOfWeek, formatDate } from "../utils/dateUtils";
 import { getWorkoutVolume, getHeaviestSet } from "../utils/workoutUtils";
@@ -99,7 +98,6 @@ function Analytics() {
   if (loading) {
     return (
       <div className="analytics-page">
-        <Navbar />
         <main className="analytics-main">
           <div className="analytics-placeholder">
             <h1>Progress Analytics</h1>
@@ -113,7 +111,6 @@ function Analytics() {
   if (workouts.length === 0) {
     return (
       <div className="analytics-page">
-        <Navbar />
         <main className="analytics-main">
           <div className="analytics-placeholder">
             <h1>Progress Analytics</h1>
@@ -126,7 +123,6 @@ function Analytics() {
 
   return (
     <div className="analytics-page">
-      <Navbar />
       <main className="analytics-main">
         <h1 className="analytics-title">Progress Analytics</h1>
 

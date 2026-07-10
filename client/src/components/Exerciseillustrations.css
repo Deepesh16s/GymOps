@@ -4,7 +4,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: transparent;
+  background: var(--go-illustration-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  padding: 20px;
   margin-bottom: 4px;
 }
 

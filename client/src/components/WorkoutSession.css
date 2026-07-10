@@ -1,0 +1,100 @@
+.session-card {
+  background: color-mix(in srgb, var(--go-surface) 78%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 22px;
+  padding: 22px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  box-shadow:
+    var(--go-shadow-xs),
+    0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
+}
+
+.session-card__info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: var(--go-primary-50);
+  color: var(--go-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.session-card__title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--go-text);
+  margin-bottom: 3px;
+}
+
+.session-card__stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--go-text-faint);
+}
+
+.session-card__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--go-text-faint);
+}
+
+.session-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-discard-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--go-danger-dark, #dc2626);
+  border: 1px solid color-mix(in srgb, var(--go-danger-dark, #dc2626) 22%, transparent);
+  border-radius: 14px;
+  padding: 13px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+}
+
+.session-discard-btn:hover {
+  background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
+}
+
+@media (max-width: 720px) {
+  .session-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .session-card__actions {
+    width: 100%;
+  }
+
+  .session-card__actions .cta-btn,
+  .session-discard-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
