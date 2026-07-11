@@ -1,9 +1,17 @@
 const mongoose = require("mongoose");
 
+// Types the backend auto-calculates from Workout data. Anything not in
+// this list (Cardio Goal, Weight Goal) is MANUAL — the user sets `current`
+// themselves via create/edit, since no backing data source exists for them.
 const AUTO_TYPES = [
   "Strength PR",
-  "Weekly Workout",
-  "Monthly Volume",
+  "Weekly Workout Sessions",
+  "Monthly Workout Sessions",
+  "Weekly Volume Goal",
+  "Monthly Volume Goal",
+  "Session Exercise Goal",
+  "Session Volume Goal",
+  "Session Duration Goal",
   "Current Streak",
 ];
 

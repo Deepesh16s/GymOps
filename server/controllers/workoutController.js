@@ -48,11 +48,34 @@ const validateWorkoutSets = (workoutSets) => {
   });
 };
 
+// Session metadata validation (Phase 7). Every POST /workouts belonging to
+// a Finish Workout action must include these — see useWorkoutSession.js.
+const validateSessionMeta = (sessionId, sessionDuration) => {
+  if (!sessionId || typeof sessionId !== "string" || !sessionId.trim()) {
+    const err = new Error("sessionId is required");
+    err.status = 400;
+    throw err;
+  }
+
+  if (
+    sessionDuration === undefined ||
+    sessionDuration === null ||
+    sessionDuration === "" ||
+    isNaN(Number(sessionDuration)) ||
+    Number(sessionDuration) < 0
+  ) {
+    const err = new Error("sessionDuration must be a valid number >= 0");
+    err.status = 400;
+    throw err;
+  }
+};
+
 exports.createWorkout = async (req, res) => {
   try {
-    const { exercise, workoutSets } = req.body;
+    const { exercise, workoutSets, sessionId, sessionDuration } = req.body;
 
     validateWorkoutSets(workoutSets);
+    validateSessionMeta(sessionId, sessionDuration);
 
     const cleanSets = workoutSets.map((s) => ({
       weight: Number(s.weight),
@@ -63,6 +86,8 @@ exports.createWorkout = async (req, res) => {
       user: req.user._id,
       exercise,
       workoutSets: cleanSets,
+      sessionId: sessionId.trim(),
+      sessionDuration: Number(sessionDuration),
     });
 
     await updateGoalsForWorkout(req.user._id, exercise, cleanSets);

@@ -17,6 +17,8 @@ import {
   Repeat2,
   Trash2,
   Loader2,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import {
   BarChart,
@@ -258,40 +260,29 @@ function Dashboard() {
       setDeletingId(null);
     }
   };
-
-  // Existing "save immediately" workflow, now owned by Dashboard instead
-  // of the modal. Posts a single-set workout, same endpoint/shape as before.
-  const saveStandaloneWorkout = async ({ exercise, firstSet }) => {
-    try {
-      const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
-      await api.post(
-        "/workouts",
-        {
-          exercise: exercise._id,
-          workoutSets: [firstSet],
-        },
-        config
-      );
-
-      alert("Workout Added Successfully!");
-      await fetchDashboardData();
-    } catch (error) {
-      console.log(error);
-      alert("Failed To Add Workout");
-    }
-  };
-
-  // Single entry point for whatever the modal returns. Dashboard decides
-  // whether that goes into the active session or straight to the backend.
-  const handleAddExercise = async (payload) => {
-    if (workoutSession.active) {
-      workoutSession.addExercise(payload);
-    } else {
-      await saveStandaloneWorkout(payload);
-    }
+  const handleAddExercise = (payload) => {
+    workoutSession.addExercise(payload);
     setShowModal(false);
+  };
+  const handleStartSession = () => {
+    if (workoutSession.active) return;
+    workoutSession.startSession();
+  };
+  const handleEmptyStateAddWorkout = () => {
+    if (!workoutSession.active) {
+      workoutSession.startSession();
+    }
+    setShowModal(true);
+  };
+  const handleFinishWorkout = async () => {
+    const success = await workoutSession.finishWorkout();
+    if (success) {
+      setShowModal(false);
+      await Promise.all([
+        fetchDashboardData(),
+        fetchMuscleDistribution(muscleRange),
+      ]);
+    }
   };
 
   const prEntries = Object.entries(stats.personalRecords);
@@ -332,7 +323,8 @@ function Dashboard() {
             </div>
             <button
               className="cta-btn"
-              onClick={() => workoutSession.startSession()}
+              onClick={handleStartSession}
+              disabled={workoutSession.active || workoutSession.isSaving}
             >
               <Plus size={16} strokeWidth={2.5} />
               New Workout
@@ -340,12 +332,35 @@ function Dashboard() {
           </div>
         </section>
 
+        {!workoutSession.active && workoutSession.saveSuccess && (
+          <div className="save-success-banner" role="status">
+            <CheckCircle2 size={18} strokeWidth={2} />
+            <span>{workoutSession.saveSuccess}</span>
+            <button
+              type="button"
+              className="save-success-banner__close"
+              onClick={workoutSession.clearSaveSuccess}
+              aria-label="Dismiss"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </div>
+        )}
+
         {workoutSession.active && (
           <WorkoutSession
             startTime={workoutSession.startTime}
             exerciseCount={workoutSession.exercises.length}
+            exercises={workoutSession.exercises}
             onAddExercise={() => setShowModal(true)}
             onDiscard={() => workoutSession.discardSession()}
+            onRemoveExercise={workoutSession.removeExercise}
+            onAddSet={workoutSession.addSet}
+            onDeleteSet={workoutSession.deleteSet}
+            onUpdateSet={workoutSession.updateSet}
+            onFinishWorkout={handleFinishWorkout}
+            isSaving={workoutSession.isSaving}
+            saveError={workoutSession.saveError}
           />
         )}
 
@@ -522,7 +537,7 @@ function Dashboard() {
               <div className="empty-state">
                 <Dumbbell size={28} strokeWidth={1.4} />
                 <p>No workouts logged yet.</p>
-                <button className="empty-btn" onClick={() => setShowModal(true)}>
+                <button className="empty-btn" onClick={handleEmptyStateAddWorkout}>
                   Log your first workout
                 </button>
               </div>

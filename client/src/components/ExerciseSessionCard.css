@@ -1,0 +1,144 @@
+.ex-session-card {
+  background: color-mix(in srgb, var(--go-surface) 76%, transparent);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ex-session-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ex-session-card__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.ex-session-card__muscle {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50);
+  border: 1px solid color-mix(in srgb, var(--go-primary) 18%, transparent);
+  border-radius: 100px;
+  padding: 3px 10px;
+}
+
+.ex-session-card__sets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ex-session-card__set {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--go-border-soft);
+}
+
+.ex-session-card__set:last-child {
+  border-bottom: none;
+}
+
+.ex-session-card__set-label {
+  color: var(--go-text-faint, var(--go-text-muted));
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 46px;
+}
+
+.ex-session-card__set-value {
+  color: var(--go-text);
+  font-weight: 600;
+  flex: 1;
+  text-align: right;
+  margin-right: 4px;
+}
+
+.ex-session-card__set-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ex-session-set-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.ex-session-set-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--go-text-muted) 12%, var(--go-surface));
+}
+
+.ex-session-set-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ex-session-set-btn--danger {
+  color: var(--go-danger-dark, #dc2626);
+  border-color: color-mix(in srgb, var(--go-danger-dark, #dc2626) 18%, transparent);
+}
+
+.ex-session-set-btn--danger:hover:not(:disabled) {
+  background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
+}
+
+.ex-session-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ex-session-btn {
+  flex: 1;
+  min-width: 90px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  transition: background 0.2s ease;
+}
+
+.ex-session-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ex-session-btn--danger {
+  background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
+  color: var(--go-danger-dark, #dc2626);
+  border-color: color-mix(in srgb, var(--go-danger-dark, #dc2626) 18%, transparent);
+}
+
+.ex-session-btn--danger:hover {
+  background: color-mix(in srgb, var(--go-danger-dark, #dc2626) 14%, transparent);
+}

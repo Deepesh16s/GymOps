@@ -8,58 +8,101 @@ import { Plus, Target } from "lucide-react";
 const GOAL_CATEGORIES = [
   {
     key: "strength",
-    label: "Strength Goals",
+    label: "🏋 Strength Goals",
     shortLabel: "Strength",
     types: ["Strength PR"],
   },
   {
     key: "activity",
-    label: "Activity Goals",
+    label: "🎯 Activity Goals",
     shortLabel: "Activity",
-    types: ["Weekly Workout", "Monthly Volume"],
+    types: [
+      "Weekly Workout Sessions",
+      "Monthly Workout Sessions",
+      "Weekly Volume Goal",
+      "Monthly Volume Goal",
+      "Session Exercise Goal",
+      "Session Volume Goal",
+      "Session Duration Goal",
+      "Cardio Goal",
+    ],
   },
   {
     key: "consistency",
-    label: "Consistency Goals",
+    label: "🔥 Consistency Goals",
     shortLabel: "Consistency",
     types: ["Current Streak"],
   },
   {
     key: "body",
-    label: "Body Goals",
+    label: "⚖ Body Goals",
     shortLabel: "Body",
-    types: ["Weight"],
-  },
-  {
-    key: "health",
-    label: "Health Goals",
-    shortLabel: "Health",
-    types: ["Cardio"],
-  },
-  {
-    key: "other",
-    label: "Other",
-    shortLabel: "Other",
-    types: [], // catch-all for any type not listed above; excluded from modal dropdowns
+    types: ["Weight Goal"],
   },
 ];
 
-const TYPE_LABELS = {
-  "Strength PR": "Strength PR Goal",
-  "Weekly Workout": "Weekly Workout Goal",
-  "Monthly Volume": "Monthly Volume Goal",
-  "Current Streak": "Current Streak Goal",
-  Weight: "Weight Goal",
-  Cardio: "Cardio Goal",
+// Catch-all for any goal whose type predates this redesign (e.g. the old
+// "Weekly Workout" / "Monthly Volume" types) so existing goals don't just
+// disappear from the page. Not selectable when creating a goal.
+const OTHER_CATEGORY = {
+  key: "other",
+  label: "Other Goals",
+  shortLabel: "Other",
+  types: [],
 };
 
-// Categories that are actually selectable when creating/editing a goal
-const SELECTABLE_CATEGORIES = GOAL_CATEGORIES.filter((c) => c.types.length > 0);
+const TYPE_LABELS = {
+  "Strength PR": "Strength PR Goal",
+  "Weekly Workout Sessions": "Weekly Workout Sessions",
+  "Monthly Workout Sessions": "Monthly Workout Sessions",
+  "Weekly Volume Goal": "Weekly Volume Goal",
+  "Monthly Volume Goal": "Monthly Volume Goal",
+  "Session Exercise Goal": "Session Exercise Goal",
+  "Session Volume Goal": "Session Volume Goal",
+  "Session Duration Goal": "Session Duration Goal",
+  "Cardio Goal": "Cardio Goal",
+  "Current Streak": "Current Streak Goal",
+  "Weight Goal": "Weight Goal",
+};
+
+const TARGET_LABEL = {
+  "Strength PR": "Target Weight",
+  "Weekly Workout Sessions": "Target Sessions",
+  "Monthly Workout Sessions": "Target Sessions",
+  "Weekly Volume Goal": "Target Volume (kg)",
+  "Monthly Volume Goal": "Target Volume (kg)",
+  "Session Exercise Goal": "Target Exercises",
+  "Session Volume Goal": "Target Volume (kg)",
+  "Session Duration Goal": "Target Minutes",
+  "Cardio Goal": "Target",
+  "Current Streak": "Target Days",
+  "Weight Goal": "Target Weight (kg)",
+};
+
+// Fixed units auto-assigned for types where the form doesn't show a unit
+// picker. Strength PR and Cardio Goal are the only types with a visible
+// unit dropdown (see FIELD config below).
+const FIXED_UNIT = {
+  "Weekly Workout Sessions": "sessions",
+  "Monthly Workout Sessions": "sessions",
+  "Weekly Volume Goal": "kg",
+  "Monthly Volume Goal": "kg",
+  "Session Exercise Goal": "exercises",
+  "Session Volume Goal": "kg",
+  "Session Duration Goal": "minutes",
+  "Current Streak": "days",
+  "Weight Goal": "kg",
+};
+
+const CARDIO_UNITS = ["Minutes", "Kilometers", "Runs"];
+const WEIGHT_UNITS = ["kg", "lb"];
+
+const MANUAL_TYPES = ["Cardio Goal", "Weight Goal"];
+
+const SELECTABLE_CATEGORIES = GOAL_CATEGORIES;
 
 const getKnownTypes = () => SELECTABLE_CATEGORIES.flatMap((c) => c.types);
 
-// Given a goal type, find which category it belongs to (used to preselect
-// Dropdown 1 when editing an existing goal).
 const getCategoryKeyForType = (type) => {
   const match = SELECTABLE_CATEGORIES.find((c) => c.types.includes(type));
   return match ? match.key : SELECTABLE_CATEGORIES[0].key;
@@ -70,17 +113,22 @@ const getTypesForCategory = (categoryKey) => {
   return cat ? cat.types : [];
 };
 
-// Groups goals into categories, skipping empty categories entirely.
+// Groups goals into the 4 fixed categories, plus an "Other" bucket for
+// legacy types. Empty categories are skipped entirely.
 const groupGoalsByCategory = (goals) => {
   const knownTypes = getKnownTypes();
 
-  return GOAL_CATEGORIES.map((cat) => ({
+  const known = GOAL_CATEGORIES.map((cat) => ({
     ...cat,
-    goals:
-      cat.key === "other"
-        ? goals.filter((g) => !knownTypes.includes(g.type))
-        : goals.filter((g) => cat.types.includes(g.type)),
-  })).filter((cat) => cat.goals.length > 0);
+    goals: goals.filter((g) => cat.types.includes(g.type)),
+  }));
+
+  const other = {
+    ...OTHER_CATEGORY,
+    goals: goals.filter((g) => !knownTypes.includes(g.type)),
+  };
+
+  return [...known, other].filter((cat) => cat.goals.length > 0);
 };
 
 const pct = (current, target) =>
@@ -108,7 +156,7 @@ function GoalCard({ goal, onEdit, onDelete }) {
         <div>
           <p className="goal-card__title">{goal.title}</p>
           <span className="goal-type-badge">
-            {goal.type}
+            {TYPE_LABELS[goal.type] || goal.type}
             {goal.type === "Strength PR" && goal.exercise?.name
               ? ` · ${goal.exercise.name}`
               : ""}
@@ -149,8 +197,6 @@ function GoalCard({ goal, onEdit, onDelete }) {
   );
 }
 
-// Renders one category's heading (with goal count) + grid. Skipped entirely
-// by the caller if the category has no goals.
 function GoalCategorySection({ label, goals, onEdit, onDelete }) {
   return (
     <section className="section">
@@ -188,6 +234,16 @@ function EmptyState({ onAdd }) {
 const DEFAULT_CATEGORY_KEY = SELECTABLE_CATEGORIES[0].key;
 const DEFAULT_TYPE = getTypesForCategory(DEFAULT_CATEGORY_KEY)[0];
 
+const getInitialFormData = (type) => ({
+  title: "",
+  type,
+  target: "",
+  exercise: "",
+  weightUnit: "kg",
+  cardioUnit: "Minutes",
+  current: "",
+});
+
 function Goals() {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -197,16 +253,8 @@ function Goals() {
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
 
-  // selectedCategory drives Dropdown 1 and is local UI state only —
-  // it is never sent to the backend, only formData.type is.
   const [selectedCategory, setSelectedCategory] = useState(DEFAULT_CATEGORY_KEY);
-  const [formData, setFormData] = useState({
-    title: "",
-    type: DEFAULT_TYPE,
-    target: "",
-    unit: "",
-    exercise: "",
-  });
+  const [formData, setFormData] = useState(getInitialFormData(DEFAULT_TYPE));
 
   const [exercises, setExercises] = useState([]);
 
@@ -243,17 +291,12 @@ function Goals() {
   });
 
   const availableTypes = getTypesForCategory(selectedCategory);
+  const isManual = MANUAL_TYPES.includes(formData.type);
 
   const handleAddGoal = () => {
     setEditingGoal(null);
     setSelectedCategory(DEFAULT_CATEGORY_KEY);
-    setFormData({
-      title: "",
-      type: DEFAULT_TYPE,
-      target: "",
-      unit: "",
-      exercise: "",
-    });
+    setFormData(getInitialFormData(DEFAULT_TYPE));
     setShowModal(true);
   };
 
@@ -264,8 +307,10 @@ function Goals() {
       title: goal.title,
       type: goal.type,
       target: goal.target,
-      unit: goal.unit,
       exercise: goal.exercise?._id || "",
+      weightUnit: goal.type === "Strength PR" ? goal.unit || "kg" : "kg",
+      cardioUnit: goal.type === "Cardio Goal" ? goal.unit || "Minutes" : "Minutes",
+      current: MANUAL_TYPES.includes(goal.type) ? goal.current : "",
     });
     setShowModal(true);
   };
@@ -288,8 +333,6 @@ function Goals() {
     });
   };
 
-  // Dropdown 1 (category) handler: updates selectedCategory and resets
-  // Dropdown 2 (type) to the first type available in the new category.
   const handleCategoryChange = (e) => {
     const newCategoryKey = e.target.value;
     const newTypes = getTypesForCategory(newCategoryKey);
@@ -297,11 +340,41 @@ function Goals() {
 
     setSelectedCategory(newCategoryKey);
     setFormData((prev) => ({
-      ...prev,
-      type: newType,
-      // Only Strength goals use an exercise picker; clear it otherwise
-      exercise: newType === "Strength PR" ? prev.exercise : "",
+      ...getInitialFormData(newType),
+      title: prev.title,
     }));
+  };
+
+  const handleTypeChange = (e) => {
+    const newType = e.target.value;
+    setFormData((prev) => ({
+      ...getInitialFormData(newType),
+      title: prev.title,
+    }));
+  };
+
+  const buildPayload = () => {
+    let unit;
+    if (formData.type === "Strength PR") unit = formData.weightUnit;
+    else if (formData.type === "Cardio Goal") unit = formData.cardioUnit;
+    else unit = FIXED_UNIT[formData.type];
+
+    const payload = {
+      title: formData.title,
+      type: formData.type,
+      target: formData.target,
+      unit,
+    };
+
+    if (formData.type === "Strength PR") {
+      payload.exercise = formData.exercise;
+    }
+
+    if (isManual && formData.current !== "") {
+      payload.current = formData.current;
+    }
+
+    return payload;
   };
 
   const handleSubmit = async (e) => {
@@ -312,9 +385,11 @@ function Goals() {
       return;
     }
 
+    const payload = buildPayload();
+
     try {
       if (editingGoal) {
-        const res = await api.put(`/goals/${editingGoal._id}`, formData);
+        const res = await api.put(`/goals/${editingGoal._id}`, payload);
 
         setGoals((prev) =>
           prev.map((g) => (g._id === editingGoal._id ? res.data : g))
@@ -322,7 +397,7 @@ function Goals() {
 
         setEditingGoal(null);
       } else {
-        const res = await api.post("/goals", formData);
+        const res = await api.post("/goals", payload);
 
         setGoals((prev) => [
           res.data,
@@ -330,13 +405,7 @@ function Goals() {
         ]);
       }
 
-      setFormData({
-        title: "",
-        type: DEFAULT_TYPE,
-        target: "",
-        unit: "",
-        exercise: "",
-      });
+      setFormData(getInitialFormData(DEFAULT_TYPE));
       setSelectedCategory(DEFAULT_CATEGORY_KEY);
 
       setShowModal(false);
@@ -416,7 +485,7 @@ function Goals() {
               <select
                 name="type"
                 value={formData.type}
-                onChange={handleChange}
+                onChange={handleTypeChange}
               >
                 {availableTypes.map((type) => (
                   <option key={type} value={type}>
@@ -425,24 +494,7 @@ function Goals() {
                 ))}
               </select>
 
-              <input
-                type="number"
-                name="target"
-                placeholder="Target"
-                value={formData.target}
-                onChange={handleChange}
-                required
-              />
-
-              <input
-                type="text"
-                name="unit"
-                placeholder="Unit (kg, reps, days...)"
-                value={formData.unit}
-                onChange={handleChange}
-                required
-              />
-
+              {/* Strength PR only: exercise picker */}
               {formData.type === "Strength PR" && (
                 <select
                   name="exercise"
@@ -457,6 +509,60 @@ function Goals() {
                     </option>
                   ))}
                 </select>
+              )}
+
+              <input
+                type="number"
+                name="target"
+                placeholder={TARGET_LABEL[formData.type] || "Target"}
+                value={formData.target}
+                onChange={handleChange}
+                required
+              />
+
+              {/* Strength PR only: weight unit */}
+              {formData.type === "Strength PR" && (
+                <select
+                  name="weightUnit"
+                  value={formData.weightUnit}
+                  onChange={handleChange}
+                >
+                  {WEIGHT_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Cardio Goal only: unit (Minutes / Kilometers / Runs) */}
+              {formData.type === "Cardio Goal" && (
+                <select
+                  name="cardioUnit"
+                  value={formData.cardioUnit}
+                  onChange={handleChange}
+                >
+                  {CARDIO_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Manual types only (Cardio Goal, Weight Goal): log progress */}
+              {isManual && (
+                <input
+                  type="number"
+                  name="current"
+                  placeholder={
+                    formData.type === "Weight Goal"
+                      ? "Current Weight (kg)"
+                      : "Current Progress"
+                  }
+                  value={formData.current}
+                  onChange={handleChange}
+                />
               )}
 
               <div className="modal-buttons">

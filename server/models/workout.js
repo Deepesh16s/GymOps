@@ -44,6 +44,22 @@ const workoutSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    // Session metadata (Phase 7). Not schema-required so legacy documents
+    // and any partial updates on them continue to validate cleanly.
+    // Presence is enforced at the controller level for new workouts
+    // created via a Finish Workout action — see workoutController.createWorkout.
+    sessionId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
+    sessionDuration: {
+      type: Number,
+      default: null,
+      min: [0, "Session duration cannot be negative"],
+    },
   },
   {
     timestamps: true,

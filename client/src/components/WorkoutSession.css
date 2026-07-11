@@ -13,6 +13,16 @@
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
+  position: relative;
+}
+
+.session-card__top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .session-card__info {
@@ -62,6 +72,56 @@
   gap: 10px;
 }
 
+.session-card__exercises {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cta-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.session-finish-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--go-success, #10b981);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.session-finish-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+}
+
+.session-finish-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.session-btn-spinner {
+  animation: session-spin 0.7s linear infinite;
+}
+
+@keyframes session-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 .session-discard-btn {
   display: inline-flex;
   align-items: center;
@@ -78,23 +138,160 @@
   white-space: nowrap;
 }
 
-.session-discard-btn:hover {
+.session-discard-btn:hover:not(:disabled) {
   background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
 }
 
+.session-discard-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.session-error {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--go-danger-dark, #dc2626);
+  border-radius: var(--go-radius-sm, 10px);
+  background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
+  color: var(--go-danger-dark, #dc2626);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.finish-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.finish-confirm-card {
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: var(--go-surface-raised, var(--go-surface));
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md, 18px);
+  padding: 28px 26px;
+  box-shadow: var(--go-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.finish-confirm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--go-success-50, rgba(16, 185, 129, 0.12));
+  color: var(--go-success, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.finish-confirm-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.finish-confirm-summary {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border-radius: var(--go-radius-sm, 10px);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+}
+
+.finish-confirm-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.finish-confirm-summary__row span {
+  color: var(--go-text-muted);
+  font-weight: 500;
+}
+
+.finish-confirm-summary__row strong {
+  color: var(--go-text);
+  font-weight: 700;
+}
+
+.finish-confirm-actions {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.finish-confirm-btn {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--go-radius-sm, 10px);
+  padding: 12px 0;
+  cursor: pointer;
+  border: 1px solid var(--go-border-soft);
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.finish-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.finish-confirm-btn--cancel {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+}
+
+.finish-confirm-btn--cancel:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--go-text-muted) 10%, var(--go-surface));
+}
+
+.finish-confirm-btn--confirm {
+  background: var(--go-success, #10b981);
+  color: #fff;
+  border-color: transparent;
+}
+
+.finish-confirm-btn--confirm:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
 @media (max-width: 720px) {
-  .session-card {
+  .session-card__top {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .session-card__actions {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .session-card__actions .cta-btn,
+  .session-finish-btn,
   .session-discard-btn {
     flex: 1;
     justify-content: center;
+    min-width: 130px;
   }
 }

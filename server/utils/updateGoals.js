@@ -49,31 +49,105 @@ const applyStatus = (goal) => {
   goal.status = goal.current >= goal.target ? "Completed" : "In Progress";
 };
 
+// Finds the workout documents belonging to the single most-recently-finished
+// session (max createdAt among workouts that carry a sessionId). Returns []
+// if no session-tagged workouts exist yet (e.g. brand new user, or all
+// workouts predate Phase 7's session metadata).
+const getLatestSessionWorkouts = async (userId) => {
+  const latest = await Workout.findOne({
+    user: userId,
+    sessionId: { $exists: true, $nin: [null, ""] },
+  }).sort({ createdAt: -1 });
+
+  if (!latest) return [];
+
+  return Workout.find({ user: userId, sessionId: latest.sessionId });
+};
+
 const recalculateGlobalAutoGoals = async (userId) => {
   try {
-    const [weeklyGoals, monthlyGoals, streakGoals] = await Promise.all([
-      Goal.find({ user: userId, type: "Weekly Workout" }),
-      Goal.find({ user: userId, type: "Monthly Volume" }),
+    const [
+      weeklySessionGoals,
+      monthlySessionGoals,
+      weeklyVolumeGoals,
+      monthlyVolumeGoals,
+      sessionExerciseGoals,
+      sessionVolumeGoals,
+      sessionDurationGoals,
+      streakGoals,
+    ] = await Promise.all([
+      Goal.find({ user: userId, type: "Weekly Workout Sessions" }),
+      Goal.find({ user: userId, type: "Monthly Workout Sessions" }),
+      Goal.find({ user: userId, type: "Weekly Volume Goal" }),
+      Goal.find({ user: userId, type: "Monthly Volume Goal" }),
+      Goal.find({ user: userId, type: "Session Exercise Goal" }),
+      Goal.find({ user: userId, type: "Session Volume Goal" }),
+      Goal.find({ user: userId, type: "Session Duration Goal" }),
       Goal.find({ user: userId, type: "Current Streak" }),
     ]);
 
-    if (weeklyGoals.length) {
+    if (weeklySessionGoals.length) {
       const monday = startOfWeek();
-      const weeklyCount = await Workout.countDocuments({
+      const weekWorkouts = await Workout.find({
         user: userId,
         date: { $gte: monday },
-      });
+        sessionId: { $exists: true, $nin: [null, ""] },
+      }).select("sessionId");
+
+      const distinctCount = new Set(weekWorkouts.map((w) => w.sessionId)).size;
 
       await Promise.all(
-        weeklyGoals.map(async (goal) => {
-          goal.current = weeklyCount;
+        weeklySessionGoals.map(async (goal) => {
+          goal.current = distinctCount;
           applyStatus(goal);
           await goal.save();
         })
       );
     }
 
-    if (monthlyGoals.length) {
+    if (monthlySessionGoals.length) {
+      const firstOfMonth = startOfMonth();
+      const monthWorkouts = await Workout.find({
+        user: userId,
+        date: { $gte: firstOfMonth },
+        sessionId: { $exists: true, $nin: [null, ""] },
+      }).select("sessionId");
+
+      const distinctCount = new Set(monthWorkouts.map((w) => w.sessionId)).size;
+
+      await Promise.all(
+        monthlySessionGoals.map(async (goal) => {
+          goal.current = distinctCount;
+          applyStatus(goal);
+          await goal.save();
+        })
+      );
+    }
+
+    // Weekly/Monthly Volume goals count ALL workouts in the window,
+    // regardless of whether they carry a sessionId — legacy workouts
+    // still contributed volume and shouldn't be excluded.
+    if (weeklyVolumeGoals.length) {
+      const monday = startOfWeek();
+      const weekWorkouts = await Workout.find({
+        user: userId,
+        date: { $gte: monday },
+      });
+      const weeklyVolume = weekWorkouts.reduce(
+        (sum, w) => sum + workoutVolume(w),
+        0
+      );
+
+      await Promise.all(
+        weeklyVolumeGoals.map(async (goal) => {
+          goal.current = weeklyVolume;
+          applyStatus(goal);
+          await goal.save();
+        })
+      );
+    }
+
+    if (monthlyVolumeGoals.length) {
       const firstOfMonth = startOfMonth();
       const monthWorkouts = await Workout.find({
         user: userId,
@@ -85,12 +159,48 @@ const recalculateGlobalAutoGoals = async (userId) => {
       );
 
       await Promise.all(
-        monthlyGoals.map(async (goal) => {
+        monthlyVolumeGoals.map(async (goal) => {
           goal.current = monthlyVolume;
           applyStatus(goal);
           await goal.save();
         })
       );
+    }
+
+    // Session-scoped goals all read from the same "latest session" query,
+    // per the product decision: these measure the MOST RECENTLY FINISHED
+    // session, not a lifetime best (that's a future PR/achievements feature).
+    if (
+      sessionExerciseGoals.length ||
+      sessionVolumeGoals.length ||
+      sessionDurationGoals.length
+    ) {
+      const latestSessionWorkouts = await getLatestSessionWorkouts(userId);
+
+      const exerciseCount = latestSessionWorkouts.length;
+      const sessionVolume = latestSessionWorkouts.reduce(
+        (sum, w) => sum + workoutVolume(w),
+        0
+      );
+      const sessionDuration = latestSessionWorkouts[0]?.sessionDuration ?? 0;
+
+      await Promise.all([
+        ...sessionExerciseGoals.map(async (goal) => {
+          goal.current = exerciseCount;
+          applyStatus(goal);
+          await goal.save();
+        }),
+        ...sessionVolumeGoals.map(async (goal) => {
+          goal.current = sessionVolume;
+          applyStatus(goal);
+          await goal.save();
+        }),
+        ...sessionDurationGoals.map(async (goal) => {
+          goal.current = sessionDuration;
+          applyStatus(goal);
+          await goal.save();
+        }),
+      ]);
     }
 
     if (streakGoals.length) {
@@ -140,4 +250,8 @@ const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
   }
 };
 
-module.exports = { updateGoalsForWorkout, recalculateGlobalAutoGoals };
+module.exports = {
+  updateGoalsForWorkout,
+  recalculateGlobalAutoGoals,
+  getLatestSessionWorkouts,
+};

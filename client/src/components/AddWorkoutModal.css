@@ -351,61 +351,14 @@
   background: var(--go-primary-dark);
 }
 
-.sets-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.set-row {
+.single-set-row {
   display: grid;
-  grid-template-columns: 20px 1fr 1fr 32px;
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.set-row__index {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--go-text-faint);
-  text-align: center;
-}
-
-.remove-set-btn {
-  background: var(--go-surface-sunken);
-  border: 1px solid var(--go-border-soft);
-  border-radius: var(--go-radius-sm);
-  color: var(--go-text-faint);
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  transition: var(--go-fast);
-}
-
-.remove-set-btn:hover:not(:disabled) {
-  border-color: var(--go-danger-dark);
-  color: var(--go-danger-dark);
-  background: var(--go-danger-50);
-}
-
-.remove-set-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.add-set-btn {
-  background: transparent;
-  border: 1px dashed var(--go-primary);
-  color: var(--go-primary);
-  border-radius: var(--go-radius-sm);
-  padding: 10px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--go-base);
-}
-
-.add-set-btn:hover {
-  background: var(--go-primary-50);
+@media (max-width: 480px) {
+  .single-set-row {
+    grid-template-columns: 1fr;
+  }
 }

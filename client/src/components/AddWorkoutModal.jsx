@@ -2,12 +2,6 @@ import { useEffect, useState } from "react";
 import Select from "react-select";
 import "./AddWorkoutModal.css";
 import api from "../services/api";
-
-// Dumb component: exercise picker + first-set form + validation only.
-// It has no idea whether a workout session exists, no localStorage
-// awareness, and makes no "save this workout" API call. It only fetches
-// the exercise list / creates custom exercises, which is part of the
-// picker itself, not the save workflow.
 function AddWorkoutModal({ closeModal, onAddExercise }) {
   const [muscleGroup, setMuscleGroup] = useState("");
   const [exercises, setExercises] = useState([]);
@@ -17,20 +11,19 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
     muscleGroup: "",
   });
   const [selectedExercise, setSelectedExercise] = useState("");
-  const [workoutSets, setWorkoutSets] = useState([{ weight: "", reps: "" }]);
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
 
-  const isSetValid = (s) =>
-    s.weight !== "" &&
-    s.reps !== "" &&
-    !isNaN(Number(s.weight)) &&
-    !isNaN(Number(s.reps)) &&
-    Number(s.weight) >= 0 &&
-    Number(s.reps) >= 1 &&
-    Number.isInteger(Number(s.reps));
-
   const isWorkoutValid =
-    selectedExercise !== "" && workoutSets.every(isSetValid);
+    selectedExercise !== "" &&
+    weight !== "" &&
+    reps !== "" &&
+    !isNaN(Number(weight)) &&
+    !isNaN(Number(reps)) &&
+    Number(weight) >= 0 &&
+    Number(reps) >= 1 &&
+    Number.isInteger(Number(reps));
 
   useEffect(() => {
     fetchExercises();
@@ -67,21 +60,6 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
     });
   };
 
-  const handleSetChange = (index, field, value) => {
-    const updated = [...workoutSets];
-    updated[index] = { ...updated[index], [field]: value };
-    setWorkoutSets(updated);
-  };
-
-  const addSet = () => {
-    setWorkoutSets([...workoutSets, { weight: "", reps: "" }]);
-  };
-
-  const removeSet = (index) => {
-    if (workoutSets.length === 1) return;
-    setWorkoutSets(workoutSets.filter((_, i) => i !== index));
-  };
-
   const createCustomExercise = async () => {
     try {
       if (!customExercise.name || !customExercise.muscleGroup) {
@@ -113,26 +91,21 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
       return;
     }
 
-    const hasEmptySet = workoutSets.some(
-      (s) => s.weight === "" || s.reps === ""
-    );
-
-    if (hasEmptySet) {
-      setValidationMessage("Please fill in weight and reps for every set");
+    if (weight === "" || reps === "") {
+      setValidationMessage("Please fill in weight and reps");
       return;
     }
 
-    const hasNegativeWeight = workoutSets.some((s) => Number(s.weight) < 0);
-    const hasInvalidReps = workoutSets.some(
-      (s) => Number(s.reps) < 1 || !Number.isInteger(Number(s.reps))
-    );
-
-    if (hasNegativeWeight) {
+    if (isNaN(Number(weight)) || Number(weight) < 0) {
       setValidationMessage("Weight cannot be negative");
       return;
     }
 
-    if (hasInvalidReps) {
+    if (
+      isNaN(Number(reps)) ||
+      Number(reps) < 1 ||
+      !Number.isInteger(Number(reps))
+    ) {
       setValidationMessage("Reps must be a whole number of at least 1");
       return;
     }
@@ -140,7 +113,6 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
     const exerciseObj = uniqueExercises.find(
       (ex) => ex._id === selectedExercise
     );
-    const firstSet = workoutSets[0];
 
     // Return data only. No branching on session state, no API call here —
     // that decision belongs to whoever opened this modal.
@@ -153,8 +125,8 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
           }
         : { _id: selectedExercise },
       firstSet: {
-        weight: Number(firstSet.weight),
-        reps: Number(firstSet.reps),
+        weight: Number(weight),
+        reps: Number(reps),
       },
     });
   };
@@ -185,7 +157,7 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
           ✕
         </button>
 
-        <h2>Add Workout</h2>
+        <h2>Add Exercise</h2>
 
         <form onSubmit={handleSubmit}>
           <label>Muscle Group</label>
@@ -275,55 +247,36 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
             </div>
           )}
 
-          <label>Sets</label>
+          <label>First Set</label>
 
-          <div className="sets-list">
-            {workoutSets.map((set, index) => (
-              <div className="set-row" key={index}>
-                <span className="set-row__index">{index + 1}</span>
+          <div className="single-set-row">
+            <input
+              type="number"
+              placeholder="Weight (kg)"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              min="0"
+              step="0.5"
+              required
+            />
 
-                <input
-                  type="number"
-                  placeholder="Weight (kg)"
-                  value={set.weight}
-                  onChange={(e) => handleSetChange(index, "weight", e.target.value)}
-                  min="0"
-                  step="0.5"
-                  required
-                />
-
-                <input
-                  type="number"
-                  placeholder="Reps"
-                  value={set.reps}
-                  onChange={(e) => handleSetChange(index, "reps", e.target.value)}
-                  min="1"
-                  step="1"
-                  required
-                />
-
-                <button
-                  type="button"
-                  className="remove-set-btn"
-                  onClick={() => removeSet(index)}
-                  disabled={workoutSets.length === 1}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            <input
+              type="number"
+              placeholder="Reps"
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+              min="1"
+              step="1"
+              required
+            />
           </div>
-
-          <button type="button" className="add-set-btn" onClick={addSet}>
-            + Add Set
-          </button>
 
           {validationMessage && (
             <p className="form-error">{validationMessage}</p>
           )}
 
           <button className="save-btn" type="submit" disabled={!isWorkoutValid}>
-            Save Workout
+            Add Exercise
           </button>
         </form>
       </div>

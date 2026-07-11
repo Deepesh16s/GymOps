@@ -966,3 +966,40 @@
   justify-content: center;
   min-height: 220px;
 }
+.save-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+  border: 1px solid color-mix(in srgb, var(--go-success) 22%, transparent);
+  border-radius: 16px;
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.save-success-banner span {
+  flex: 1;
+}
+
+.save-success-banner__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--go-success-dark);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.save-success-banner__close:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--go-success) 14%, transparent);
+}
