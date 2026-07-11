@@ -157,6 +157,7 @@
 
 .calendar-cell.is-selected .calendar-cell-day { color: #fff; }
 
+/* Marker: dot = exactly one session that day. */
 .calendar-dot {
   width: 6px;
   height: 6px;
@@ -165,6 +166,25 @@
 }
 
 .calendar-cell.is-selected .calendar-dot { background: #fff; }
+
+/* Marker: numeric badge = multiple sessions that day (replaces the dot). */
+.calendar-session-count-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--go-success-dark);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.calendar-cell.is-selected .calendar-session-count-badge {
+  background: #fff;
+  color: var(--go-primary-dark);
+}
 
 .calendar-details-card {
   position: sticky;
@@ -185,39 +205,218 @@
   color: var(--go-text);
 }
 
-.workout-entry-list {
+/* ---------------------------------------------------------- */
+/* Session cards (visual reference: workoutHistory.css)         */
+/*                                                                */
+/* Scoped under calendar-* names so this page stays independent  */
+/* of workoutHistory.css — same spacing/typography/animation      */
+/* values, ported only where Calendar actually needs them,        */
+/* compacted slightly to fit the narrower details-card column.    */
+/* ---------------------------------------------------------- */
+
+.calendar-session-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
-.workout-entry {
-  padding: 16px;
-  border-radius: var(--go-radius-md);
-  background: var(--go-surface-sunken);
+.calendar-session-card {
+  background: color-mix(in srgb, var(--go-surface) 82%, transparent);
   border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  overflow: hidden;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.workout-entry h3 {
-  font-size: 0.92rem;
+.calendar-session-card:hover {
+  border-color: color-mix(in srgb, var(--go-primary) 35%, var(--go-border-soft));
+  box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.25);
+}
+
+.calendar-session-card__head {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font: inherit;
+  color: inherit;
+}
+
+.calendar-session-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.calendar-session-type-badge {
+  font-size: 0.7rem;
   font-weight: 600;
-  color: var(--go-text);
-  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
-.workout-entry-sets {
+.calendar-session-card__chevron {
+  color: var(--go-text-faint);
+  transition: transform 220ms ease, color 220ms ease;
+  flex-shrink: 0;
+}
+
+.calendar-session-card__chevron--open {
+  transform: rotate(180deg);
+  color: var(--go-primary);
+}
+
+.calendar-session-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.calendar-session-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--go-text-muted);
+}
+
+.calendar-session-stat svg {
+  color: var(--go-primary);
+  flex-shrink: 0;
+}
+
+.calendar-session-card__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.workout-set-chip {
+.calendar-muscle-chip {
+  font-size: 0.7rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--go-primary-100);
+  color: var(--go-primary-dark);
+}
+
+.calendar-muscle-chip--more {
+  background: var(--go-border-soft);
+  color: var(--go-text-muted);
+}
+
+/* Expand/collapse: same grid-template-rows technique as Workout History. */
+.calendar-session-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms ease;
+}
+
+.calendar-session-body--expanded {
+  grid-template-rows: 1fr;
+}
+
+.calendar-session-body__inner {
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.calendar-session-body--expanded .calendar-session-body__inner {
+  opacity: 1;
+  transition: opacity 260ms ease 60ms;
+}
+
+.calendar-session-body__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px 0;
+}
+
+.calendar-session-body__header-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint);
+}
+
+.calendar-session-exercises {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 16px 16px;
+}
+
+.calendar-session-exercise {
+  padding: 12px 0;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+.calendar-session-exercise__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-session-exercise__name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--go-text);
+}
+
+.calendar-session-exercise__sets {
+  color: var(--go-text-muted);
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.calendar-session-exercise__meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.74rem;
+  color: var(--go-text-faint);
+  margin-top: 4px;
+}
+
+.calendar-delete-session-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--go-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--go-danger-dark) 30%, transparent);
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
   font-size: 0.76rem;
-  color: var(--go-success-dark);
-  background: var(--go-success-100);
-  border-radius: var(--go-radius-pill);
-  padding: 4px 10px;
   font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.calendar-delete-session-btn:hover {
+  background: color-mix(in srgb, var(--go-danger-dark) 12%, var(--go-danger-50));
+  box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--go-danger-dark) 45%, transparent);
+}
+
+.calendar-delete-session-btn:active { transform: scale(0.97); }
+.calendar-delete-session-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.calendar-delete-btn__spinner {
+  animation: calendar-history-spin 0.8s linear infinite;
+}
+
+@keyframes calendar-history-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .go-skeleton.calendar-cell { cursor: default; }
@@ -244,11 +443,11 @@
 
 [data-theme="dark"] .calendar-details-header,
 [data-theme="dark"] .calendar-details-header h2,
-[data-theme="dark"] .workout-entry h3 { color: var(--go-text); }
+[data-theme="dark"] .calendar-session-exercise__name { color: var(--go-text); }
 
-[data-theme="dark"] .workout-set-chip {
-  background: var(--go-success-100);
-  color: var(--go-success-light);
+[data-theme="dark"] .calendar-muscle-chip {
+  background: var(--go-primary-100);
+  color: var(--go-primary-light);
 }
 
 [data-theme="dark"] .calendar-page .go-page-title { color: var(--go-text); }
@@ -271,4 +470,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .calendar-cell { transition: none; }
+  .calendar-session-body { transition: none; }
 }
