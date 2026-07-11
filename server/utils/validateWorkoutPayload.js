@@ -1,3 +1,4 @@
+const { SESSION_TYPES, OTHER_SESSION_TYPE } = require("../constants/sessionTypes");
 
 const validateWorkoutSets = (workoutSets) => {
   if (!Array.isArray(workoutSets) || workoutSets.length === 0) {
@@ -65,6 +66,50 @@ const validateSessionMeta = (sessionId, sessionDuration) => {
   }
 };
 
+// Validates sessionType against the allowed enum, and enforces that
+// customSessionType is present (and non-blank) whenever sessionType is
+// "Other". Kept separate from validateSessionMeta so existing call sites
+// of validateSessionMeta are untouched — this is called only from the
+// session-creation flow that now also accepts sessionType.
+const validateSessionType = (sessionType, customSessionType) => {
+  if (sessionType === undefined || sessionType === null || sessionType === "") {
+    const err = new Error("sessionType is required");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!SESSION_TYPES.includes(sessionType)) {
+    const err = new Error(
+      `sessionType must be one of: ${SESSION_TYPES.join(", ")}`
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  if (sessionType === OTHER_SESSION_TYPE) {
+    if (
+      !customSessionType ||
+      typeof customSessionType !== "string" ||
+      !customSessionType.trim()
+    ) {
+      const err = new Error(
+        'customSessionType is required when sessionType is "Other"'
+      );
+      err.status = 400;
+      throw err;
+    }
+  }
+};
+
+// customSessionType is only ever meaningful when sessionType is "Other".
+// For every other sessionType it must be stored as null, regardless of
+// what the client sent, so history/filtering never has to guess which
+// field is authoritative.
+const normalizeCustomSessionType = (sessionType, customSessionType) => {
+  if (sessionType !== OTHER_SESSION_TYPE) return null;
+  return customSessionType.trim();
+};
+
 // requireSessionMeta defaults to true (new workout creation). Pass false
 // for updates, where sessionId/sessionDuration aren't being (re)supplied.
 const validateWorkoutPayload = ({
@@ -79,4 +124,10 @@ const validateWorkoutPayload = ({
   }
 };
 
-module.exports = { validateWorkoutPayload, validateWorkoutSets, validateSessionMeta };
+module.exports = {
+  validateWorkoutPayload,
+  validateWorkoutSets,
+  validateSessionMeta,
+  validateSessionType,
+  normalizeCustomSessionType,
+};

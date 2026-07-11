@@ -32,6 +32,7 @@ import {
 import AddWorkoutModal from "../components/AddWorkoutModal";
 import MuscleBodyMap from "../components/MuscleBodyMap";
 import WorkoutSession from "../components/WorkoutSession";
+import StartWorkoutModal from "../components/StartWorkoutModal";
 import useWorkoutSession from "../hooks/useWorkoutSession";
 import api from "../services/api";
 
@@ -116,6 +117,14 @@ function Dashboard() {
   const [deleteError, setDeleteError] = useState("");
 
   const workoutSession = useWorkoutSession();
+
+  // Gates session creation behind the Start Workout modal. `pendingAddModal`
+  // tracks whether, once the session actually starts, we should also pop
+  // AddWorkoutModal open immediately after (the "empty state" flow used to
+  // start a session and open AddWorkoutModal in one click — it still does,
+  // just with the Session Type step interposed first).
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [pendingAddModal, setPendingAddModal] = useState(false);
 
   const [stats, setStats] = useState({
     totalWorkouts: null,
@@ -264,16 +273,43 @@ function Dashboard() {
     workoutSession.addExercise(payload);
     setShowModal(false);
   };
-  const handleStartSession = () => {
+
+  // "New Workout" no longer starts a session directly — it opens the
+  // Start Workout modal, which collects Session Type first.
+  const handleOpenStartModal = () => {
     if (workoutSession.active) return;
-    workoutSession.startSession();
+    setPendingAddModal(false);
+    setShowStartModal(true);
   };
+
+  // The empty-state "Log your first workout" button used to start a
+  // session and open AddWorkoutModal in one step. It still does, but
+  // now via the Start Workout modal too — pendingAddModal tells
+  // handleStartModalConfirm to also open AddWorkoutModal once the
+  // session is actually created.
   const handleEmptyStateAddWorkout = () => {
-    if (!workoutSession.active) {
-      workoutSession.startSession();
+    if (workoutSession.active) {
+      setShowModal(true);
+      return;
     }
-    setShowModal(true);
+    setPendingAddModal(true);
+    setShowStartModal(true);
   };
+
+  const handleStartModalClose = () => {
+    setShowStartModal(false);
+    setPendingAddModal(false);
+  };
+
+  const handleStartModalConfirm = (sessionType, customSessionType) => {
+    workoutSession.startSession(sessionType, customSessionType);
+    setShowStartModal(false);
+    if (pendingAddModal) {
+      setShowModal(true);
+      setPendingAddModal(false);
+    }
+  };
+
   const handleFinishWorkout = async () => {
     const success = await workoutSession.finishWorkout();
     if (success) {
@@ -323,7 +359,7 @@ function Dashboard() {
             </div>
             <button
               className="cta-btn"
-              onClick={handleStartSession}
+              onClick={handleOpenStartModal}
               disabled={workoutSession.active || workoutSession.isSaving}
             >
               <Plus size={16} strokeWidth={2.5} />
@@ -635,6 +671,12 @@ function Dashboard() {
           </div>
         </section>
       </main>
+
+      <StartWorkoutModal
+        open={showStartModal}
+        onClose={handleStartModalClose}
+        onStart={handleStartModalConfirm}
+      />
 
       {showModal && (
         <AddWorkoutModal

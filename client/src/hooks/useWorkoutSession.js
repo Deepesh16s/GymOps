@@ -13,6 +13,8 @@ const getDefaultSession = () => ({
   active: false,
   startTime: null,
   exercises: [],
+  sessionType: null,
+  customSessionType: null,
 });
 
 const loadSession = () => {
@@ -25,6 +27,8 @@ const loadSession = () => {
       active: !!parsed.active,
       startTime: parsed.startTime ?? null,
       exercises: Array.isArray(parsed.exercises) ? parsed.exercises : [],
+      sessionType: parsed.sessionType ?? null,
+      customSessionType: parsed.customSessionType ?? null,
     };
   } catch (error) {
     console.log(error);
@@ -74,11 +78,17 @@ function useWorkoutSession() {
     setSaveSuccess("");
   }, []);
 
-  const startSession = useCallback(() => {
+  // sessionType/customSessionType are collected up front (via the Start
+  // Workout modal) and passed in here, rather than being editable mid
+  // session — they're session metadata decided at the moment the
+  // session starts, same as startTime.
+  const startSession = useCallback((sessionType, customSessionType) => {
     setSession({
       active: true,
       startTime: Date.now(),
       exercises: [],
+      sessionType: sessionType ?? null,
+      customSessionType: customSessionType ?? null,
     });
     setSaveError("");
     clearSaveSuccess();
@@ -229,6 +239,8 @@ function useWorkoutSession() {
       const payload = {
         sessionId,
         sessionDuration: sessionDurationMinutes,
+        sessionType: session.sessionType,
+        customSessionType: session.customSessionType,
         exercises: session.exercises.map((entry) => ({
           exercise: entry.exercise._id,
           workoutSets: entry.sets.map((s) => ({
@@ -271,6 +283,8 @@ function useWorkoutSession() {
     active: session.active,
     startTime: session.startTime,
     exercises: session.exercises,
+    sessionType: session.sessionType,
+    customSessionType: session.customSessionType,
     isSaving,
     saveError,
     saveSuccess,

@@ -7,6 +7,7 @@ const {
   getWorkouts,
   updateWorkout,
   deleteWorkout,
+  deleteWorkoutSession,
 } = require("../controllers/workoutController");
 
 const {
@@ -35,6 +36,16 @@ router.put(
   "/:id",
   protect,
   updateWorkout
+);
+
+// Declared above the single-workout "/:id" route. Not strictly required
+// since "/session/:sessionId" has two segments and can't collide with the
+// single-segment "/:id", but keeping the more specific route first matches
+// existing convention and avoids any ambiguity.
+router.delete(
+  "/session/:sessionId",
+  protect,
+  deleteWorkoutSession
 );
 
 router.delete(

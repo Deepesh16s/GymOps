@@ -1003,3 +1003,172 @@
   opacity: 1;
   background: color-mix(in srgb, var(--go-success) 14%, transparent);
 }
+
+/* ============================================================ */
+/* Start Workout Modal                                          */
+/*                                                                */
+/* Overlay + centered card, matching the finish-confirm pattern  */
+/* used by WorkoutSession (session-card finish confirmation) —   */
+/* fixed overlay, blurred backdrop, small elevated card.         */
+/* ============================================================ */
+
+.start-workout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: color-mix(in srgb, var(--go-text) 45%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.start-workout-modal-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow:
+    var(--go-shadow-sm),
+    0 20px 48px color-mix(in srgb, var(--go-text) 18%, transparent);
+}
+
+.start-workout-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.start-workout-modal-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--go-primary-50);
+  color: var(--go-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.start-workout-modal-title {
+  flex: 1;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--go-text);
+  letter-spacing: -0.01em;
+}
+
+.start-workout-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--go-text-faint);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.start-workout-modal-close:hover {
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+}
+
+.start-workout-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.start-workout-modal-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--go-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 12px;
+}
+
+.start-workout-modal-body .start-workout-modal-label:first-child {
+  margin-top: 0;
+}
+
+.start-workout-modal-select,
+.start-workout-modal-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface);
+  color: var(--go-text);
+  font-size: 0.92rem;
+  font-family: inherit;
+}
+
+.start-workout-modal-select:focus,
+.start-workout-modal-input:focus {
+  outline: none;
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-100);
+}
+
+.start-workout-modal-error {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--go-danger-dark);
+  margin-top: 2px;
+}
+
+.start-workout-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.start-workout-modal-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.start-workout-modal-btn--cancel {
+  background: transparent;
+  border-color: var(--go-border-soft);
+  color: var(--go-text-muted);
+}
+
+.start-workout-modal-btn--cancel:hover {
+  background: var(--go-surface-sunken);
+}
+
+.start-workout-modal-btn--confirm {
+  background: var(--go-primary);
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--go-primary) 28%, transparent);
+}
+
+.start-workout-modal-btn--confirm:hover:not(:disabled) {
+  background: var(--go-primary-dark);
+  transform: translateY(-1px);
+}
+
+.start-workout-modal-btn--confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}

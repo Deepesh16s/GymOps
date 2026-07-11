@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { SESSION_TYPES } = require("../constants/sessionTypes");
 
 const workoutSetSchema = new mongoose.Schema(
   {
@@ -60,6 +61,25 @@ const workoutSchema = new mongoose.Schema(
       type: Number,
       default: null,
       min: [0, "Session duration cannot be negative"],
+    },
+
+    // Session Type metadata (Phase 8). Session-level metadata, identical
+    // across every workout document belonging to the same sessionId —
+    // mirrors how sessionId/sessionDuration are broadcast to the whole
+    // group. Not schema-required so legacy documents without these
+    // fields continue to validate and load exactly as before.
+    sessionType: {
+      type: String,
+      enum: SESSION_TYPES,
+      default: null,
+    },
+
+    // Only meaningful when sessionType === "Other". Enforced at the
+    // controller/validation level, not here, so this field stays
+    // optional at the schema level like sessionType above.
+    customSessionType: {
+      type: String,
+      default: null,
     },
   },
   {

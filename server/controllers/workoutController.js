@@ -4,10 +4,13 @@ const {
   updateGoalsForSession,
 } = require("../utils/updateGoals");
 const recalculateGoalsForExercise = require("../utils/recalculateGoals");
+const { recalculateGoalsForExercises } = require("../utils/recalculateGoals");
 const {
   validateWorkoutPayload,
   validateWorkoutSets,
   validateSessionMeta,
+  validateSessionType,
+  normalizeCustomSessionType,
 } = require("../utils/validateWorkoutPayload");
 
 exports.createWorkout = async (req, res) => {
@@ -43,9 +46,16 @@ exports.createWorkout = async (req, res) => {
 
 exports.createWorkoutSession = async (req, res) => {
   try {
-    const { sessionId, sessionDuration, exercises } = req.body;
+    const {
+      sessionId,
+      sessionDuration,
+      sessionType,
+      customSessionType,
+      exercises,
+    } = req.body;
 
     validateSessionMeta(sessionId, sessionDuration);
+    validateSessionType(sessionType, customSessionType);
 
     if (!Array.isArray(exercises) || exercises.length === 0) {
       const err = new Error("exercises must be a non-empty array");
@@ -73,6 +83,10 @@ exports.createWorkoutSession = async (req, res) => {
 
     const trimmedSessionId = sessionId.trim();
     const numericSessionDuration = Number(sessionDuration);
+    const normalizedCustomSessionType = normalizeCustomSessionType(
+      sessionType,
+      customSessionType
+    );
 
     const docs = cleanExercises.map((entry) => ({
       user: req.user._id,
@@ -80,6 +94,8 @@ exports.createWorkoutSession = async (req, res) => {
       workoutSets: entry.workoutSets,
       sessionId: trimmedSessionId,
       sessionDuration: numericSessionDuration,
+      sessionType,
+      customSessionType: normalizedCustomSessionType,
     }));
 
     const createdWorkouts = await Workout.insertMany(docs, {
@@ -270,6 +286,56 @@ exports.deleteWorkout = async (req, res) => {
 
     res.status(200).json({
       message: "Workout deleted successfully",
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Server Error",
+    });
+  }
+};
+
+// Deletes every workout belonging to a session in ONE query, then
+// recalculates goals ONCE for the whole session (see
+// recalculateGoalsForExercises in utils/recalculateGoals.js) instead of
+// once per exercise. Legacy standalone workouts (no sessionId) are not
+// reachable through this route at all — the frontend falls back to the
+// existing single-workout DELETE /workouts/:id for those, so this handler
+// only ever deals with real, non-null sessionId values.
+exports.deleteWorkoutSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId || !sessionId.trim()) {
+      return res.status(400).json({
+        message: "sessionId is required",
+      });
+    }
+
+    const sessionWorkouts = await Workout.find({
+      user: req.user._id,
+      sessionId: sessionId.trim(),
+    }).select("exercise");
+
+    if (!sessionWorkouts.length) {
+      return res.status(404).json({
+        message: "Session not found",
+      });
+    }
+
+    const exerciseIds = sessionWorkouts.map((w) => w.exercise);
+
+    await Workout.deleteMany({
+      user: req.user._id,
+      sessionId: sessionId.trim(),
+    });
+
+    await recalculateGoalsForExercises(req.user._id, exerciseIds);
+
+    res.status(200).json({
+      message: "Session deleted successfully",
+      deletedCount: sessionWorkouts.length,
     });
   } catch (error) {
     console.log(error);

@@ -1,5 +1,20 @@
 @import "../styles/design-tokens.css";
 
+/* ---------------------------------------------------------- */
+/* Page shell                                                   */
+/* ---------------------------------------------------------- */
+
+.history-page {
+  width: 100%;
+  min-height: 100%;
+}
+
+.history-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
 .history-header {
   display: flex;
   justify-content: space-between;
@@ -10,11 +25,16 @@
 .history-header h1 { font-size: 1.5rem; color: var(--go-text); }
 .history-header p { color: var(--go-text-muted); font-size: 0.9rem; }
 
+/* ---------------------------------------------------------- */
+/* Controls                                                      */
+/* ---------------------------------------------------------- */
+
 .history-controls {
   display: flex;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .history-search {
@@ -26,6 +46,7 @@
   background: var(--go-surface);
   color: var(--go-text);
   font-size: 0.92rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .history-search:focus {
@@ -41,23 +62,272 @@
   background: var(--go-surface);
   font-size: 0.92rem;
   color: var(--go-text-muted);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
 }
 
-.history-list { display: flex; flex-direction: column; gap: 12px; }
+.history-select:hover {
+  border-color: color-mix(in srgb, var(--go-primary) 35%, var(--go-border-soft));
+  color: var(--go-text);
+}
 
-.history-row {
+.history-select:focus {
+  outline: none;
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-100);
+}
+
+.history-date-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface);
+}
+
+.history-date-input {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--go-text);
+  font-size: 0.86rem;
+  font-family: inherit;
+}
+
+.history-date-input:focus {
+  outline: none;
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-100);
+  background: var(--go-surface);
+}
+
+.history-date-range-sep {
+  font-size: 0.8rem;
+  color: var(--go-text-faint);
+}
+
+/* ---------------------------------------------------------- */
+/* Empty / loading states                                       */
+/* ---------------------------------------------------------- */
+
+.history-placeholder {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--go-text-muted);
+}
+
+.history-placeholder h1 {
+  font-size: 1.15rem;
+  color: var(--go-text);
+  margin-bottom: 6px;
+}
+
+.history-placeholder p {
+  font-size: 0.9rem;
+}
+
+/* ---------------------------------------------------------- */
+/* Session list                                                  */
+/* ---------------------------------------------------------- */
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------------------------------------------------------- */
+/* Session card                                                  */
+/* ---------------------------------------------------------- */
+
+.session-card {
   background: color-mix(in srgb, var(--go-surface) 82%, transparent);
   border: 1px solid var(--go-border-soft);
-  border-radius: 16px;
-  padding: 18px 22px;
+  border-radius: 18px;
+  overflow: hidden;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.session-card:hover {
+  border-color: color-mix(in srgb, var(--go-primary) 35%, var(--go-border-soft));
+  box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.25);
+}
+
+.session-card__head {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font: inherit;
+  color: inherit;
+}
+
+.session-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.session-card__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.session-card__type-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.session-card__date {
+  font-weight: 600;
+  font-size: 1.02rem;
+  color: var(--go-text);
+}
+
+.session-card__chevron {
+  color: var(--go-text-faint);
+  transition: transform 220ms ease, color 220ms ease;
+  flex-shrink: 0;
+}
+
+.session-card__chevron--open {
+  transform: rotate(180deg);
+  color: var(--go-primary);
+}
+
+.session-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.session-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: var(--go-text-muted);
+}
+
+.session-stat svg {
+  color: var(--go-primary);
+  flex-shrink: 0;
+}
+
+.session-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muscle-chip {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--go-primary-100);
+  color: var(--go-primary-dark);
+}
+
+.muscle-chip--more {
+  background: var(--go-border-soft);
+  color: var(--go-text-muted);
+}
+
+/* ---------------------------------------------------------- */
+/* Expand / collapse                                             */
+/*                                                                */
+/* grid-template-rows trick avoids height measurement and         */
+/* animates both directions cleanly; opacity is layered on top    */
+/* so content fades in/out in step with the height change.        */
+/* ---------------------------------------------------------- */
+
+.session-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms ease;
+}
+
+.session-body--expanded {
+  grid-template-rows: 1fr;
+}
+
+.session-body__inner {
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.session-body--expanded .session-body__inner {
+  opacity: 1;
+  transition: opacity 260ms ease 60ms;
+}
+
+.session-body__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px 0;
+}
+
+.session-body__header-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint);
+}
+
+/* ---------------------------------------------------------- */
+/* Exercises inside a session                                    */
+/* ---------------------------------------------------------- */
+
+.session-exercises {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 24px 20px;
+}
+
+.session-exercise {
   display: grid;
   grid-template-columns: 1fr 1fr auto auto;
   align-items: center;
   gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid var(--go-border-soft);
+  transition: background-color 160ms ease;
+  border-radius: 10px;
 }
 
-.history-row-main { display: flex; flex-direction: column; gap: 4px; }
-.history-exercise { font-weight: 600; color: var(--go-text); }
+.session-exercise:hover {
+  background: color-mix(in srgb, var(--go-primary) 4%, transparent);
+}
+
+.session-exercise__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-exercise__name {
+  font-weight: 600;
+  color: var(--go-text);
+}
 
 .history-muscle-tag {
   width: fit-content;
@@ -68,9 +338,12 @@
   color: var(--go-primary-dark);
 }
 
-.history-row-sets { color: var(--go-text-muted); font-size: 0.88rem; }
+.session-exercise__sets {
+  color: var(--go-text-muted);
+  font-size: 0.88rem;
+}
 
-.history-row-meta {
+.session-exercise__meta {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -79,7 +352,14 @@
   text-align: right;
 }
 
+/* ---------------------------------------------------------- */
+/* Delete buttons                                                */
+/* ---------------------------------------------------------- */
+
 .history-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 14px;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--go-danger-dark) 25%, transparent);
@@ -87,12 +367,125 @@
   color: var(--go-danger-dark);
   font-size: 0.82rem;
   cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 120ms ease;
 }
 
-.history-delete-btn:hover { background: var(--go-danger-50); }
+.history-delete-btn:hover {
+  background: var(--go-danger-50);
+  border-color: var(--go-danger-dark);
+}
+
+.history-delete-btn:active {
+  transform: scale(0.97);
+}
+
 .history-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.history-delete-session-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--go-danger-dark) 30%, transparent);
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.history-delete-session-btn:hover {
+  background: color-mix(in srgb, var(--go-danger-dark) 12%, var(--go-danger-50));
+  box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--go-danger-dark) 45%, transparent);
+}
+
+.history-delete-session-btn:active {
+  transform: scale(0.97);
+}
+
+.history-delete-session-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.delete-btn__spinner {
+  animation: history-spin 0.8s linear infinite;
+}
+
+@keyframes history-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------- */
+/* Responsive breakpoints                                        */
+/* ---------------------------------------------------------- */
+
 @media (max-width: 760px) {
-  .history-row { grid-template-columns: 1fr; text-align: left; }
-  .history-row-meta { text-align: left; }
+  .history-main {
+    padding: 24px 16px 48px;
+  }
+
+  .history-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-search,
+  .history-select,
+  .history-date-range-inputs {
+    width: 100%;
+  }
+
+  .session-card__head {
+    padding: 18px 18px;
+  }
+
+  .session-card__heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .session-body__header {
+    padding: 14px 18px 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .session-exercises {
+    padding: 4px 18px 18px;
+  }
+
+  .session-exercise {
+    grid-template-columns: 1fr;
+    text-align: left;
+    gap: 8px;
+  }
+
+  .session-exercise__meta {
+    text-align: left;
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .history-delete-btn {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .session-card__stats {
+    gap: 10px;
+  }
+
+  .history-date-range-inputs {
+    flex-wrap: wrap;
+  }
 }
