@@ -1,81 +1,20 @@
 const Workout = require("../models/workout");
-const { updateGoalsForWorkout } = require("../utils/updateGoals");
+const {
+  updateGoalsForWorkout,
+  updateGoalsForSession,
+} = require("../utils/updateGoals");
 const recalculateGoalsForExercise = require("../utils/recalculateGoals");
-
-const validateWorkoutSets = (workoutSets) => {
-  if (!Array.isArray(workoutSets) || workoutSets.length === 0) {
-    const err = new Error("workoutSets must be a non-empty array");
-    err.status = 400;
-    throw err;
-  }
-
-  workoutSets.forEach((s, i) => {
-    if (
-      s.weight === undefined ||
-      s.reps === undefined ||
-      s.weight === null ||
-      s.reps === null ||
-      s.weight === "" ||
-      s.reps === "" ||
-      isNaN(Number(s.weight)) ||
-      isNaN(Number(s.reps))
-    ) {
-      const err = new Error(`Set ${i + 1} needs a valid weight and reps`);
-      err.status = 400;
-      throw err;
-    }
-
-    const weight = Number(s.weight);
-    const reps = Number(s.reps);
-
-    if (weight < 0) {
-      const err = new Error(`Set ${i + 1}: weight cannot be negative`);
-      err.status = 400;
-      throw err;
-    }
-
-    if (reps < 1) {
-      const err = new Error(`Set ${i + 1}: reps must be at least 1`);
-      err.status = 400;
-      throw err;
-    }
-
-    if (!Number.isInteger(reps)) {
-      const err = new Error(`Set ${i + 1}: reps must be a whole number`);
-      err.status = 400;
-      throw err;
-    }
-  });
-};
-
-// Session metadata validation (Phase 7). Every POST /workouts belonging to
-// a Finish Workout action must include these — see useWorkoutSession.js.
-const validateSessionMeta = (sessionId, sessionDuration) => {
-  if (!sessionId || typeof sessionId !== "string" || !sessionId.trim()) {
-    const err = new Error("sessionId is required");
-    err.status = 400;
-    throw err;
-  }
-
-  if (
-    sessionDuration === undefined ||
-    sessionDuration === null ||
-    sessionDuration === "" ||
-    isNaN(Number(sessionDuration)) ||
-    Number(sessionDuration) < 0
-  ) {
-    const err = new Error("sessionDuration must be a valid number >= 0");
-    err.status = 400;
-    throw err;
-  }
-};
+const {
+  validateWorkoutPayload,
+  validateWorkoutSets,
+  validateSessionMeta,
+} = require("../utils/validateWorkoutPayload");
 
 exports.createWorkout = async (req, res) => {
   try {
     const { exercise, workoutSets, sessionId, sessionDuration } = req.body;
 
-    validateWorkoutSets(workoutSets);
-    validateSessionMeta(sessionId, sessionDuration);
+    validateWorkoutPayload({ workoutSets, sessionId, sessionDuration });
 
     const cleanSets = workoutSets.map((s) => ({
       weight: Number(s.weight),
@@ -93,6 +32,83 @@ exports.createWorkout = async (req, res) => {
     await updateGoalsForWorkout(req.user._id, exercise, cleanSets);
 
     res.status(201).json(workout);
+  } catch (error) {
+    console.log(error);
+
+    res.status(error.status || 500).json({
+      message: error.status ? error.message : "Server Error",
+    });
+  }
+};
+
+exports.createWorkoutSession = async (req, res) => {
+  try {
+    const { sessionId, sessionDuration, exercises } = req.body;
+
+    validateSessionMeta(sessionId, sessionDuration);
+
+    if (!Array.isArray(exercises) || exercises.length === 0) {
+      const err = new Error("exercises must be a non-empty array");
+      err.status = 400;
+      throw err;
+    }
+
+    exercises.forEach((entry, i) => {
+      if (!entry || !entry.exercise) {
+        const err = new Error(`Exercise ${i + 1} is missing an exercise id`);
+        err.status = 400;
+        throw err;
+      }
+
+      validateWorkoutSets(entry.workoutSets);
+    });
+
+    const cleanExercises = exercises.map((entry) => ({
+      exercise: entry.exercise,
+      workoutSets: entry.workoutSets.map((s) => ({
+        weight: Number(s.weight),
+        reps: Number(s.reps),
+      })),
+    }));
+
+    const trimmedSessionId = sessionId.trim();
+    const numericSessionDuration = Number(sessionDuration);
+
+    const docs = cleanExercises.map((entry) => ({
+      user: req.user._id,
+      exercise: entry.exercise,
+      workoutSets: entry.workoutSets,
+      sessionId: trimmedSessionId,
+      sessionDuration: numericSessionDuration,
+    }));
+
+    const createdWorkouts = await Workout.insertMany(docs, {
+      ordered: true,
+    });
+
+    let goalRecalculationFailed = false;
+
+    try {
+      await updateGoalsForSession(req.user._id, cleanExercises);
+    } catch (goalError) {
+      console.error("Goal recalculation failed:", goalError);
+      goalRecalculationFailed = true;
+    }
+
+    if (goalRecalculationFailed) {
+      return res.status(201).json({
+        message:
+          "Workout session saved successfully, but goal recalculation failed. Please refresh your Goals or recalculate them later.",
+        workouts: createdWorkouts,
+        goalRecalculationFailed: true,
+      });
+    }
+
+    return res.status(201).json({
+      message: "Workout session saved successfully.",
+      workouts: createdWorkouts,
+      goalRecalculationFailed: false,
+    });
   } catch (error) {
     console.log(error);
 
@@ -195,6 +211,7 @@ exports.updateWorkout = async (req, res) => {
 
     if (req.body.workoutSets !== undefined) {
       validateWorkoutSets(req.body.workoutSets);
+
       req.body.workoutSets = req.body.workoutSets.map((s) => ({
         weight: Number(s.weight),
         reps: Number(s.reps),
@@ -204,10 +221,16 @@ exports.updateWorkout = async (req, res) => {
     const updatedWorkout = await Workout.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      {
+        new: true,
+        runValidators: true,
+      }
     );
 
-    if (req.body.workoutSets !== undefined || req.body.exercise !== undefined) {
+    if (
+      req.body.workoutSets !== undefined ||
+      req.body.exercise !== undefined
+    ) {
       await updateGoalsForWorkout(
         req.user._id,
         updatedWorkout.exercise,

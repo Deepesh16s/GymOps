@@ -3,43 +3,15 @@ import { useEffect, useMemo } from "react";
 import api from "../services/api";
 import { useState } from "react";
 import { Plus, Target } from "lucide-react";
-
-// ---- Category configuration (single source of truth for grouping + modal) ----
-const GOAL_CATEGORIES = [
-  {
-    key: "strength",
-    label: "🏋 Strength Goals",
-    shortLabel: "Strength",
-    types: ["Strength PR"],
-  },
-  {
-    key: "activity",
-    label: "🎯 Activity Goals",
-    shortLabel: "Activity",
-    types: [
-      "Weekly Workout Sessions",
-      "Monthly Workout Sessions",
-      "Weekly Volume Goal",
-      "Monthly Volume Goal",
-      "Session Exercise Goal",
-      "Session Volume Goal",
-      "Session Duration Goal",
-      "Cardio Goal",
-    ],
-  },
-  {
-    key: "consistency",
-    label: "🔥 Consistency Goals",
-    shortLabel: "Consistency",
-    types: ["Current Streak"],
-  },
-  {
-    key: "body",
-    label: "⚖ Body Goals",
-    shortLabel: "Body",
-    types: ["Weight Goal"],
-  },
-];
+import {
+  GOAL_CATEGORIES,
+  TYPE_LABELS,
+  TARGET_LABEL,
+  FIXED_UNIT,
+  CARDIO_UNITS,
+  WEIGHT_UNITS,
+  MANUAL_GOAL_TYPES as MANUAL_TYPES,
+} from "../constants/goalTypes";
 
 // Catch-all for any goal whose type predates this redesign (e.g. the old
 // "Weekly Workout" / "Monthly Volume" types) so existing goals don't just
@@ -50,54 +22,6 @@ const OTHER_CATEGORY = {
   shortLabel: "Other",
   types: [],
 };
-
-const TYPE_LABELS = {
-  "Strength PR": "Strength PR Goal",
-  "Weekly Workout Sessions": "Weekly Workout Sessions",
-  "Monthly Workout Sessions": "Monthly Workout Sessions",
-  "Weekly Volume Goal": "Weekly Volume Goal",
-  "Monthly Volume Goal": "Monthly Volume Goal",
-  "Session Exercise Goal": "Session Exercise Goal",
-  "Session Volume Goal": "Session Volume Goal",
-  "Session Duration Goal": "Session Duration Goal",
-  "Cardio Goal": "Cardio Goal",
-  "Current Streak": "Current Streak Goal",
-  "Weight Goal": "Weight Goal",
-};
-
-const TARGET_LABEL = {
-  "Strength PR": "Target Weight",
-  "Weekly Workout Sessions": "Target Sessions",
-  "Monthly Workout Sessions": "Target Sessions",
-  "Weekly Volume Goal": "Target Volume (kg)",
-  "Monthly Volume Goal": "Target Volume (kg)",
-  "Session Exercise Goal": "Target Exercises",
-  "Session Volume Goal": "Target Volume (kg)",
-  "Session Duration Goal": "Target Minutes",
-  "Cardio Goal": "Target",
-  "Current Streak": "Target Days",
-  "Weight Goal": "Target Weight (kg)",
-};
-
-// Fixed units auto-assigned for types where the form doesn't show a unit
-// picker. Strength PR and Cardio Goal are the only types with a visible
-// unit dropdown (see FIELD config below).
-const FIXED_UNIT = {
-  "Weekly Workout Sessions": "sessions",
-  "Monthly Workout Sessions": "sessions",
-  "Weekly Volume Goal": "kg",
-  "Monthly Volume Goal": "kg",
-  "Session Exercise Goal": "exercises",
-  "Session Volume Goal": "kg",
-  "Session Duration Goal": "minutes",
-  "Current Streak": "days",
-  "Weight Goal": "kg",
-};
-
-const CARDIO_UNITS = ["Minutes", "Kilometers", "Runs"];
-const WEIGHT_UNITS = ["kg", "lb"];
-
-const MANUAL_TYPES = ["Cardio Goal", "Weight Goal"];
 
 const SELECTABLE_CATEGORIES = GOAL_CATEGORIES;
 

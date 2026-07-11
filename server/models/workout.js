@@ -23,6 +23,7 @@ const workoutSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     exercise: {
@@ -65,5 +66,7 @@ const workoutSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+workoutSchema.index({ user: 1, exercise: 1 });
 
 module.exports = mongoose.model("Workout", workoutSchema);

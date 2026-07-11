@@ -3,6 +3,7 @@ const router = express.Router();
 
 const {
   createWorkout,
+  createWorkoutSession,
   getWorkouts,
   updateWorkout,
   deleteWorkout,
@@ -16,6 +17,12 @@ router.post(
   "/",
   protect,
   createWorkout
+);
+
+router.post(
+  "/session",
+  protect,
+  createWorkoutSession
 );
 
 router.get(

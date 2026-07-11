@@ -1,257 +1,148 @@
 const Goal = require("../models/Goal");
 const Workout = require("../models/workout");
+const { GOAL_TYPES, GLOBAL_AUTO_GOAL_TYPES } = require("../constants/goalTypes");
+const metrics = require("./goalMetrics");
 
-const startOfWeek = () => {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diffToMon);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
+const WORKOUT_FIELDS = "date createdAt sessionId sessionDuration workoutSets exercise";
+
+const buildStatus = (current, target) => (current >= target ? "Completed" : "In Progress");
+
+const buildBulkStatusOp = (goalId, current, target) => ({
+  updateOne: {
+    filter: { _id: goalId },
+    update: { $set: { current, status: buildStatus(current, target), lastUpdated: new Date() } },
+  },
+});
+
+// Merges multiple exercises' sets into one "highest weight per exercise"
+// map, so a whole session's worth of PR candidates can be resolved with a
+// single query instead of one per exercise.
+const buildWeightsByExercise = (exercises) => {
+  const map = new Map();
+  exercises.forEach(({ exercise, workoutSets }) => {
+    if (!Array.isArray(workoutSets) || !workoutSets.length) return;
+    const maxWeight = Math.max(...workoutSets.map((s) => s.weight));
+    const key = String(exercise);
+    const existing = map.get(key);
+    if (existing === undefined || maxWeight > existing) map.set(key, maxWeight);
+  });
+  return map;
 };
 
-const startOfMonth = () => {
-  const d = new Date();
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
+// Incrementally bumps Strength PR goals — only raises `current`, never
+// lowers it (a full recompute after deletes lives in recalculateGoals.js).
+// ONE Goal.find() + ONE Goal.bulkWrite() covers every exercise passed in,
+// whether that's one exercise (single workout) or a whole session.
+//
+// `options.session` threads a Mongo ClientSession through, for the
+// transactional session-batch path — a no-op when omitted.
+const applyStrengthPrUpdates = async (userId, weightsByExercise, options = {}) => {
+  const exerciseIds = [...weightsByExercise.keys()];
+  if (!exerciseIds.length) return;
 
-const workoutVolume = (w) =>
-  (w.workoutSets || []).reduce((sum, s) => sum + s.reps * s.weight, 0);
-
-const computeCurrentStreak = (workouts) => {
-  if (!workouts.length) return 0;
-
-  const dateStrings = new Set(
-    workouts.map((w) => {
-      const d = new Date(w.date || w.createdAt);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    })
-  );
-
-  const cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
-  let streak = 0;
-
-  while (true) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-    if (!dateStrings.has(key)) break;
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  return streak;
-};
-
-const applyStatus = (goal) => {
-  goal.status = goal.current >= goal.target ? "Completed" : "In Progress";
-};
-
-// Finds the workout documents belonging to the single most-recently-finished
-// session (max createdAt among workouts that carry a sessionId). Returns []
-// if no session-tagged workouts exist yet (e.g. brand new user, or all
-// workouts predate Phase 7's session metadata).
-const getLatestSessionWorkouts = async (userId) => {
-  const latest = await Workout.findOne({
+  const prGoals = await Goal.find({
     user: userId,
-    sessionId: { $exists: true, $nin: [null, ""] },
-  }).sort({ createdAt: -1 });
+    type: GOAL_TYPES.STRENGTH_PR,
+    exercise: { $in: exerciseIds },
+  }).session(options.session);
 
-  if (!latest) return [];
+  if (!prGoals.length) return;
 
-  return Workout.find({ user: userId, sessionId: latest.sessionId });
-};
+  const ops = [];
+  prGoals.forEach((goal) => {
+    const maxWeight = weightsByExercise.get(String(goal.exercise));
+    if (maxWeight === undefined || maxWeight <= goal.current) return;
+    ops.push(buildBulkStatusOp(goal._id, maxWeight, goal.target));
+  });
 
-const recalculateGlobalAutoGoals = async (userId) => {
-  try {
-    const [
-      weeklySessionGoals,
-      monthlySessionGoals,
-      weeklyVolumeGoals,
-      monthlyVolumeGoals,
-      sessionExerciseGoals,
-      sessionVolumeGoals,
-      sessionDurationGoals,
-      streakGoals,
-    ] = await Promise.all([
-      Goal.find({ user: userId, type: "Weekly Workout Sessions" }),
-      Goal.find({ user: userId, type: "Monthly Workout Sessions" }),
-      Goal.find({ user: userId, type: "Weekly Volume Goal" }),
-      Goal.find({ user: userId, type: "Monthly Volume Goal" }),
-      Goal.find({ user: userId, type: "Session Exercise Goal" }),
-      Goal.find({ user: userId, type: "Session Volume Goal" }),
-      Goal.find({ user: userId, type: "Session Duration Goal" }),
-      Goal.find({ user: userId, type: "Current Streak" }),
-    ]);
-
-    if (weeklySessionGoals.length) {
-      const monday = startOfWeek();
-      const weekWorkouts = await Workout.find({
-        user: userId,
-        date: { $gte: monday },
-        sessionId: { $exists: true, $nin: [null, ""] },
-      }).select("sessionId");
-
-      const distinctCount = new Set(weekWorkouts.map((w) => w.sessionId)).size;
-
-      await Promise.all(
-        weeklySessionGoals.map(async (goal) => {
-          goal.current = distinctCount;
-          applyStatus(goal);
-          await goal.save();
-        })
-      );
-    }
-
-    if (monthlySessionGoals.length) {
-      const firstOfMonth = startOfMonth();
-      const monthWorkouts = await Workout.find({
-        user: userId,
-        date: { $gte: firstOfMonth },
-        sessionId: { $exists: true, $nin: [null, ""] },
-      }).select("sessionId");
-
-      const distinctCount = new Set(monthWorkouts.map((w) => w.sessionId)).size;
-
-      await Promise.all(
-        monthlySessionGoals.map(async (goal) => {
-          goal.current = distinctCount;
-          applyStatus(goal);
-          await goal.save();
-        })
-      );
-    }
-
-    // Weekly/Monthly Volume goals count ALL workouts in the window,
-    // regardless of whether they carry a sessionId — legacy workouts
-    // still contributed volume and shouldn't be excluded.
-    if (weeklyVolumeGoals.length) {
-      const monday = startOfWeek();
-      const weekWorkouts = await Workout.find({
-        user: userId,
-        date: { $gte: monday },
-      });
-      const weeklyVolume = weekWorkouts.reduce(
-        (sum, w) => sum + workoutVolume(w),
-        0
-      );
-
-      await Promise.all(
-        weeklyVolumeGoals.map(async (goal) => {
-          goal.current = weeklyVolume;
-          applyStatus(goal);
-          await goal.save();
-        })
-      );
-    }
-
-    if (monthlyVolumeGoals.length) {
-      const firstOfMonth = startOfMonth();
-      const monthWorkouts = await Workout.find({
-        user: userId,
-        date: { $gte: firstOfMonth },
-      });
-      const monthlyVolume = monthWorkouts.reduce(
-        (sum, w) => sum + workoutVolume(w),
-        0
-      );
-
-      await Promise.all(
-        monthlyVolumeGoals.map(async (goal) => {
-          goal.current = monthlyVolume;
-          applyStatus(goal);
-          await goal.save();
-        })
-      );
-    }
-
-    // Session-scoped goals all read from the same "latest session" query,
-    // per the product decision: these measure the MOST RECENTLY FINISHED
-    // session, not a lifetime best (that's a future PR/achievements feature).
-    if (
-      sessionExerciseGoals.length ||
-      sessionVolumeGoals.length ||
-      sessionDurationGoals.length
-    ) {
-      const latestSessionWorkouts = await getLatestSessionWorkouts(userId);
-
-      const exerciseCount = latestSessionWorkouts.length;
-      const sessionVolume = latestSessionWorkouts.reduce(
-        (sum, w) => sum + workoutVolume(w),
-        0
-      );
-      const sessionDuration = latestSessionWorkouts[0]?.sessionDuration ?? 0;
-
-      await Promise.all([
-        ...sessionExerciseGoals.map(async (goal) => {
-          goal.current = exerciseCount;
-          applyStatus(goal);
-          await goal.save();
-        }),
-        ...sessionVolumeGoals.map(async (goal) => {
-          goal.current = sessionVolume;
-          applyStatus(goal);
-          await goal.save();
-        }),
-        ...sessionDurationGoals.map(async (goal) => {
-          goal.current = sessionDuration;
-          applyStatus(goal);
-          await goal.save();
-        }),
-      ]);
-    }
-
-    if (streakGoals.length) {
-      const allWorkouts = await Workout.find({ user: userId }).select(
-        "date createdAt"
-      );
-      const streak = computeCurrentStreak(allWorkouts);
-
-      await Promise.all(
-        streakGoals.map(async (goal) => {
-          goal.current = streak;
-          applyStatus(goal);
-          await goal.save();
-        })
-      );
-    }
-  } catch (error) {
-    console.log(error);
+  if (ops.length) {
+    await Goal.bulkWrite(ops, { session: options.session });
   }
 };
 
+// ONE Workout.find() + ONE Goal.find(); every metric below is derived in
+// memory from those two arrays, then persisted with ONE Goal.bulkWrite().
+//
+// Deliberately does NOT catch its own errors. Callers decide: the
+// fire-and-forget paths (updateGoalsForWorkout, recalculateGoalsForExercise)
+// wrap this in try/catch and log; the transactional session path
+// (updateGoalsForSession) lets errors bubble up so the transaction aborts.
+const recalculateGlobalAutoGoals = async (userId, options = {}) => {
+  const [allWorkouts, autoGoals] = await Promise.all([
+    Workout.find({ user: userId }).select(WORKOUT_FIELDS).session(options.session),
+    Goal.find({ user: userId, type: { $in: GLOBAL_AUTO_GOAL_TYPES } }).session(options.session),
+  ]);
+
+  if (!autoGoals.length) return;
+
+  const goalsByType = autoGoals.reduce((acc, g) => {
+    (acc[g.type] = acc[g.type] || []).push(g);
+    return acc;
+  }, {});
+
+  // Computed once each from the single allWorkouts fetch, then reused
+  // across every goal of the matching type below.
+  const weekWorkouts = metrics.filterSince(allWorkouts, metrics.startOfWeek());
+  const monthWorkouts = metrics.filterSince(allWorkouts, metrics.startOfMonth());
+  const sessionMetrics = metrics.getLatestSessionMetrics(allWorkouts);
+  const streak = metrics.computeCurrentStreak(allWorkouts);
+
+  const valueByType = {
+    [GOAL_TYPES.WEEKLY_WORKOUT_SESSIONS]: metrics.countDistinctSessions(weekWorkouts),
+    [GOAL_TYPES.MONTHLY_WORKOUT_SESSIONS]: metrics.countDistinctSessions(monthWorkouts),
+    [GOAL_TYPES.WEEKLY_VOLUME]: metrics.sumVolume(weekWorkouts),
+    [GOAL_TYPES.MONTHLY_VOLUME]: metrics.sumVolume(monthWorkouts),
+    [GOAL_TYPES.SESSION_EXERCISE]: sessionMetrics.exerciseCount,
+    [GOAL_TYPES.SESSION_VOLUME]: sessionMetrics.volume,
+    [GOAL_TYPES.SESSION_DURATION]: sessionMetrics.duration,
+    [GOAL_TYPES.CURRENT_STREAK]: streak,
+  };
+
+  const ops = [];
+  Object.entries(goalsByType).forEach(([type, goals]) => {
+    const value = valueByType[type];
+    if (value === undefined) return;
+    goals.forEach((goal) => ops.push(buildBulkStatusOp(goal._id, value, goal.target)));
+  });
+
+  if (ops.length) {
+    await Goal.bulkWrite(ops, { session: options.session });
+  }
+};
+
+// Single-workout path — used by createWorkout (legacy single POST) and
+// updateWorkout. Behavior is UNCHANGED: a goal recalculation failure is
+// logged but never fails the workout save.
 const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
   try {
-    if (Array.isArray(workoutSets) && workoutSets.length) {
+    if (Array.isArray(workoutSets) && workoutSets.length && exerciseId) {
       const maxWeight = Math.max(...workoutSets.map((s) => s.weight));
-
-      const prGoals = await Goal.find({
-        user: userId,
-        type: "Strength PR",
-        exercise: exerciseId,
-      });
-
-      await Promise.all(
-        prGoals.map(async (goal) => {
-          if (maxWeight > goal.current) {
-            goal.current = maxWeight;
-            applyStatus(goal);
-            await goal.save();
-          }
-        })
-      );
+      await applyStrengthPrUpdates(userId, new Map([[String(exerciseId), maxWeight]]));
     }
-
     await recalculateGlobalAutoGoals(userId);
   } catch (error) {
     console.log(error);
   }
 };
 
+// Session-batch path — used by createWorkoutSession, always inside a Mongo
+// transaction. Unlike updateGoalsForWorkout, this does NOT swallow errors:
+// a failure here must propagate so the transaction rolls back and no
+// workouts are left partially saved.
+const updateGoalsForSession = async (userId, exercises, options = {}) => {
+  const weightsByExercise = buildWeightsByExercise(exercises);
+  await applyStrengthPrUpdates(userId, weightsByExercise, options);
+  await recalculateGlobalAutoGoals(userId, options);
+};
+
+const getLatestSessionWorkouts = async (userId) => {
+  const workouts = await Workout.find({ user: userId }).select(WORKOUT_FIELDS);
+  return metrics.getLatestSessionWorkouts(workouts);
+};
+
 module.exports = {
   updateGoalsForWorkout,
+  updateGoalsForSession,
   recalculateGlobalAutoGoals,
   getLatestSessionWorkouts,
 };

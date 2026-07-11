@@ -223,19 +223,22 @@ function useWorkoutSession() {
       : null;
 
     try {
-      for (const entry of session.exercises) {
-        const payload = {
+      // Single request for the whole session — replaces the previous
+      // per-exercise POST /workouts loop. The backend creates every
+      // Workout document and recalculates goals exactly once.
+      const payload = {
+        sessionId,
+        sessionDuration: sessionDurationMinutes,
+        exercises: session.exercises.map((entry) => ({
           exercise: entry.exercise._id,
           workoutSets: entry.sets.map((s) => ({
             weight: s.weight,
             reps: s.reps,
           })),
-          sessionId,
-          sessionDuration: sessionDurationMinutes,
-        };
+        })),
+      };
 
-        await api.post("/workouts", payload);
-      }
+      await api.post("/workouts/session", payload);
 
       localStorage.removeItem(STORAGE_KEY);
       setSession(getDefaultSession());

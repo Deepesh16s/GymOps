@@ -1,19 +1,5 @@
 const mongoose = require("mongoose");
-
-// Types the backend auto-calculates from Workout data. Anything not in
-// this list (Cardio Goal, Weight Goal) is MANUAL — the user sets `current`
-// themselves via create/edit, since no backing data source exists for them.
-const AUTO_TYPES = [
-  "Strength PR",
-  "Weekly Workout Sessions",
-  "Monthly Workout Sessions",
-  "Weekly Volume Goal",
-  "Monthly Volume Goal",
-  "Session Exercise Goal",
-  "Session Volume Goal",
-  "Session Duration Goal",
-  "Current Streak",
-];
+const { AUTO_GOAL_TYPES } = require("../constants/goalTypes");
 
 const goalSchema = new mongoose.Schema(
   {
@@ -21,6 +7,7 @@ const goalSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     title: {
@@ -33,6 +20,7 @@ const goalSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
 
     target: {
@@ -86,12 +74,14 @@ const goalSchema = new mongoose.Schema(
   }
 );
 
-goalSchema.pre("save", function () {
-  this.updateType = AUTO_TYPES.includes(this.type)
+goalSchema.pre("save", function (next) {
+  this.updateType = AUTO_GOAL_TYPES.includes(this.type)
     ? "AUTO"
     : "MANUAL";
 
   this.lastUpdated = new Date();
+
+  next();
 });
 
 module.exports = mongoose.model("Goal", goalSchema);
