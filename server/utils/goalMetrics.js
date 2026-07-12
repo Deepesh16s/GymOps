@@ -3,6 +3,12 @@
 // PURE MODULE: no Workout, Goal, mongoose, or controller imports — only
 // receives arrays and returns computed values, so callers fetch once and
 // reuse this everywhere.
+//
+// Phase 9: also reused by dashboardController.js for session-summary
+// aggregates (totalSessions, sessionsLogged, lastSession, average volume
+// of recent sessions, average duration of recent sessions). No
+// dashboard-specific logic lives here — every export stays a generic
+// session/metric computation.
 
 const startOfWeek = (date = new Date()) => {
   const d = new Date(date);
@@ -68,6 +74,9 @@ const countDistinctSessions = (workouts) => groupBySessionId(workouts).size;
 // createdAt — createdAt reflects insertion order, not when the session
 // happened, so grouping by sessionId first and taking the max `date`
 // inside each group is what actually identifies the most recent session.
+//
+// Exported (Phase 9) so callers outside this module (dashboardController)
+// can sort/rank session groups without reimplementing this logic.
 const getSessionTimestamp = (sessionWorkouts) =>
   Math.max(...sessionWorkouts.map(getWorkoutTimestamp));
 
@@ -100,6 +109,56 @@ const getLatestSessionMetrics = (workouts) => {
     volume: sumVolume(sessionWorkouts),
     duration: sessionWorkouts[0]?.sessionDuration ?? 0,
   };
+};
+
+// Average volume across the most recently completed sessions (default 5).
+// Used by the dashboard's Average Volume (Last 5 Sessions) card. Averages
+// over however many sessions exist if fewer than `count` are available.
+// Pure and generic — takes raw workouts, groups internally, no dashboard
+// coupling — so it's reusable anywhere a "recent session average" is
+// needed (e.g. future goal types).
+const getAverageVolumeOfRecentSessions = (workouts, count = 5) => {
+  const sessions = groupBySessionId(workouts);
+  if (sessions.size === 0) return 0;
+
+  const sortedGroups = Array.from(sessions.values()).sort(
+    (a, b) => getSessionTimestamp(b) - getSessionTimestamp(a)
+  );
+
+  const recentGroups = sortedGroups.slice(0, count);
+  const total = recentGroups.reduce(
+    (sum, sessionWorkouts) => sum + sumVolume(sessionWorkouts),
+    0
+  );
+
+  return total / recentGroups.length;
+};
+
+// Average session duration across the most recently completed sessions
+// (default 5). Phase 9 Dashboard Refinement — mirrors
+// getAverageVolumeOfRecentSessions exactly: same grouping, same recency
+// ordering, just averaging sessionDuration instead of volume. Sessions
+// with no recorded duration (legacy documents) contribute 0, matching
+// how zero-volume sessions are already handled above.
+const getAverageSessionDurationOfRecentSessions = (workouts, count = 5) => {
+  const sessions = groupBySessionId(workouts);
+  if (sessions.size === 0) return 0;
+
+  const sortedGroups = Array.from(sessions.values()).sort(
+    (a, b) => getSessionTimestamp(b) - getSessionTimestamp(a)
+  );
+
+  const recentGroups = sortedGroups.slice(0, count);
+
+  const durations = recentGroups.map((sessionWorkouts) => {
+    const withDuration = sessionWorkouts.find(
+      (w) => w.sessionDuration !== undefined && w.sessionDuration !== null
+    );
+    return withDuration ? withDuration.sessionDuration : 0;
+  });
+
+  const total = durations.reduce((sum, d) => sum + d, 0);
+  return total / recentGroups.length;
 };
 
 const computeCurrentStreak = (workouts) => {
@@ -135,7 +194,10 @@ module.exports = {
   filterSince,
   groupBySessionId,
   countDistinctSessions,
+  getSessionTimestamp,
   getLatestSessionWorkouts,
   getLatestSessionMetrics,
+  getAverageVolumeOfRecentSessions,
+  getAverageSessionDurationOfRecentSessions,
   computeCurrentStreak,
 };

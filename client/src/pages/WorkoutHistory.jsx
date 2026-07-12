@@ -5,6 +5,7 @@ import {
   Layers,
   Flame,
   Dumbbell,
+  Activity,
   Trash2,
   Loader2,
 } from "lucide-react";
@@ -16,6 +17,9 @@ import {
   getWorkoutVolume,
   getSetCount,
   formatSetBreakdown,
+  isCardioEntry,
+  getCardioActivityName,
+  formatCardioSummary,
   buildSessionSummaries,
   filterSessionsBySearch,
   filterSessionsByMuscle,
@@ -23,6 +27,7 @@ import {
   filterSessionsByDateRange,
   sortSessions,
   formatSessionDate,
+  formatSessionEntryCountLabel,
   getSessionTypeLabel,
 } from "../utils/workoutUtils";
 
@@ -125,10 +130,10 @@ function WorkoutHistory() {
   // state is updated directly — no refetch, card disappears immediately.
   const handleDeleteSession = async (session) => {
     const label = getSessionTypeLabel(session);
-    const exerciseCount = session.workouts.length;
+    const entryCount = session.workouts.length;
     const confirmed = window.confirm(
-      `Delete this entire ${label}? This will remove all ${exerciseCount} exercise${
-        exerciseCount !== 1 ? "s" : ""
+      `Delete this entire ${label}? This will remove all ${entryCount} entr${
+        entryCount !== 1 ? "ies" : "y"
       } in this session.\n\nThis action cannot be undone.`
     );
     if (!confirmed) return;
@@ -247,11 +252,17 @@ function WorkoutHistory() {
           <div className="history-list">
             {visibleSessions.map((session) => {
               const isExpanded = expandedKeys.has(session.key);
-              const { exerciseCount, setCount, volume, muscles } = session.stats;
+              const { exerciseCount, cardioCount, setCount, volume, muscles } =
+                session.stats;
               const visibleMuscles = muscles.slice(0, MAX_VISIBLE_MUSCLE_CHIPS);
               const hiddenMuscleCount = muscles.length - visibleMuscles.length;
               const hasDuration =
                 session.sessionDuration != null && session.sessionDuration > 0;
+              // A cardio-only session has no meaningful Sets/Volume to
+              // show — those would render as "0 Sets" / "0 kg Volume",
+              // which is the same placeholder problem this phase is
+              // fixing for individual entries.
+              const hasStrengthEntries = exerciseCount > 0;
               const typeLabel = getSessionTypeLabel(session);
               const typeColor = getSessionTypeColor(session.sessionType);
               const isDeletingSession = deletingSessionKey === session.key;
@@ -294,16 +305,20 @@ function WorkoutHistory() {
                       )}
                       <span className="session-stat">
                         <Dumbbell size={13} strokeWidth={1.8} />
-                        {exerciseCount} Exercise{exerciseCount !== 1 ? "s" : ""}
+                        {formatSessionEntryCountLabel({ exerciseCount, cardioCount })}
                       </span>
-                      <span className="session-stat">
-                        <Layers size={13} strokeWidth={1.8} />
-                        {setCount} Set{setCount !== 1 ? "s" : ""}
-                      </span>
-                      <span className="session-stat">
-                        <Flame size={13} strokeWidth={1.8} />
-                        {volume.toLocaleString()} kg Volume
-                      </span>
+                      {hasStrengthEntries && (
+                        <span className="session-stat">
+                          <Layers size={13} strokeWidth={1.8} />
+                          {setCount} Set{setCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {hasStrengthEntries && (
+                        <span className="session-stat">
+                          <Flame size={13} strokeWidth={1.8} />
+                          {volume.toLocaleString()} kg Volume
+                        </span>
+                      )}
                     </div>
 
                     {visibleMuscles.length > 0 && (
@@ -354,25 +369,51 @@ function WorkoutHistory() {
                       <div className="session-exercises">
                         {session.workouts.map((w) => {
                           const isDeleting = deletingId === w._id;
+                          const isCardio = isCardioEntry(w);
+
                           return (
                             <div className="session-exercise" key={w._id}>
                               <div className="session-exercise__main">
                                 <span className="session-exercise__name">
-                                  {w.exercise?.name || "Unknown exercise"}
+                                  {isCardio ? (
+                                    <span
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                      }}
+                                    >
+                                      <Activity size={14} strokeWidth={1.8} />
+                                      {getCardioActivityName(w)}
+                                    </span>
+                                  ) : (
+                                    w.exercise?.name || "Unknown exercise"
+                                  )}
                                 </span>
-                                <span className="history-muscle-tag">
-                                  {w.exercise?.muscleGroup}
-                                </span>
+                                {!isCardio && (
+                                  <span className="history-muscle-tag">
+                                    {w.exercise?.muscleGroup}
+                                  </span>
+                                )}
                               </div>
+
                               <div className="session-exercise__sets">
-                                {formatSetBreakdown(w)}
+                                {isCardio
+                                  ? formatCardioSummary(w)
+                                      .map((m) => m.text)
+                                      .join(", ")
+                                  : formatSetBreakdown(w)}
                               </div>
-                              <div className="session-exercise__meta">
-                                <span>{getSetCount(w)} sets</span>
-                                <span>
-                                  {getWorkoutVolume(w).toLocaleString()} kg volume
-                                </span>
-                              </div>
+
+                              {!isCardio && (
+                                <div className="session-exercise__meta">
+                                  <span>{getSetCount(w)} sets</span>
+                                  <span>
+                                    {getWorkoutVolume(w).toLocaleString()} kg volume
+                                  </span>
+                                </div>
+                              )}
+
                               <button
                                 type="button"
                                 className="history-delete-btn"

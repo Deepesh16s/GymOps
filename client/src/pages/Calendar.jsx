@@ -10,6 +10,7 @@ import {
   Clock,
   Layers,
   Dumbbell,
+  Activity,
   Trash2,
   Loader2,
 } from "lucide-react";
@@ -19,6 +20,10 @@ import {
   getWorkoutVolume,
   getSetCount,
   formatSetBreakdown,
+  isCardioEntry,
+  getCardioActivityName,
+  formatCardioSummary,
+  formatSessionEntryCountLabel,
   getSessionTypeLabel,
 } from "../utils/workoutUtils";
 
@@ -147,10 +152,10 @@ function CalendarPage() {
   // no refetch, card disappears immediately.
   const handleDeleteSession = async (session) => {
     const label = getSessionTypeLabel(session);
-    const exerciseCount = session.workouts.length;
+    const entryCount = session.workouts.length;
     const confirmed = window.confirm(
-      `Delete this entire ${label}? This will remove all ${exerciseCount} exercise${
-        exerciseCount !== 1 ? "s" : ""
+      `Delete this entire ${label}? This will remove all ${entryCount} entr${
+        entryCount !== 1 ? "ies" : "y"
       } in this session.\n\nThis action cannot be undone.`
     );
     if (!confirmed) return;
@@ -309,11 +314,16 @@ function CalendarPage() {
           <div className="calendar-session-list">
             {selectedSessions.map((session) => {
               const isExpanded = expandedKeys.has(session.key);
-              const { exerciseCount, setCount, volume, muscles } = session.stats;
+              const { exerciseCount, cardioCount, setCount, volume, muscles } =
+                session.stats;
               const visibleMuscles = muscles.slice(0, MAX_VISIBLE_MUSCLE_CHIPS);
               const hiddenMuscleCount = muscles.length - visibleMuscles.length;
               const hasDuration =
                 session.sessionDuration != null && session.sessionDuration > 0;
+              // Same rule as WorkoutHistory.jsx: a cardio-only session has
+              // no meaningful Sets/Volume, so those stats are hidden
+              // rather than showing "0 Sets" / "0 kg".
+              const hasStrengthEntries = exerciseCount > 0;
               const typeLabel = getSessionTypeLabel(session);
               const typeColor = getSessionTypeColor(session.sessionType);
               const isDeletingSession = deletingSessionKey === session.key;
@@ -351,16 +361,20 @@ function CalendarPage() {
                       )}
                       <span className="calendar-session-stat">
                         <Dumbbell size={12} strokeWidth={1.8} />
-                        {exerciseCount} Exercise{exerciseCount !== 1 ? "s" : ""}
+                        {formatSessionEntryCountLabel({ exerciseCount, cardioCount })}
                       </span>
-                      <span className="calendar-session-stat">
-                        <Layers size={12} strokeWidth={1.8} />
-                        {setCount} Set{setCount !== 1 ? "s" : ""}
-                      </span>
-                      <span className="calendar-session-stat">
-                        <Flame size={12} strokeWidth={1.8} />
-                        {volume.toLocaleString()} kg
-                      </span>
+                      {hasStrengthEntries && (
+                        <span className="calendar-session-stat">
+                          <Layers size={12} strokeWidth={1.8} />
+                          {setCount} Set{setCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {hasStrengthEntries && (
+                        <span className="calendar-session-stat">
+                          <Flame size={12} strokeWidth={1.8} />
+                          {volume.toLocaleString()} kg
+                        </span>
+                      )}
                     </div>
 
                     {visibleMuscles.length > 0 && (
@@ -409,24 +423,47 @@ function CalendarPage() {
                       </div>
 
                       <div className="calendar-session-exercises">
-                        {session.workouts.map((w) => (
-                          <div className="calendar-session-exercise" key={w._id}>
-                            <div className="calendar-session-exercise__main">
-                              <span className="calendar-session-exercise__name">
-                                {w.exercise?.name || "Unknown exercise"}
-                              </span>
+                        {session.workouts.map((w) => {
+                          const isCardio = isCardioEntry(w);
+
+                          return (
+                            <div className="calendar-session-exercise" key={w._id}>
+                              <div className="calendar-session-exercise__main">
+                                <span className="calendar-session-exercise__name">
+                                  {isCardio ? (
+                                    <span
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                      }}
+                                    >
+                                      <Activity size={14} strokeWidth={1.8} />
+                                      {getCardioActivityName(w)}
+                                    </span>
+                                  ) : (
+                                    w.exercise?.name || "Unknown exercise"
+                                  )}
+                                </span>
+                              </div>
+                              <div className="calendar-session-exercise__sets">
+                                {isCardio
+                                  ? formatCardioSummary(w)
+                                      .map((m) => m.text)
+                                      .join(", ")
+                                  : formatSetBreakdown(w)}
+                              </div>
+                              {!isCardio && (
+                                <div className="calendar-session-exercise__meta">
+                                  <span>{getSetCount(w)} sets</span>
+                                  <span>
+                                    {getWorkoutVolume(w).toLocaleString()} kg
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                            <div className="calendar-session-exercise__sets">
-                              {formatSetBreakdown(w)}
-                            </div>
-                            <div className="calendar-session-exercise__meta">
-                              <span>{getSetCount(w)} sets</span>
-                              <span>
-                                {getWorkoutVolume(w).toLocaleString()} kg
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

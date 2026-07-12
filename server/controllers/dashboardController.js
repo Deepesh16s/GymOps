@@ -1,9 +1,26 @@
 const Workout = require("../models/workout");
+const {
+  groupBySessionId,
+  countDistinctSessions,
+  getSessionTimestamp,
+  getLatestSessionWorkouts,
+  getAverageVolumeOfRecentSessions,
+  computeCurrentStreak,
+  filterSince,
+  sumVolume,
+} = require("../utils/goalMetrics");
 
+// Defensive fix (Phase 8A): cardio entries have no workoutSets, so this
+// would throw without the guard. Mirrors the same (w.workoutSets || [])
+// pattern already used throughout goalMetrics.js.
 const workoutVolume = (w) =>
-  w.workoutSets.reduce((sum, s) => sum + s.reps * s.weight, 0);
+  (w.workoutSets || []).reduce((sum, s) => sum + s.reps * s.weight, 0);
 
-const totalSetsCount = (w) => w.workoutSets.length;
+// Phase 9 audit fix: guarded like workoutVolume above. Callers already
+// filter out cardio entries via `if (!w.exercise) return;` before this
+// runs, but the guard belongs on the helper itself rather than relying
+// on every caller to remember to filter first.
+const totalSetsCount = (w) => (w.workoutSets || []).length;
 
 const RANGE_DAYS = {
   week: 7,
@@ -17,6 +34,55 @@ const buildDateFilter = (range) => {
   since.setDate(since.getDate() - RANGE_DAYS[range]);
   since.setHours(0, 0, 0, 0);
   return since;
+};
+
+const daysAgo = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+// Phase 9: builds the presentation-ready Last Session payload from the
+// raw (populated) Workout documents belonging to one session. Kept
+// local/unexported — this is dashboard-specific shaping, not a generic
+// metric, so it doesn't belong in goalMetrics.js. The frontend should not
+// need to recompute anything from this shape, only render it.
+const buildLastSessionPayload = (sessionWorkouts) => {
+  if (!sessionWorkouts || sessionWorkouts.length === 0) return null;
+
+  const first = sessionWorkouts[0];
+  const exercises = [];
+  const cardioActivities = [];
+  const muscleGroups = new Set();
+
+  sessionWorkouts.forEach((w) => {
+    if (w.entryType === "cardio") {
+      cardioActivities.push({
+        activityType: w.cardio?.activityType ?? null,
+        data: w.cardio?.data ?? {},
+      });
+    } else if (w.exercise) {
+      exercises.push({
+        name: w.exercise.name,
+        muscleGroup: w.exercise.muscleGroup,
+      });
+      if (w.exercise.muscleGroup) muscleGroups.add(w.exercise.muscleGroup);
+    }
+  });
+
+  return {
+    sessionType: first.sessionType || null,
+    customSessionType: first.customSessionType || null,
+    date: first.date,
+    sessionDuration: first.sessionDuration ?? null,
+    volume: sumVolume(sessionWorkouts),
+    exerciseCount: exercises.length,
+    cardioCount: cardioActivities.length,
+    exercises,
+    cardioActivities,
+    muscleGroups: Array.from(muscleGroups),
+  };
 };
 
 exports.getTotalWorkouts = async (req, res) => {
@@ -219,7 +285,10 @@ exports.getPersonalRecords = async (req, res) => {
       if (!w.exercise) return;
       const name = w.exercise.name;
 
-      const heaviestSet = w.workoutSets.reduce(
+      // Phase 9 audit fix: guarded like workoutVolume above, for the same
+      // reason — this is safe today only because of the `!w.exercise`
+      // skip above; the guard now holds regardless of caller order.
+      const heaviestSet = (w.workoutSets || []).reduce(
         (max, s) => (s.weight > max ? s.weight : max),
         0
       );
@@ -234,33 +303,14 @@ exports.getPersonalRecords = async (req, res) => {
   }
 };
 
+// Phase 9 audit fix: was a second, duplicate streak implementation.
+// Reuses goalMetrics.computeCurrentStreak — same response contract
+// ({ currentStreak }), single source of truth for streak logic now.
 exports.getCurrentStreak = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id }).select("date");
-
-    if (workouts.length === 0) {
-      return res.status(200).json({ currentStreak: 0 });
-    }
-
-    const dateStrings = new Set(
-      workouts.map((w) => {
-        const d = new Date(w.date);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      })
-    );
-
-    const cursor = new Date();
-    cursor.setHours(0, 0, 0, 0);
-    let streak = 0;
-
-    while (true) {
-      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-      if (!dateStrings.has(key)) break;
-      streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    res.status(200).json({ currentStreak: streak });
+    const currentStreak = computeCurrentStreak(workouts);
+    res.status(200).json({ currentStreak });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -353,6 +403,74 @@ exports.getCalendarWorkouts = async (req, res) => {
       .sort({ date: -1 });
 
     res.status(200).json(workouts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* Phase 9 — session-centric dashboard endpoints                       */
+/* ------------------------------------------------------------------ */
+
+exports.getSessionSummary = async (req, res) => {
+  try {
+    const workouts = await Workout.find({ user: req.user._id }).populate(
+      "exercise"
+    );
+
+    const totalSessions = countDistinctSessions(workouts);
+
+    const sessionsLast7Days = countDistinctSessions(
+      filterSince(workouts, daysAgo(7))
+    );
+    const sessionsLast30Days = countDistinctSessions(
+      filterSince(workouts, daysAgo(30))
+    );
+
+    const lastSessionWorkouts = getLatestSessionWorkouts(workouts);
+    const lastSession = buildLastSessionPayload(lastSessionWorkouts);
+
+    const averageVolumeRecent = getAverageVolumeOfRecentSessions(
+      workouts,
+      5
+    );
+
+    res.status(200).json({
+      totalSessions,
+      sessionsLast7Days,
+      sessionsLast30Days,
+      lastSession,
+      lastSessionType: lastSession?.sessionType ?? null,
+      averageVolumeRecent,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.getRecentSessions = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 6;
+
+    const workouts = await Workout.find({ user: req.user._id })
+      .populate("exercise")
+      .sort({ createdAt: 1 });
+
+    const sessions = groupBySessionId(workouts);
+
+    const topSessionIds = Array.from(sessions.entries())
+      .sort((a, b) => getSessionTimestamp(b[1]) - getSessionTimestamp(a[1]))
+      .slice(0, limit)
+      .map(([sessionId]) => sessionId);
+
+    const idSet = new Set(topSessionIds);
+    const limitedWorkouts = workouts.filter(
+      (w) => w.sessionId && idSet.has(w.sessionId)
+    );
+
+    res.status(200).json(limitedWorkouts);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });

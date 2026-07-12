@@ -1,4 +1,5 @@
 import { OTHER_SESSION_TYPE } from "../constants/sessionTypes";
+import { CARDIO_METRICS } from "../constants/cardioMetadata";
 import {
   DATE_RANGE_ALL,
   DATE_RANGE_TODAY,
@@ -31,6 +32,77 @@ export function formatSetBreakdown(workout) {
   return (workout.workoutSets || [])
     .map((s) => `${s.weight}kg×${s.reps}`)
     .join(", ");
+}
+
+/* ------------------------------------------------------------------ */
+/* Cardio rendering helpers (Phase 8A.1)                                */
+/*                                                                      */
+/* Single source of truth for turning a cardio Workout document into    */
+/* display strings. Every page (Workout History, Calendar, Dashboard)   */
+/* consumes these instead of re-deriving cardio display logic itself.   */
+/* Entirely metadata-driven via CARDIO_METRICS — no hardcoded labels,    */
+/* units, or per-activity branching here.                               */
+/* ------------------------------------------------------------------ */
+
+export function isCardioEntry(workout) {
+  return workout?.entryType === "cardio";
+}
+
+export function getCardioActivityName(workout) {
+  return workout?.cardio?.activityType || "Cardio";
+}
+
+// Returns every metric actually present on workout.cardio.data, in
+// CARDIO_METRICS' declared order, as {key, label, unit, value, text}.
+// Only present metrics are included — never a placeholder for a missing
+// one. This is the single list every page's cardio rendering (Workout
+// History rows, Calendar rows, Dashboard's meta line) is built from.
+export function formatCardioSummary(workout) {
+  const data = workout?.cardio?.data || {};
+
+  return Object.keys(CARDIO_METRICS)
+    .filter(
+      (key) => data[key] !== undefined && data[key] !== null && data[key] !== ""
+    )
+    .map((key) => {
+      const metric = CARDIO_METRICS[key];
+      const value = data[key];
+      return {
+        key,
+        label: metric?.label || key,
+        unit: metric?.unit || "",
+        value,
+        text: `${value}${metric?.unit ? ` ${metric.unit}` : ""}`,
+      };
+    });
+}
+
+// Priority order for picking the single most relevant metric where only
+// one fits (Dashboard's Recent Workouts row). Distance-based metrics are
+// most identifying for cardio, falling back through duration/calories
+// and the rest. Returns null only when no metrics are present at all.
+const CARDIO_METRIC_PRIORITY = [
+  "distance",
+  "duration",
+  "calories",
+  "speed",
+  "pace",
+  "heartRate",
+  "incline",
+  "cadence",
+  "resistance",
+];
+
+export function getPrimaryCardioMetric(workout) {
+  const summary = formatCardioSummary(workout);
+  if (!summary.length) return null;
+
+  for (const key of CARDIO_METRIC_PRIORITY) {
+    const found = summary.find((m) => m.key === key);
+    if (found) return found.text;
+  }
+
+  return summary[0].text;
 }
 
 function matchesSearch(workout, term) {
@@ -128,19 +200,34 @@ export function groupWorkoutsIntoSessions(workouts) {
   return keyOrder.map((key) => sessionMap.get(key));
 }
 
+// Phase 8A.1: exerciseCount/cardioCount are now split so callers can
+// distinguish "how many strength exercises" from "how many cardio
+// entries" — needed for formatSessionEntryCountLabel below and for
+// hiding Sets/Volume stats on cardio-only sessions. setCount/volume/
+// muscles keep their prior meaning (strength-derived; cardio entries
+// have no workoutSets or exercise.muscleGroup to contribute).
 export function getSessionStats(session) {
   let setCount = 0;
   let volume = 0;
+  let exerciseCount = 0;
+  let cardioCount = 0;
   const muscles = new Set();
 
   session.workouts.forEach((w) => {
+    if (isCardioEntry(w)) {
+      cardioCount += 1;
+      return;
+    }
+
+    exerciseCount += 1;
     setCount += getSetCount(w);
     volume += getWorkoutVolume(w);
     if (w.exercise?.muscleGroup) muscles.add(w.exercise.muscleGroup);
   });
 
   return {
-    exerciseCount: session.workouts.length,
+    exerciseCount,
+    cardioCount,
     setCount,
     volume,
     muscles: Array.from(muscles),
@@ -154,6 +241,30 @@ export function buildSessionSummaries(workouts) {
     ...session,
     stats: getSessionStats(session),
   }));
+}
+
+// Turns {exerciseCount, cardioCount} into the label every session card
+// shows for entry counts, e.g. "2 Exercises • 1 Cardio", "2 Cardio", or
+// "3 Exercises" for a strength-only session (unchanged wording from
+// before this phase). The single place this string is built — Workout
+// History and Calendar both consume it rather than each writing their
+// own conditional.
+export function formatSessionEntryCountLabel({ exerciseCount, cardioCount }) {
+  const parts = [];
+
+  if (exerciseCount > 0) {
+    parts.push(`${exerciseCount} Exercise${exerciseCount !== 1 ? "s" : ""}`);
+  }
+
+  if (cardioCount > 0) {
+    parts.push(`${cardioCount} Cardio`);
+  }
+
+  if (parts.length === 0) {
+    return "0 Exercises";
+  }
+
+  return parts.join(" • ");
 }
 
 export function filterSessionsBySearch(sessions, term) {

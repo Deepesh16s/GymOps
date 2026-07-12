@@ -12,7 +12,7 @@ const generateId = () =>
 const getDefaultSession = () => ({
   active: false,
   startTime: null,
-  exercises: [],
+  entries: [],
   sessionType: null,
   customSessionType: null,
 });
@@ -23,10 +23,25 @@ const loadSession = () => {
     if (!raw) return getDefaultSession();
 
     const parsed = JSON.parse(raw);
+
+    // Backward-compatible migration (Phase 8A): sessions saved before the
+    // exercises -> entries rename stored the array under `exercises`.
+    // If `entries` is already present, use it as-is. Otherwise, if the
+    // legacy `exercises` key exists, migrate it into `entries`. No other
+    // migration logic is applied.
+    let entries;
+    if (Array.isArray(parsed.entries)) {
+      entries = parsed.entries;
+    } else if (Array.isArray(parsed.exercises)) {
+      entries = parsed.exercises;
+    } else {
+      entries = [];
+    }
+
     return {
       active: !!parsed.active,
       startTime: parsed.startTime ?? null,
-      exercises: Array.isArray(parsed.exercises) ? parsed.exercises : [],
+      entries,
       sessionType: parsed.sessionType ?? null,
       customSessionType: parsed.customSessionType ?? null,
     };
@@ -86,7 +101,7 @@ function useWorkoutSession() {
     setSession({
       active: true,
       startTime: Date.now(),
-      exercises: [],
+      entries: [],
       sessionType: sessionType ?? null,
       customSessionType: customSessionType ?? null,
     });
@@ -97,6 +112,7 @@ function useWorkoutSession() {
   const addExercise = useCallback(({ exercise, firstSet }) => {
     const entry = {
       id: generateId(),
+      entryType: "strength",
       exercise: {
         _id: exercise._id,
         name: exercise.name,
@@ -113,14 +129,30 @@ function useWorkoutSession() {
 
     setSession((prev) => ({
       ...prev,
-      exercises: [...prev.exercises, entry],
+      entries: [...prev.entries, entry],
+    }));
+  }, []);
+
+  // Adds a cardio entry to the active session. `cardio` is the
+  // {activityType, data} shape returned by AddCardioModal, already
+  // shaped to match what the backend expects for a cardio entry.
+  const addCardioEntry = useCallback(({ cardio }) => {
+    const entry = {
+      id: generateId(),
+      entryType: "cardio",
+      cardio,
+    };
+
+    setSession((prev) => ({
+      ...prev,
+      entries: [...prev.entries, entry],
     }));
   }, []);
 
   const addSet = useCallback((exerciseId, set) => {
     setSession((prev) => ({
       ...prev,
-      exercises: prev.exercises.map((entry) =>
+      entries: prev.entries.map((entry) =>
         entry.id === exerciseId
           ? {
               ...entry,
@@ -140,26 +172,26 @@ function useWorkoutSession() {
 
   const deleteSet = useCallback((exerciseId, setId) => {
     setSession((prev) => {
-      const exercise = prev.exercises.find((entry) => entry.id === exerciseId);
+      const exercise = prev.entries.find((entry) => entry.id === exerciseId);
       if (!exercise) return prev;
 
       const remainingSets = exercise.sets.filter((s) => s.id !== setId);
 
       if (remainingSets.length === 0) {
-        const remainingExercises = prev.exercises.filter(
+        const remainingEntries = prev.entries.filter(
           (entry) => entry.id !== exerciseId
         );
 
-        if (remainingExercises.length === 0) {
+        if (remainingEntries.length === 0) {
           return getDefaultSession();
         }
 
-        return { ...prev, exercises: remainingExercises };
+        return { ...prev, entries: remainingEntries };
       }
 
       return {
         ...prev,
-        exercises: prev.exercises.map((entry) =>
+        entries: prev.entries.map((entry) =>
           entry.id === exerciseId ? { ...entry, sets: remainingSets } : entry
         ),
       };
@@ -169,7 +201,7 @@ function useWorkoutSession() {
   const updateSet = useCallback((exerciseId, setId, updatedSet) => {
     setSession((prev) => ({
       ...prev,
-      exercises: prev.exercises.map((entry) =>
+      entries: prev.entries.map((entry) =>
         entry.id === exerciseId
           ? {
               ...entry,
@@ -183,10 +215,9 @@ function useWorkoutSession() {
       ),
     }));
   }, []);
-
-  const removeExercise = useCallback((id) => {
+  const removeEntry = useCallback((id) => {
     setSession((prev) => {
-      const remaining = prev.exercises.filter((entry) => entry.id !== id);
+      const remaining = prev.entries.filter((entry) => entry.id !== id);
 
       if (remaining.length === 0) {
         return getDefaultSession();
@@ -194,7 +225,7 @@ function useWorkoutSession() {
 
       return {
         ...prev,
-        exercises: remaining,
+        entries: remaining,
       };
     });
   }, []);
@@ -208,15 +239,20 @@ function useWorkoutSession() {
 
   const finishWorkout = useCallback(async () => {
     if (isSavingRef.current) return false;
-    if (!session.active || session.exercises.length === 0) return false;
+    if (!session.active || session.entries.length === 0) return false;
 
     isSavingRef.current = true;
     setIsSaving(true);
     setSaveError("");
     clearSaveSuccess();
 
-    const exerciseCount = session.exercises.length;
-    const totalSetCount = session.exercises.reduce(
+    const strengthEntries = session.entries.filter(
+      (entry) => entry.entryType !== "cardio"
+    );
+    const cardioEntries = session.entries.filter(
+      (entry) => entry.entryType === "cardio"
+    );
+    const totalSetCount = strengthEntries.reduce(
       (sum, entry) => sum + entry.sets.length,
       0
     );
@@ -233,21 +269,33 @@ function useWorkoutSession() {
       : null;
 
     try {
-      // Single request for the whole session — replaces the previous
-      // per-exercise POST /workouts loop. The backend creates every
-      // Workout document and recalculates goals exactly once.
+      // API-boundary translation (Phase 8A): the backend contract for
+      // POST /workouts/session is UNCHANGED — it still expects the
+      // payload key `exercises`. Only the in-memory/localStorage
+      // session state is called `entries` now. Each entry is mapped
+      // back into the exact shape the existing endpoint expects,
+      // branching on entryType so cardio entries send
+      // {entryType, cardio} instead of {exercise, workoutSets}.
       const payload = {
         sessionId,
         sessionDuration: sessionDurationMinutes,
         sessionType: session.sessionType,
         customSessionType: session.customSessionType,
-        exercises: session.exercises.map((entry) => ({
-          exercise: entry.exercise._id,
-          workoutSets: entry.sets.map((s) => ({
-            weight: s.weight,
-            reps: s.reps,
-          })),
-        })),
+        exercises: session.entries.map((entry) =>
+          entry.entryType === "cardio"
+            ? {
+                entryType: "cardio",
+                cardio: entry.cardio,
+              }
+            : {
+                entryType: "strength",
+                exercise: entry.exercise._id,
+                workoutSets: entry.sets.map((s) => ({
+                  weight: s.weight,
+                  reps: s.reps,
+                })),
+              }
+        ),
       };
 
       await api.post("/workouts/session", payload);
@@ -255,9 +303,30 @@ function useWorkoutSession() {
       localStorage.removeItem(STORAGE_KEY);
       setSession(getDefaultSession());
 
-      const message = `Workout saved! ${exerciseCount} ${
-        exerciseCount === 1 ? "exercise" : "exercises"
-      }, ${totalSetCount} ${totalSetCount === 1 ? "set" : "sets"}${
+      // Message generalizes to describe whichever mix of strength/cardio
+      // entries was actually saved, rather than assuming strength-only.
+      const messageParts = [];
+      if (strengthEntries.length) {
+        messageParts.push(
+          `${strengthEntries.length} ${
+            strengthEntries.length === 1 ? "exercise" : "exercises"
+          }`
+        );
+      }
+      if (cardioEntries.length) {
+        messageParts.push(
+          `${cardioEntries.length} ${
+            cardioEntries.length === 1 ? "cardio entry" : "cardio entries"
+          }`
+        );
+      }
+      if (totalSetCount > 0) {
+        messageParts.push(
+          `${totalSetCount} ${totalSetCount === 1 ? "set" : "sets"}`
+        );
+      }
+
+      const message = `Workout saved! ${messageParts.join(", ")}${
         durationLabel ? `, ${durationLabel}` : ""
       } added to your history.`;
       setSaveSuccess(message);
@@ -282,7 +351,7 @@ function useWorkoutSession() {
   return {
     active: session.active,
     startTime: session.startTime,
-    exercises: session.exercises,
+    entries: session.entries,
     sessionType: session.sessionType,
     customSessionType: session.customSessionType,
     isSaving,
@@ -291,10 +360,11 @@ function useWorkoutSession() {
     clearSaveSuccess,
     startSession,
     addExercise,
+    addCardioEntry,
     addSet,
     deleteSet,
     updateSet,
-    removeExercise,
+    removeEntry,
     discardSession,
     finishWorkout,
   };

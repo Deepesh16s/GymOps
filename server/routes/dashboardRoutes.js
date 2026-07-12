@@ -18,6 +18,8 @@ const {
   getTopMuscle,
   getTopExercise,
   getCalendarWorkouts,
+  getSessionSummary,
+  getRecentSessions,
 } = require("../controllers/dashboardController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -41,5 +43,10 @@ router.get("/weekly-workouts", protect, getWeeklyWorkouts);
 router.get("/top-muscle", protect, getTopMuscle);
 router.get("/top-exercise", protect, getTopExercise);
 router.get("/calendar-workouts", protect, getCalendarWorkouts);
+
+// Phase 9 — session-centric dashboard endpoints (additive, existing
+// routes above are unchanged).
+router.get("/session-summary", protect, getSessionSummary);
+router.get("/recent-sessions", protect, getRecentSessions);
 
 module.exports = router;

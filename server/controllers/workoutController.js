@@ -11,6 +11,7 @@ const {
   validateSessionMeta,
   validateSessionType,
   normalizeCustomSessionType,
+  validateCardioEntry,
 } = require("../utils/validateWorkoutPayload");
 
 exports.createWorkout = async (req, res) => {
@@ -63,7 +64,24 @@ exports.createWorkoutSession = async (req, res) => {
       throw err;
     }
 
-    exercises.forEach((entry, i) => {
+    // Phase 8A: each entry in `exercises` (the API field name is kept
+    // unchanged for backward compatibility — see finishWorkout in
+    // useWorkoutSession.js) may be a strength entry (unchanged shape) or
+    // a cardio entry, distinguished by `entryType`. Any entry without an
+    // explicit entryType is treated as "strength", so pre-Phase-8A
+    // clients continue to work unmodified.
+    const cleanEntries = exercises.map((entry, i) => {
+      const entryType =
+        entry && entry.entryType === "cardio" ? "cardio" : "strength";
+
+      if (entryType === "cardio") {
+        const { activityType, data } = validateCardioEntry(entry.cardio, i);
+        return {
+          entryType: "cardio",
+          cardio: { activityType, data },
+        };
+      }
+
       if (!entry || !entry.exercise) {
         const err = new Error(`Exercise ${i + 1} is missing an exercise id`);
         err.status = 400;
@@ -71,15 +89,16 @@ exports.createWorkoutSession = async (req, res) => {
       }
 
       validateWorkoutSets(entry.workoutSets);
-    });
 
-    const cleanExercises = exercises.map((entry) => ({
-      exercise: entry.exercise,
-      workoutSets: entry.workoutSets.map((s) => ({
-        weight: Number(s.weight),
-        reps: Number(s.reps),
-      })),
-    }));
+      return {
+        entryType: "strength",
+        exercise: entry.exercise,
+        workoutSets: entry.workoutSets.map((s) => ({
+          weight: Number(s.weight),
+          reps: Number(s.reps),
+        })),
+      };
+    });
 
     const trimmedSessionId = sessionId.trim();
     const numericSessionDuration = Number(sessionDuration);
@@ -88,10 +107,12 @@ exports.createWorkoutSession = async (req, res) => {
       customSessionType
     );
 
-    const docs = cleanExercises.map((entry) => ({
+    const docs = cleanEntries.map((entry) => ({
       user: req.user._id,
-      exercise: entry.exercise,
-      workoutSets: entry.workoutSets,
+      entryType: entry.entryType,
+      ...(entry.entryType === "cardio"
+        ? { cardio: entry.cardio }
+        : { exercise: entry.exercise, workoutSets: entry.workoutSets }),
       sessionId: trimmedSessionId,
       sessionDuration: numericSessionDuration,
       sessionType,
@@ -102,10 +123,23 @@ exports.createWorkoutSession = async (req, res) => {
       ordered: true,
     });
 
+    // Goal recalculation is strength-specific (Strength PR and volume/
+    // session metrics derive from workoutSets), but that's knowledge that
+    // belongs to the goal layer, not this controller. Cardio entries here
+    // simply have no `exercise`/`workoutSets` fields — and
+    // updateGoals.js's buildWeightsByExercise already skips any entry
+    // without a real workoutSets array. So every entry is passed through
+    // unfiltered; the goal layer's existing guard is what excludes
+    // cardio, not an entryType check duplicated here.
+    const entriesForGoals = cleanEntries.map((entry) => ({
+      exercise: entry.exercise,
+      workoutSets: entry.workoutSets,
+    }));
+
     let goalRecalculationFailed = false;
 
     try {
-      await updateGoalsForSession(req.user._id, cleanExercises);
+      await updateGoalsForSession(req.user._id, entriesForGoals);
     } catch (goalError) {
       console.error("Goal recalculation failed:", goalError);
       goalRecalculationFailed = true;
@@ -173,8 +207,12 @@ exports.searchWorkouts = async (req, res) => {
       user: req.user._id,
     }).populate("exercise");
 
+    // Defensive fix (Phase 8A): cardio entries have no `exercise`, so
+    // `workout.exercise.name` would throw. Guard mirrors the pattern
+    // already used elsewhere in this codebase (e.g. dashboardController's
+    // `if (!w.exercise) return;`).
     const filtered = workouts.filter((workout) =>
-      workout.exercise.name.toLowerCase().includes(exercise.toLowerCase())
+      workout.exercise?.name?.toLowerCase().includes(exercise.toLowerCase())
     );
 
     res.status(200).json(filtered);
@@ -195,8 +233,10 @@ exports.filterByMuscle = async (req, res) => {
       user: req.user._id,
     }).populate("exercise");
 
+    // Defensive fix (Phase 8A): cardio entries have no `exercise`, so
+    // `workout.exercise.muscleGroup` would throw without this guard.
     const filtered = workouts.filter(
-      (workout) => workout.exercise.muscleGroup === muscle
+      (workout) => workout.exercise && workout.exercise.muscleGroup === muscle
     );
 
     res.status(200).json(filtered);

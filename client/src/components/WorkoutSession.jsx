@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Dumbbell, Plus, X, CheckCircle2, Loader2 } from "lucide-react";
+import { Dumbbell, Plus, Activity, X, CheckCircle2, Loader2 } from "lucide-react";
 import ExerciseSessionCard from "./ExerciseSessionCard";
+import CardioEntryCard from "./CardioEntryCard";
 import "./WorkoutSession.css";
 
 const formatDuration = (ms) => {
@@ -17,11 +18,12 @@ const formatMinutesLabel = (ms) => {
 
 function WorkoutSession({
   startTime,
-  exerciseCount,
-  exercises,
+  entryCount,
+  entries,
   onAddExercise,
+  onAddCardio,
   onDiscard,
-  onRemoveExercise,
+  onRemoveEntry,
   onAddSet,
   onDeleteSet,
   onUpdateSet,
@@ -36,7 +38,8 @@ function WorkoutSession({
   // adding a new set or editing an existing one, in any exercise) can be
   // open across the whole session at once. { exerciseId, setId } where
   // setId === null means "adding a new set" for that exercise; null
-  // overall means nothing is being edited.
+  // overall means nothing is being edited. Only ever set for strength
+  // entries — cardio entries have no sets to edit.
   const [editingTarget, setEditingTarget] = useState(null);
 
   useEffect(() => {
@@ -45,9 +48,16 @@ function WorkoutSession({
   }, []);
 
   const elapsed = startTime ? now - startTime : 0;
-  const hasExercises = exercises.length > 0;
+  const hasEntries = entries.length > 0;
   const isEditingActive = editingTarget !== null;
-  const totalSets = exercises.reduce((sum, entry) => sum + entry.sets.length, 0);
+
+  // Total sets only counts strength entries — cardio entries have no
+  // `sets` array.
+  const totalSets = entries.reduce(
+    (sum, entry) =>
+      sum + (entry.entryType === "cardio" ? 0 : entry.sets.length),
+    0
+  );
 
   const handleStartAddSet = (exerciseId) => {
     if (isSaving || isEditingActive) return;
@@ -80,8 +90,9 @@ function WorkoutSession({
   const handleDeleteSet = (exerciseId, setId) => {
     if (isSaving || isEditingActive) return;
 
-    const exercise = exercises.find((entry) => entry.id === exerciseId);
-    const isLastSet = exercise && exercise.sets.length === 1;
+    const entry = entries.find((e) => e.id === exerciseId);
+    const isLastSet =
+      entry && entry.entryType !== "cardio" && entry.sets.length === 1;
 
     if (isLastSet) {
       const confirmed = window.confirm(
@@ -101,12 +112,28 @@ function WorkoutSession({
     );
     if (!confirmed) return;
 
-    onRemoveExercise(exerciseId);
+    onRemoveEntry(exerciseId);
+  };
+
+  const handleDeleteCardioEntry = (entryId) => {
+    if (isSaving || isEditingActive) return;
+
+    const confirmed = window.confirm(
+      "Remove this cardio entry from the current workout?"
+    );
+    if (!confirmed) return;
+
+    onRemoveEntry(entryId);
   };
 
   const handleAddExerciseClick = () => {
     if (isSaving || isEditingActive) return;
     onAddExercise();
+  };
+
+  const handleAddCardioClick = () => {
+    if (isSaving || isEditingActive) return;
+    onAddCardio();
   };
 
   const handleDiscardClick = () => {
@@ -115,7 +142,7 @@ function WorkoutSession({
   };
 
   const handleFinishClick = () => {
-    if (isSaving || !hasExercises || isEditingActive) return;
+    if (isSaving || !hasEntries || isEditingActive) return;
     setShowConfirm(true);
   };
 
@@ -143,7 +170,7 @@ function WorkoutSession({
               <span>{formatDuration(elapsed)}</span>
               <span className="session-card__dot" />
               <span>
-                {exerciseCount} {exerciseCount === 1 ? "exercise" : "exercises"}
+                {entryCount} {entryCount === 1 ? "entry" : "entries"}
               </span>
             </div>
           </div>
@@ -161,9 +188,18 @@ function WorkoutSession({
           </button>
           <button
             type="button"
+            className="cta-btn"
+            onClick={handleAddCardioClick}
+            disabled={isSaving || isEditingActive}
+          >
+            <Activity size={16} strokeWidth={2.5} />
+            Add Cardio
+          </button>
+          <button
+            type="button"
             className="session-finish-btn"
             onClick={handleFinishClick}
-            disabled={isSaving || !hasExercises || isEditingActive}
+            disabled={isSaving || !hasEntries || isEditingActive}
           >
             {isSaving ? (
               <>
@@ -195,23 +231,32 @@ function WorkoutSession({
         </p>
       )}
 
-      {hasExercises && (
+      {hasEntries && (
         <div className="session-card__exercises">
-          {exercises.map((entry) => (
-            <ExerciseSessionCard
-              key={entry.id}
-              entry={entry}
-              disabled={isSaving}
-              editingTarget={editingTarget}
-              onStartAddSet={handleStartAddSet}
-              onStartEditSet={handleStartEditSet}
-              onCancelEdit={handleCancelEdit}
-              onSaveNewSet={handleSaveNewSet}
-              onSaveEditSet={handleSaveEditSet}
-              onDeleteSet={handleDeleteSet}
-              onDelete={handleDeleteExercise}
-            />
-          ))}
+          {entries.map((entry) =>
+            entry.entryType === "cardio" ? (
+              <CardioEntryCard
+                key={entry.id}
+                entry={entry}
+                disabled={isSaving}
+                onDelete={handleDeleteCardioEntry}
+              />
+            ) : (
+              <ExerciseSessionCard
+                key={entry.id}
+                entry={entry}
+                disabled={isSaving}
+                editingTarget={editingTarget}
+                onStartAddSet={handleStartAddSet}
+                onStartEditSet={handleStartEditSet}
+                onCancelEdit={handleCancelEdit}
+                onSaveNewSet={handleSaveNewSet}
+                onSaveEditSet={handleSaveEditSet}
+                onDeleteSet={handleDeleteSet}
+                onDelete={handleDeleteExercise}
+              />
+            )
+          )}
         </div>
       )}
 
@@ -225,8 +270,8 @@ function WorkoutSession({
 
             <div className="finish-confirm-summary">
               <div className="finish-confirm-summary__row">
-                <span>Exercises</span>
-                <strong>{exercises.length}</strong>
+                <span>Entries</span>
+                <strong>{entries.length}</strong>
               </div>
               <div className="finish-confirm-summary__row">
                 <span>Sets</span>

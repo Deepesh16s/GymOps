@@ -1,4 +1,5 @@
 const { SESSION_TYPES, OTHER_SESSION_TYPE } = require("../constants/sessionTypes");
+const { CARDIO_ACTIVITIES, CARDIO_METRICS } = require("../constants/cardioMetadata");
 
 const validateWorkoutSets = (workoutSets) => {
   if (!Array.isArray(workoutSets) || workoutSets.length === 0) {
@@ -124,10 +125,80 @@ const validateWorkoutPayload = ({
   }
 };
 
+// Metadata-driven cardio validation (Phase 8A). Which metrics are
+// REQUIRED comes entirely from CARDIO_ACTIVITIES in cardioMetadata.js —
+// there is no per-activity switch statement here or anywhere else. Any
+// metric not required for the given activityType is still accepted if
+// provided (and validated as a non-negative number), since every metric
+// is optional at the data level; only the required subset varies by
+// activity.
+const validateCardioEntry = (cardio, index) => {
+  if (!cardio || typeof cardio !== "object") {
+    const err = new Error(
+      `Entry ${index + 1}: cardio data is required for a cardio entry`
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  const { activityType, data } = cardio;
+
+  if (!activityType || !CARDIO_ACTIVITIES[activityType]) {
+    const err = new Error(
+      `Entry ${index + 1}: activityType must be one of: ${Object.keys(
+        CARDIO_ACTIVITIES
+      ).join(", ")}`
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  const rawData = data && typeof data === "object" ? data : {};
+  const { requiredMetrics } = CARDIO_ACTIVITIES[activityType];
+
+  requiredMetrics.forEach((metricKey) => {
+    const value = rawData[metricKey];
+    if (
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      isNaN(Number(value)) ||
+      Number(value) < 0
+    ) {
+      const label = CARDIO_METRICS[metricKey]?.label || metricKey;
+      const err = new Error(
+        `Entry ${index + 1}: ${label} is required for ${activityType}`
+      );
+      err.status = 400;
+      throw err;
+    }
+  });
+
+  const cleanData = {};
+  Object.keys(CARDIO_METRICS).forEach((metricKey) => {
+    const value = rawData[metricKey];
+    if (value === undefined || value === null || value === "") return;
+
+    if (isNaN(Number(value)) || Number(value) < 0) {
+      const label = CARDIO_METRICS[metricKey]?.label || metricKey;
+      const err = new Error(
+        `Entry ${index + 1}: ${label} must be a valid non-negative number`
+      );
+      err.status = 400;
+      throw err;
+    }
+
+    cleanData[metricKey] = Number(value);
+  });
+
+  return { activityType, data: cleanData };
+};
+
 module.exports = {
   validateWorkoutPayload,
   validateWorkoutSets,
   validateSessionMeta,
   validateSessionType,
   normalizeCustomSessionType,
+  validateCardioEntry,
 };
