@@ -1,9 +1,21 @@
 const Goal = require("../models/Goal");
 const Workout = require("../models/workout");
-const { GOAL_TYPES, GLOBAL_AUTO_GOAL_TYPES } = require("../constants/goalTypes");
+const {
+  GOAL_TYPES,
+  GLOBAL_AUTO_GOAL_TYPES,
+  isAutoCardioGoal,
+} = require("../constants/goalTypes");
 const metrics = require("./goalMetrics");
 
-const WORKOUT_FIELDS = "date createdAt sessionId sessionDuration workoutSets exercise";
+// Phase 8B: entryType + cardio added so every consumer of this fetch
+// (recalculateGlobalAutoGoals, getLatestSessionWorkouts,
+// computeCardioGoalCurrent) has what it needs to distinguish strength
+// from cardio entries and read cardio metric values. Adding fields to
+// the projection doesn't affect any existing strength-only computation
+// (volume, PR, session exercise count) — they simply ignore fields they
+// don't use.
+const WORKOUT_FIELDS =
+  "date createdAt sessionId sessionDuration workoutSets exercise entryType cardio";
 
 const buildStatus = (current, target) => (current >= target ? "Completed" : "In Progress");
 
@@ -99,7 +111,31 @@ const recalculateGlobalAutoGoals = async (userId, options = {}) => {
   };
 
   const ops = [];
+
   Object.entries(goalsByType).forEach(([type, goals]) => {
+    // Phase 8B: Cardio Goal has no single shared value the way every
+    // other auto type does — each goal carries its own
+    // activityType/metric/period, so it's computed per goal instance
+    // instead of once per type, reusing the same allWorkouts array
+    // already fetched above (no extra Workout query). Legacy Cardio
+    // Goals without a full configuration are fetched here (they're in
+    // GLOBAL_AUTO_GOAL_TYPES, so the query above includes them) but
+    // deliberately skipped — isAutoCardioGoal is the single place that
+    // decides which Cardio Goals are automatic; an unconfigured one is
+    // left exactly as the user last set it.
+    if (type === GOAL_TYPES.CARDIO) {
+      goals.forEach((goal) => {
+        if (!isAutoCardioGoal(goal)) return;
+        const value = metrics.computeCardioGoalMetric(allWorkouts, {
+          activityType: goal.activityType,
+          metric: goal.metric,
+          period: goal.period,
+        });
+        ops.push(buildBulkStatusOp(goal._id, value, goal.target));
+      });
+      return;
+    }
+
     const value = valueByType[type];
     if (value === undefined) return;
     goals.forEach((goal) => ops.push(buildBulkStatusOp(goal._id, value, goal.target)));
@@ -140,9 +176,29 @@ const getLatestSessionWorkouts = async (userId) => {
   return metrics.getLatestSessionWorkouts(workouts);
 };
 
+// Phase 8B: shared by goalController's createGoal (initial `current` for
+// a new automatic Cardio Goal) and updateGoal (immediate recompute when
+// activityType/metric/period is edited) — both call sites use the exact
+// same WORKOUT_FIELDS projection and the exact same
+// metrics.computeCardioGoalMetric used by the global recalculation pass
+// above, so there is only one cardio-metric code path in the whole app,
+// and no separate cardio update pipeline.
+const computeCardioGoalCurrent = async (
+  userId,
+  { activityType, metric, period },
+  options = {}
+) => {
+  const workouts = await Workout.find({ user: userId })
+    .select(WORKOUT_FIELDS)
+    .session(options.session);
+
+  return metrics.computeCardioGoalMetric(workouts, { activityType, metric, period });
+};
+
 module.exports = {
   updateGoalsForWorkout,
   updateGoalsForSession,
   recalculateGlobalAutoGoals,
   getLatestSessionWorkouts,
+  computeCardioGoalCurrent,
 };

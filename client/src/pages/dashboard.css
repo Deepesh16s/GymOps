@@ -63,7 +63,7 @@
   padding: 32px 44px 72px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
 }
 
 .section {
@@ -74,8 +74,8 @@
 
 .section__label {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--go-text-faint);
 }
@@ -214,7 +214,7 @@
   align-items: center;
   gap: 16px;
   cursor: pointer;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
@@ -249,6 +249,7 @@
 
 .primary-card:hover {
   transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--go-primary) 22%, var(--go-border-soft));
   box-shadow:
     var(--go-shadow-sm),
     0 16px 40px color-mix(in srgb, var(--go-primary) 12%, transparent);
@@ -278,9 +279,9 @@
 .primary-card__label {
   display: block;
   font-size: 11.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--go-text-faint);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 4px;
 }
@@ -321,11 +322,12 @@
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
 .chart-card:hover {
   transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--go-primary) 18%, var(--go-border-soft));
   box-shadow:
     var(--go-shadow-sm),
     0 16px 40px color-mix(in srgb, var(--go-primary) 10%, transparent);
@@ -409,7 +411,7 @@
   border: 1px solid var(--go-border-soft);
   border-radius: 18px;
   padding: 18px 20px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   box-shadow:
     var(--go-shadow-xs),
     0 4px 16px color-mix(in srgb, var(--go-primary) 4%, transparent);
@@ -417,6 +419,7 @@
 
 .secondary-card:hover {
   transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--go-primary) 16%, var(--go-border-soft));
   box-shadow:
     var(--go-shadow-sm),
     0 12px 32px color-mix(in srgb, var(--go-primary) 10%, transparent);
@@ -473,9 +476,9 @@
 .activity-card--recent {
   min-height: 100%;
 }
-.activity-card--fav,
 .activity-card--pr {
   width: 100%;
+  padding: 30px 28px;
 }
 .activity-card {
   background: color-mix(in srgb, var(--go-surface) 82%, transparent);
@@ -487,7 +490,7 @@
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 .activity-card {
   border-radius: var(--go-radius-md);
@@ -506,12 +509,7 @@
   }
 
   .activity-side {
-    flex-direction: row;
-  }
-
-  .activity-card--fav,
-  .activity-card--pr {
-    flex: 1;
+    flex-direction: column;
   }
 }
 @media (max-width: 700px) {
@@ -522,6 +520,7 @@
 
 .activity-card:hover {
   transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--go-primary) 18%, var(--go-border-soft));
   box-shadow:
     var(--go-shadow-sm),
     0 16px 40px color-mix(in srgb, var(--go-primary) 10%, transparent);

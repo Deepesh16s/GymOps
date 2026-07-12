@@ -117,6 +117,12 @@ const getLatestSessionMetrics = (workouts) => {
 // Pure and generic — takes raw workouts, groups internally, no dashboard
 // coupling — so it's reusable anywhere a "recent session average" is
 // needed (e.g. future goal types).
+//
+// NOTE: this function intentionally still returns 0 for "no sessions at
+// all" — volume has no ambiguous "0 vs no data" problem the way duration
+// does (a session with 0 kg volume and a session that recorded no volume
+// data are effectively the same thing for this metric). Left unchanged
+// per Phase 9 audit scope.
 const getAverageVolumeOfRecentSessions = (workouts, count = 5) => {
   const sessions = groupBySessionId(workouts);
   if (sessions.size === 0) return 0;
@@ -135,14 +141,35 @@ const getAverageVolumeOfRecentSessions = (workouts, count = 5) => {
 };
 
 // Average session duration across the most recently completed sessions
-// (default 5). Phase 9 Dashboard Refinement — mirrors
-// getAverageVolumeOfRecentSessions exactly: same grouping, same recency
-// ordering, just averaging sessionDuration instead of volume. Sessions
-// with no recorded duration (legacy documents) contribute 0, matching
-// how zero-volume sessions are already handled above.
+// (default 5). Phase 9 Dashboard Refinement — same grouping/sorting
+// pipeline as getAverageVolumeOfRecentSessions (groupBySessionId ->
+// sort by getSessionTimestamp -> slice(count)), but the averaging step
+// differs deliberately in two ways:
+//
+// 1. Legacy sessions with no recorded sessionDuration are EXCLUDED from
+//    the average entirely rather than counted as 0 — averaging a 0 in
+//    for a session that simply never recorded a duration would
+//    misleadingly drag the reported average down.
+//
+// 2. BUG FIX (Phase 9 follow-up): this function must distinguish "no
+//    session in range has a recorded duration" from "sessions have
+//    durations and the real average is 0 or rounds down to 0" — both
+//    are legitimate, different outcomes. Returning 0 for both (as the
+//    prior version did) made it impossible for the frontend to tell
+//    "no data" apart from "average is genuinely low", so a real,
+//    computed low average was incorrectly displayed as "no data" ("—").
+//    This function now returns `null` for the true "no data" case, and
+//    returns the real numeric average (which may itself be 0) whenever
+//    at least one recent session has a valid duration. Callers must
+//    check `!= null`, not truthiness, to tell the two apart.
+//
+// Also defensively coerces each duration through Number() and drops any
+// value that fails to parse — guards against a duration ever being
+// persisted as a non-numeric type without changing behavior for
+// correctly-typed data.
 const getAverageSessionDurationOfRecentSessions = (workouts, count = 5) => {
   const sessions = groupBySessionId(workouts);
-  if (sessions.size === 0) return 0;
+  if (sessions.size === 0) return null;
 
   const sortedGroups = Array.from(sessions.values()).sort(
     (a, b) => getSessionTimestamp(b) - getSessionTimestamp(a)
@@ -150,15 +177,20 @@ const getAverageSessionDurationOfRecentSessions = (workouts, count = 5) => {
 
   const recentGroups = sortedGroups.slice(0, count);
 
-  const durations = recentGroups.map((sessionWorkouts) => {
-    const withDuration = sessionWorkouts.find(
-      (w) => w.sessionDuration !== undefined && w.sessionDuration !== null
-    );
-    return withDuration ? withDuration.sessionDuration : 0;
-  });
+  const durations = recentGroups
+    .map((sessionWorkouts) =>
+      sessionWorkouts.find(
+        (w) => w.sessionDuration !== undefined && w.sessionDuration !== null
+      )
+    )
+    .filter((w) => w !== undefined)
+    .map((w) => Number(w.sessionDuration))
+    .filter((d) => !Number.isNaN(d));
+
+  if (durations.length === 0) return null;
 
   const total = durations.reduce((sum, d) => sum + d, 0);
-  return total / recentGroups.length;
+  return total / durations.length;
 };
 
 const computeCurrentStreak = (workouts) => {

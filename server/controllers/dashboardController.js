@@ -5,6 +5,7 @@ const {
   getSessionTimestamp,
   getLatestSessionWorkouts,
   getAverageVolumeOfRecentSessions,
+  getAverageSessionDurationOfRecentSessions,
   computeCurrentStreak,
   filterSince,
   sumVolume,
@@ -436,6 +437,11 @@ exports.getSessionSummary = async (req, res) => {
       5
     );
 
+    const averageSessionDuration = getAverageSessionDurationOfRecentSessions(
+      workouts,
+      5
+    );
+
     res.status(200).json({
       totalSessions,
       sessionsLast7Days,
@@ -443,6 +449,7 @@ exports.getSessionSummary = async (req, res) => {
       lastSession,
       lastSessionType: lastSession?.sessionType ?? null,
       averageVolumeRecent,
+      averageSessionDuration,
     });
   } catch (error) {
     console.error(error);

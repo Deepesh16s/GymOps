@@ -464,9 +464,16 @@ function Dashboard() {
         sessionsLast30Days: summary.data.sessionsLast30Days,
         lastSession: summary.data.lastSession,
         averageVolumeRecent: Math.round(summary.data.averageVolumeRecent || 0),
-        averageSessionDuration: Math.round(
-          summary.data.averageSessionDuration || 0
-        ),
+        // Bug fix (Phase 9 follow-up): averageSessionDuration can be
+        // `null` (no recent session has a recorded duration) or a real
+        // number that may itself legitimately be 0. Coercing with
+        // `|| 0` here would make those two cases indistinguishable by
+        // the time they reach render — so we only round when a real
+        // value exists, and pass null straight through otherwise.
+        averageSessionDuration:
+          summary.data.averageSessionDuration != null
+            ? Math.round(summary.data.averageSessionDuration)
+            : null,
         currentStreak: streak.data.currentStreak,
         topExercise: topExercise.data.exercise,
         topExerciseCount: topExercise.data.count,
@@ -594,8 +601,13 @@ function Dashboard() {
     return "Previous Session";
   })();
 
+  // Bug fix (Phase 9 follow-up): previously checked `> 0`, which treated
+  // a genuinely-computed average of 0 minutes the same as "no data" and
+  // always rendered "—" for it. Now only `null` (true absence of any
+  // recorded duration among the last 5 sessions) falls back to "—" — a
+  // real average, including 0, is displayed as-is.
   const avgSessionDurationValue =
-    stats.averageSessionDuration != null && stats.averageSessionDuration > 0
+    stats.averageSessionDuration != null
       ? `${stats.averageSessionDuration} min`
       : "—";
 

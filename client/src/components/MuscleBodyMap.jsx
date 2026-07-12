@@ -32,18 +32,24 @@ function bucketFor(sets, max) {
   return 1;
 }
 
-function MuscleBodyMap({ muscleData, loading = false }) {
+// rangeLabel (optional) — e.g. "Week" / "Month" / "Year", passed down
+// from Dashboard's existing RANGE_OPTIONS state. Used only for the
+// caption/empty-state copy below; does not affect data fetching or the
+// underlying entry-based calculation.
+function MuscleBodyMap({ muscleData, loading = false, rangeLabel }) {
   const [hovered, setHovered] = useState(null);
   const wrapRef = useRef(null);
 
-  const { setsByMuscle, maxSets } = useMemo(() => {
+  const { setsByMuscle, maxSets, totalSets } = useMemo(() => {
     const map = {};
     let max = 0;
+    let total = 0;
     muscleData.forEach((m) => {
       map[m.name] = m.value;
+      total += m.value;
       if (m.value > max) max = m.value;
     });
-    return { setsByMuscle: map, maxSets: max };
+    return { setsByMuscle: map, maxSets: max, totalSets: total };
   }, [muscleData]);
 
   const regionFill = useMemo(() => {
@@ -66,6 +72,15 @@ function MuscleBodyMap({ muscleData, loading = false }) {
       .sort((a, b) => b.sets - a.sets);
   }, [setsByMuscle]);
 
+  // Most-trained muscle — just the top of the already-sorted legend list,
+  // no new computation. Used to add a highlight badge/ring to that one
+  // muscle's regions and legend row, and (this round) a subtle
+  // "Most trained" note inside the tooltip when hovering it.
+  const topMuscle = legendEntries.length > 0 ? legendEntries[0].muscle : null;
+
+  const pctOf = (sets) =>
+    totalSets > 0 ? Math.round((sets / totalSets) * 100) : 0;
+
   const handleEnter = (region, e) => {
     const info = regionFill[region];
     if (!info) return;
@@ -75,6 +90,8 @@ function MuscleBodyMap({ muscleData, loading = false }) {
     setHovered({
       muscle: info.muscle,
       sets: info.sets,
+      pct: pctOf(info.sets),
+      isTop: info.sets > 0 && info.muscle === topMuscle,
       x: targetBox.left - wrapBox.left + targetBox.width / 2,
       y: targetBox.top - wrapBox.top,
     });
@@ -82,15 +99,20 @@ function MuscleBodyMap({ muscleData, loading = false }) {
 
   const handleLeave = () => setHovered(null);
 
-  const regionProps = (region) => ({
-    fill: regionFill[region]?.color || INTENSITY_COLORS[0],
-    onMouseEnter: (e) => handleEnter(region, e),
-    onMouseLeave: handleLeave,
-    className: "body-region",
-  });
+  const regionProps = (region) => {
+    const info = regionFill[region];
+    const isTop = info && info.sets > 0 && info.muscle === topMuscle;
+    return {
+      fill: info?.color || INTENSITY_COLORS[0],
+      onMouseEnter: (e) => handleEnter(region, e),
+      onMouseLeave: handleLeave,
+      className: `body-region${isTop ? " body-region--top" : ""}`,
+    };
+  };
 
   const hasData = muscleData.length > 0;
   const legendMax = legendEntries.length > 0 ? legendEntries[0].sets : 0;
+  const rangeSuffix = rangeLabel ? ` this ${rangeLabel.toLowerCase()}` : "";
 
   // First load (or a range switch) with nothing to show yet: render a skeleton
   // instead of flashing the "no data" empty state.
@@ -109,10 +131,17 @@ function MuscleBodyMap({ muscleData, loading = false }) {
     <div className="muscle-map" ref={wrapRef}>
       {!hasData ? (
         <div className="muscle-map__empty">
-          <p>No sets logged for this period.</p>
+          <p>No sets logged{rangeSuffix}.</p>
+          <span className="muscle-map__empty-sub">
+            Log a session to see your muscle split.
+          </span>
         </div>
       ) : (
         <>
+          <p className="muscle-map__caption">
+            <strong>{totalSets}</strong> total sets{rangeSuffix}
+          </p>
+
           <div className="muscle-map__main">
             <div className="muscle-map__bodies">
               <div className="muscle-map__body">
@@ -176,18 +205,38 @@ function MuscleBodyMap({ muscleData, loading = false }) {
             </div>
 
             <div className="muscle-map__sidelist">
-              {legendEntries.map((e) => (
-                <div className="muscle-map__sidelist-row" key={e.muscle}>
-                  <div className="muscle-map__sidelist-bar">
-                    <div
-                      className="muscle-map__sidelist-fill"
-                      style={{ width: `${Math.max((e.sets / legendMax) * 100, 8)}%` }}
-                    />
+              {legendEntries.map((e, i) => {
+                const isTop = i === 0;
+                const pct = pctOf(e.sets);
+                return (
+                  <div
+                    className={`muscle-map__sidelist-row${
+                      isTop ? " muscle-map__sidelist-row--top" : ""
+                    }`}
+                    key={e.muscle}
+                  >
+                    <div className="muscle-map__sidelist-bar">
+                      <div
+                        className="muscle-map__sidelist-fill"
+                        style={{ width: `${Math.max((e.sets / legendMax) * 100, 8)}%` }}
+                      />
+                    </div>
+                    <span className="muscle-map__sidelist-name">
+                      {e.muscle}
+                      {isTop && (
+                        <span className="muscle-map__top-badge">Top</span>
+                      )}
+                    </span>
+                    <span className="muscle-map__sidelist-count">
+                      {e.sets}
+                      <span className="muscle-map__sidelist-pct">
+                        {" "}
+                        ({pct}%)
+                      </span>
+                    </span>
                   </div>
-                  <span className="muscle-map__sidelist-name">{e.muscle}</span>
-                  <span className="muscle-map__sidelist-count">{e.sets}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -196,8 +245,20 @@ function MuscleBodyMap({ muscleData, loading = false }) {
               className="muscle-map__tooltip-card"
               style={{ left: hovered.x, top: hovered.y }}
             >
-              <span className="muscle-map__tooltip-card-name">{hovered.muscle}</span>
-              <span className="muscle-map__tooltip-card-sets">{hovered.sets} sets</span>
+              <span className="muscle-map__tooltip-card-name">
+                {hovered.muscle}
+                {hovered.isTop && (
+                  <span className="muscle-map__tooltip-badge">Top</span>
+                )}
+              </span>
+              <span className="muscle-map__tooltip-card-sets">
+                {hovered.sets} sets · {hovered.pct}%
+              </span>
+              {hovered.isTop && (
+                <span className="muscle-map__tooltip-subtle">
+                  Most trained
+                </span>
+              )}
             </div>
           )}
 
