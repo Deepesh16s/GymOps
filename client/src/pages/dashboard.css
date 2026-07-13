@@ -15,6 +15,25 @@
   color: var(--go-text);
   position: relative;
   overflow-x: hidden;
+  /* Shared "premium" ease-out used across every card's hover lift, so
+     hero, primary/secondary cards, charts, and activity cards all move
+     with the same feel instead of each having its own timing curve. */
+  --dash-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dash-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dash-fade-in {
+  animation: dash-fade-in 0.45s var(--dash-ease);
 }
 
 .dash-bg {
@@ -78,6 +97,19 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--go-text-faint);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section__label::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--go-primary);
+  flex-shrink: 0;
 }
 
 .hero-card {
@@ -214,7 +246,7 @@
   align-items: center;
   gap: 16px;
   cursor: pointer;
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease), border-color 0.28s var(--dash-ease);
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
@@ -305,11 +337,26 @@
   color: var(--go-primary);
 }
 
-.charts-row {
+/* Element+class selector (not just `.charts-row`) is deliberate: this
+   page is a single-page app where every route's CSS file loads
+   globally regardless of the active route (App.jsx statically imports
+   every page). goals.css independently defines its own `.section`
+   rule (also `display: flex`) — with equal class-only specificity, a
+   plain `.charts-row` rule can lose that cascade tie depending on
+   which page's CSS module Vite happens to load first, silently
+   collapsing this grid back to flex. The extra element-type selector
+   raises specificity just enough to always win, regardless of load
+   order. */
+section.charts-row {
   display: grid;
-  grid-template-columns: 1.55fr 1fr;
-  gap: 16px;
-  flex-direction: row;
+  /* Stacked, full-width — the Muscle Split card now carries enough
+     content (mode toggle, front/back bodies, side list, summary panel,
+     legend) to deserve the full dash-main width rather than being
+     squeezed into half a row next to the bar chart. Muscle Split first,
+     Weekly Volume below it. */
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
 }
 
 .chart-card {
@@ -322,7 +369,7 @@
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease), border-color 0.28s var(--dash-ease);
 }
 
 .chart-card:hover {
@@ -400,7 +447,11 @@
 
 .secondary-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* Auto-fit instead of a fixed 5-column count + a breakpoint ladder to
+     override it: cards reflow fluidly at any width down to ~180px each,
+     so the grid adapts continuously instead of jumping between a few
+     hand-picked column counts. */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 
@@ -411,14 +462,14 @@
   border: 1px solid var(--go-border-soft);
   border-radius: 18px;
   padding: 18px 20px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease), border-color 0.28s var(--dash-ease);
   box-shadow:
     var(--go-shadow-xs),
     0 4px 16px color-mix(in srgb, var(--go-primary) 4%, transparent);
 }
 
 .secondary-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   border-color: color-mix(in srgb, var(--go-primary) 16%, var(--go-border-soft));
   box-shadow:
     var(--go-shadow-sm),
@@ -490,13 +541,7 @@
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
-}
-.activity-card {
-  border-radius: var(--go-radius-md);
-  background: var(--go-surface);
-  border: 1px solid var(--go-border-soft);
-  box-shadow: var(--go-shadow-xs);
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease), border-color 0.28s var(--dash-ease);
 }
 .activity-card--recent .activity-list {
   display: flex;
@@ -705,6 +750,18 @@
   text-align: center;
 }
 
+.empty-state__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--go-primary-50);
+  color: var(--go-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
 .empty-state p {
   font-size: 13.5px;
   color: var(--go-text-faint);
@@ -830,14 +887,6 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .secondary-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .charts-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .activity-row {
     grid-template-columns: 1fr 1fr;
   }
@@ -854,14 +903,6 @@
 
   .hero-card__title {
     font-size: 2.5rem;
-  }
-
-  .charts-row {
-    grid-template-columns: 1fr;
-  }
-
-  .secondary-grid {
-    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -892,10 +933,6 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .secondary-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .activity-row {
     grid-template-columns: 1fr;
   }
@@ -908,10 +945,6 @@
 
   .primary-grid {
     grid-template-columns: 1fr;
-  }
-
-  .secondary-grid {
-    grid-template-columns: 1fr 1fr;
   }
 
   .cta-btn {
@@ -1197,6 +1230,15 @@
   box-shadow:
     var(--go-shadow-xs),
     0 6px 24px color-mix(in srgb, var(--go-primary) 5%, transparent);
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease), border-color 0.28s var(--dash-ease);
+}
+
+.last-session-card:not(.last-session-card--empty):hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--go-primary) 18%, var(--go-border-soft));
+  box-shadow:
+    var(--go-shadow-sm),
+    0 16px 40px color-mix(in srgb, var(--go-primary) 10%, transparent);
 }
 
 .last-session-card--empty {
@@ -1248,44 +1290,62 @@
   color: var(--go-text-muted);
 }
 
-.last-session-card__body {
+/* Full per-exercise/per-set breakdown (replaces the old name-only chip
+   list) — same visual language as WorkoutHistory's expanded session
+   rows (name + set/metric breakdown + meta line), reused here for
+   consistency rather than inventing a new pattern. */
+.last-session-card__detail-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
-.last-session-card__group-label {
+.last-session-card__detail-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--go-surface-sunken);
+}
+
+.last-session-card__detail-item-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.last-session-card__detail-item-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.last-session-card__detail-item-muscle {
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--go-text-faint);
-  margin-bottom: 8px;
+  color: var(--go-text-muted);
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 100px;
+  padding: 2px 9px;
+  flex-shrink: 0;
 }
 
-.last-session-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.last-session-card__chip {
+.last-session-card__detail-item-sets {
   font-size: 12.5px;
+  color: var(--go-text-faint);
+  margin-top: 6px;
+}
+
+.last-session-card__detail-item-meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--go-primary-dark);
-  background: var(--go-primary-50);
-  border: 1px solid color-mix(in srgb, var(--go-primary) 18%, transparent);
-  border-radius: 100px;
-  padding: 5px 12px;
-}
-
-.last-session-card__chip--cardio {
-  color: var(--go-success-dark);
-  background: var(--go-success-50);
-  border-color: color-mix(in srgb, var(--go-success) 18%, transparent);
 }
 
 .last-session-card__footer {

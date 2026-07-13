@@ -2,13 +2,16 @@
 // updateGoals.js/recalculateGoals.js need to derive from Workout data.
 // PURE MODULE: no Workout, Goal, mongoose, or controller imports — only
 // receives arrays and returns computed values, so callers fetch once and
-// reuse this everywhere.
+// reuse this everywhere. (constants/goalTypes.js is a plain constants
+// module, not one of the above, so it's safe to depend on here.)
 //
 // Phase 9: also reused by dashboardController.js for session-summary
 // aggregates (totalSessions, sessionsLogged, lastSession, average volume
 // of recent sessions, average duration of recent sessions). No
 // dashboard-specific logic lives here — every export stays a generic
 // session/metric computation.
+
+const { GOAL_PERIODS, CARDIO_SESSION_METRIC } = require("../constants/goalTypes");
 
 const startOfWeek = (date = new Date()) => {
   const d = new Date(date);
@@ -102,10 +105,18 @@ const getLatestSessionWorkouts = (workouts) => {
   return sessions.get(latestId);
 };
 
+// Number of strength exercises in a (already session-filtered) list of
+// workouts — cardio entries are excluded, since a cardio activity isn't
+// an "exercise" for the purposes of a Session Exercise Goal. Shared by
+// getLatestSessionMetrics below and goalController.createGoal so both
+// the recalculation pipeline and goal creation agree on the same count.
+const getSessionExerciseCount = (sessionWorkouts) =>
+  sessionWorkouts.filter((w) => w.entryType !== "cardio").length;
+
 const getLatestSessionMetrics = (workouts) => {
   const sessionWorkouts = getLatestSessionWorkouts(workouts);
   return {
-    exerciseCount: sessionWorkouts.length,
+    exerciseCount: getSessionExerciseCount(sessionWorkouts),
     volume: sumVolume(sessionWorkouts),
     duration: sessionWorkouts[0]?.sessionDuration ?? 0,
   };
@@ -217,6 +228,34 @@ const computeCurrentStreak = (workouts) => {
   return streak;
 };
 
+// Computes a Cardio Goal's `current` value for a given
+// {activityType, metric, period}. `metric` is either a real
+// cardio.data.* field (summed across matching cardio entries within the
+// period) or the CARDIO_SESSION_METRIC ("sessions") pseudo-metric
+// (count of distinct sessions containing at least one matching cardio
+// entry within the period, via countDistinctSessions). Callers
+// (goalController, updateGoals.js) only reach this after isAutoCardioGoal
+// has confirmed activityType/metric/period are all valid, so — like
+// every other function in this module — inputs are trusted, not
+// re-validated here.
+const computeCardioGoalMetric = (workouts, { activityType, metric, period }) => {
+  const since = period === GOAL_PERIODS.MONTHLY ? startOfMonth() : startOfWeek();
+  const periodWorkouts = filterSince(workouts, since);
+
+  const matchingCardio = periodWorkouts.filter(
+    (w) => w.entryType === "cardio" && w.cardio?.activityType === activityType
+  );
+
+  if (metric === CARDIO_SESSION_METRIC) {
+    return countDistinctSessions(matchingCardio);
+  }
+
+  return matchingCardio.reduce(
+    (sum, w) => sum + (Number(w.cardio?.data?.[metric]) || 0),
+    0
+  );
+};
+
 module.exports = {
   startOfWeek,
   startOfMonth,
@@ -228,8 +267,10 @@ module.exports = {
   countDistinctSessions,
   getSessionTimestamp,
   getLatestSessionWorkouts,
+  getSessionExerciseCount,
   getLatestSessionMetrics,
   getAverageVolumeOfRecentSessions,
   getAverageSessionDurationOfRecentSessions,
   computeCurrentStreak,
+  computeCardioGoalMetric,
 };

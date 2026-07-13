@@ -34,7 +34,8 @@ import MuscleBodyMap from "../components/MuscleBodyMap";
 import WorkoutSession from "../components/WorkoutSession";
 import StartWorkoutModal from "../components/StartWorkoutModal";
 import useWorkoutSession from "../hooks/useWorkoutSession";
-import api from "../services/api";
+import { getDashboardSummaryData } from "../services/dashboardService";
+import { getWorkouts } from "../services/workoutService";
 import {
   buildSessionSummaries,
   sortSessions,
@@ -43,16 +44,32 @@ import {
   isCardioEntry,
   getCardioActivityName,
   formatCardioSummary,
+  formatSetBreakdown,
+  getSetCount,
+  getWorkoutVolume,
 } from "../utils/workoutUtils";
 import { getSessionTypeColor } from "../constants/sessionTypes";
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const RANGE_OPTIONS = [
-  { key: "week", label: "Week" },
-  { key: "month", label: "Month" },
-  { key: "year", label: "Year" },
-];
+// Presentation-only: no new data fetched, just a friendlier read of the
+// clock and the already-stored user name (same localStorage value
+// ProfileDropdown already reads) instead of a static "Welcome back".
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function getFirstName() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("user") || "null");
+    return stored?.name?.trim().split(/\s+/)[0] || null;
+  } catch {
+    return null;
+  }
+}
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -126,22 +143,13 @@ function CustomBarTooltip({ active, payload, label }) {
   );
 }
 
-// Phase 9 — Last Session card. Local to Dashboard.jsx (not extracted as
-// a shared component yet, per architecture decision). Handles strength-
-// only, cardio-only, and mixed sessions using the presentation-ready
-// payload the backend already built (no recomputation here).
-//
-// NOTE: this component intentionally does NOT use the workoutUtils
-// cardio helpers (isCardioEntry / getCardioActivityName /
-// formatCardioSummary). Those helpers are typed against raw Workout
-// documents (workout.entryType, workout.cardio.activityType,
-// workout.cardio.data). This component instead consumes
-// stats.lastSession, the backend's /dashboard/session-summary payload,
-// whose shape (exercises, cardioActivities: [{activityType, data}],
-// volume, muscleGroups, ...) is a different, backend-precomputed
-// contract. Forcing reuse here would require building synthetic
-// Workout-shaped wrapper objects purely to satisfy the helpers' input
-// contract, which adds complexity without removing real duplication.
+// Last Session card. session is a buildSessionSummaries() entry — the
+// same shape/data already fetched for Recent Sessions (recentSessions[0]
+// is the latest one), reused here instead of the coarser
+// /dashboard/session-summary aggregate so every exercise's actual sets
+// (and every cardio entry's full metric breakdown) can be shown, not
+// just exercise-name chips. No new request, no backend change — this
+// is data the page already has.
 function LastSessionCard({ session, loading }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -168,21 +176,20 @@ function LastSessionCard({ session, loading }) {
 
   if (!session) {
     return (
-      <div className="last-session-card last-session-card--empty">
-        <Dumbbell size={26} strokeWidth={1.4} />
+      <div className="last-session-card last-session-card--empty dash-fade-in">
+        <div className="empty-state__icon">
+          <Dumbbell size={24} strokeWidth={1.6} />
+        </div>
         <p>No sessions completed yet.</p>
       </div>
     );
   }
 
   const typeColor = getSessionTypeColor(session.sessionType);
-  const label =
-    session.sessionType === "Other"
-      ? session.customSessionType || "Session"
-      : session.sessionType || "Session";
+  const label = getSessionTypeLabel(session);
 
-  const hasStrength = session.exerciseCount > 0;
-  const hasCardio = session.cardioCount > 0;
+  const strengthEntries = session.workouts.filter((w) => !isCardioEntry(w));
+  const cardioEntries = session.workouts.filter((w) => isCardioEntry(w));
 
   const sessionTime = new Date(session.date).toLocaleTimeString([], {
     hour: "2-digit",
@@ -190,7 +197,7 @@ function LastSessionCard({ session, loading }) {
   });
 
   return (
-    <div className="last-session-card">
+    <div className="last-session-card dash-fade-in">
       <div className="last-session-card__top">
         <div className="last-session-card__title-row">
           <span
@@ -211,76 +218,77 @@ function LastSessionCard({ session, loading }) {
         )}
       </div>
 
-      <div className="last-session-card__body">
-        {hasStrength && (
-          <div className="last-session-card__group">
-            <p className="last-session-card__group-label">
-              <Dumbbell size={13} strokeWidth={1.8} /> Strength
-            </p>
-            <div className="last-session-card__chips">
-              {session.exercises.map((ex, i) => (
-                <span
-                  className="last-session-card__chip"
-                  key={`${ex.name}-${i}`}
-                >
-                  {ex.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {hasCardio && (
-          <div className="last-session-card__group">
-            <p className="last-session-card__group-label">
-              <HeartPulse size={13} strokeWidth={1.8} /> Cardio
-            </p>
-            <div className="last-session-card__chips">
-              {session.cardioActivities.map((c, i) => (
-                <span
-                  className="last-session-card__chip last-session-card__chip--cardio"
-                  key={`${c.activityType}-${i}`}
-                >
-                  {c.activityType}
-                  {c.data?.duration ? ` · ${c.data.duration} min` : ""}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="last-session-card__footer">
-        {hasStrength && (
+        {session.stats.exerciseCount > 0 && (
           <div className="last-session-card__stat">
             <span className="last-session-card__stat-label">Volume</span>
             <span className="last-session-card__stat-value">
-              {session.volume.toLocaleString()} kg
+              {session.stats.volume.toLocaleString()} kg
             </span>
           </div>
         )}
-        {session.muscleGroups.length > 0 && (
-          <button
-            className="last-session-card__expand-btn"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {session.muscleGroups.length} muscle group
-            {session.muscleGroups.length === 1 ? "" : "s"}
-            <ChevronDown
-              size={14}
-              strokeWidth={2}
-              className={expanded ? "rotated" : ""}
-            />
-          </button>
+        {session.stats.muscles.length > 0 && (
+          <div className="last-session-card__muscles">
+            {session.stats.muscles.map((m) => (
+              <span className="last-session-card__muscle-tag" key={m}>
+                {m}
+              </span>
+            ))}
+          </div>
         )}
+        <button
+          type="button"
+          className="last-session-card__expand-btn"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Hide" : "View"} full details
+          <ChevronDown
+            size={14}
+            strokeWidth={2}
+            className={expanded ? "rotated" : ""}
+          />
+        </button>
       </div>
 
-      {expanded && session.muscleGroups.length > 0 && (
-        <div className="last-session-card__muscles">
-          {session.muscleGroups.map((m) => (
-            <span className="last-session-card__muscle-tag" key={m}>
-              {m}
-            </span>
+      {expanded && (
+        <div className="last-session-card__detail-list">
+          {strengthEntries.map((w) => (
+            <div className="last-session-card__detail-item" key={w._id}>
+              <div className="last-session-card__detail-item-head">
+                <span className="last-session-card__detail-item-name">
+                  <Dumbbell size={13} strokeWidth={1.8} />
+                  {w.exercise?.name || "Unknown exercise"}
+                </span>
+                {w.exercise?.muscleGroup && (
+                  <span className="last-session-card__detail-item-muscle">
+                    {w.exercise.muscleGroup}
+                  </span>
+                )}
+              </div>
+              <p className="last-session-card__detail-item-sets">
+                {formatSetBreakdown(w)}
+              </p>
+              <div className="last-session-card__detail-item-meta">
+                <span>{getSetCount(w)} sets</span>
+                <span>{getWorkoutVolume(w).toLocaleString()} kg</span>
+              </div>
+            </div>
+          ))}
+
+          {cardioEntries.map((w) => (
+            <div className="last-session-card__detail-item" key={w._id}>
+              <div className="last-session-card__detail-item-head">
+                <span className="last-session-card__detail-item-name">
+                  <HeartPulse size={13} strokeWidth={1.8} />
+                  {getCardioActivityName(w)}
+                </span>
+              </div>
+              <p className="last-session-card__detail-item-sets">
+                {formatCardioSummary(w)
+                  .map((m) => m.text)
+                  .join(" · ")}
+              </p>
+            </div>
           ))}
         </div>
       )}
@@ -417,28 +425,24 @@ function Dashboard() {
 
   const [weeklyVolumeData, setWeeklyVolumeData] = useState([]);
 
-  // Phase 9 Dashboard Refinement — default changed from "week" to
-  // "month". Most training splits don't touch every muscle group within
-  // a single week, so Week frequently reads as sparse/misleading right
-  // after a rest day or split rotation. Month gives a more representative
-  // first-load picture. The Week/Month/Year toggle itself is unchanged.
-  const [muscleRange, setMuscleRange] = useState("month");
-  const [muscleData, setMuscleData] = useState([]);
-  const [muscleLoading, setMuscleLoading] = useState(true);
+  // Raw workout documents (Muscle Body Map enhancement) — fetched once
+  // alongside the rest of the dashboard data, so the map's Week/Month/
+  // 90 Days/Lifetime toggle can be computed client-side (all 4 windows
+  // derived from this same array) instead of firing a new backend
+  // request per range switch.
+  const [muscleWorkouts, setMuscleWorkouts] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
-  useEffect(() => {
-    fetchMuscleDistribution(muscleRange);
-  }, [muscleRange]);
-
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const [summaryData, workoutsRes] = await Promise.all([
+        getDashboardSummaryData(),
+        getWorkouts(500),
+      ]);
 
       const [
         summary,
@@ -448,15 +452,9 @@ function Dashboard() {
         records,
         weeklyVol,
         recentSessionsRes,
-      ] = await Promise.all([
-        api.get("/dashboard/session-summary", config),
-        api.get("/dashboard/current-streak", config),
-        api.get("/dashboard/top-exercise", config),
-        api.get("/dashboard/top-muscle", config),
-        api.get("/dashboard/personal-records", config),
-        api.get("/dashboard/weekly-volume", config),
-        api.get("/dashboard/recent-sessions?limit=6", config),
-      ]);
+      ] = summaryData;
+
+      setMuscleWorkouts(workoutsRes.data);
 
       setStats({
         totalSessions: summary.data.totalSessions,
@@ -498,29 +496,6 @@ function Dashboard() {
       console.error("Dashboard Error:", err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchMuscleDistribution = async (range) => {
-    setMuscleLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
-      const res = await api.get(
-        `/dashboard/muscle-distribution?range=${range}`,
-        config
-      );
-
-      const mapped = res.data.map((m) => ({
-        name: m.muscle,
-        value: m.sets,
-      }));
-      setMuscleData(mapped);
-    } catch (err) {
-      console.error("Muscle Distribution Error:", err);
-    } finally {
-      setMuscleLoading(false);
     }
   };
 
@@ -567,10 +542,10 @@ function Dashboard() {
     const success = await workoutSession.finishWorkout();
     if (success) {
       setShowModal(false);
-      await Promise.all([
-        fetchDashboardData(),
-        fetchMuscleDistribution(muscleRange),
-      ]);
+      // fetchDashboardData already refetches raw workouts, which is what
+      // the muscle map derives its breakdown from — no separate refetch
+      // needed.
+      await fetchDashboardData();
     }
   };
 
@@ -611,6 +586,16 @@ function Dashboard() {
       ? `${stats.averageSessionDuration} min`
       : "—";
 
+  const firstName = getFirstName();
+
+  // Contextual, data-driven sub-line instead of static copy — reads
+  // stats already fetched above, no new requests or business logic.
+  const heroSubtitle = loading
+    ? "Loading your progress..."
+    : stats.currentStreak > 0
+    ? `You're on a ${stats.currentStreak}-day streak — keep the momentum going.`
+    : "Ready to crush today's session?";
+
   return (
     <div className="dash-page">
       <div className="dash-bg" aria-hidden="true">
@@ -626,10 +611,11 @@ function Dashboard() {
               <span className="hero-card__dot" />
               Live dashboard
             </span>
-            <h1 className="hero-card__title">Welcome back</h1>
-            <p className="hero-card__sub">
-              Track your progress and crush your fitness goals.
-            </p>
+            <h1 className="hero-card__title">
+              {getTimeGreeting()}
+              {firstName ? `, ${firstName}` : ""}
+            </h1>
+            <p className="hero-card__sub">{heroSubtitle}</p>
           </div>
           <div className="hero-card__right">
             <div className="hero-streak">
@@ -686,7 +672,10 @@ function Dashboard() {
 
         <section className="section">
           <p className="section__label">Overview</p>
-          <div className="primary-grid">
+          <div
+            className={`primary-grid${!loading ? " dash-fade-in" : ""}`}
+            key={loading ? "primary-loading" : "primary-loaded"}
+          >
             <PrimaryCard
               title="Total Sessions"
               value={loading ? null : stats.totalSessions}
@@ -718,10 +707,18 @@ function Dashboard() {
 
         <section className="section">
           <p className="section__label">Last Session</p>
-          <LastSessionCard session={stats.lastSession} loading={loading} />
+          <LastSessionCard session={recentSessions[0] || null} loading={loading} />
         </section>
 
         <section className="section charts-row">
+          <div className="chart-card chart-card--pie">
+            <MuscleBodyMap
+              workouts={muscleWorkouts}
+              loading={loading}
+              personalRecords={stats.personalRecords}
+            />
+          </div>
+
           <div className="chart-card chart-card--bar">
             <div className="chart-card__head">
               <div>
@@ -738,6 +735,12 @@ function Dashboard() {
                 barSize={26}
                 margin={{ top: 8, right: 0, left: -20, bottom: 0 }}
               >
+                <defs>
+                  <linearGradient id="dashVolumeGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--go-primary)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="var(--go-primary)" stopOpacity={0.5} />
+                  </linearGradient>
+                </defs>
                 <XAxis
                   dataKey="day"
                   tick={{ fontSize: 12, fill: "var(--go-text-faint)" }}
@@ -753,43 +756,24 @@ function Dashboard() {
                   content={<CustomBarTooltip />}
                   cursor={{ fill: "var(--go-primary-50)" }}
                 />
-                <Bar dataKey="volume" fill="var(--go-primary)" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="volume"
+                  fill="url(#dashVolumeGradient)"
+                  radius={[6, 6, 0, 0]}
+                  animationDuration={500}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-
-          <div className="chart-card chart-card--pie">
-            <div className="chart-card__head">
-              <div>
-                <p className="chart-card__title">Muscle Split</p>
-                <p className="chart-card__sub">Sets distribution by muscle group</p>
-              </div>
-              <div className="range-toggle">
-                {RANGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.key}
-                    className={`range-toggle__btn ${
-                      muscleRange === opt.key ? "range-toggle__btn--active" : ""
-                    }`}
-                    onClick={() => setMuscleRange(opt.key)}
-                    disabled={muscleLoading && muscleRange === opt.key}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <MuscleBodyMap
-              muscleData={muscleData}
-              loading={muscleLoading}
-              rangeLabel={RANGE_OPTIONS.find((o) => o.key === muscleRange)?.label}
-            />
           </div>
         </section>
 
         <section className="section">
           <p className="section__label">Breakdown</p>
-          <div className="secondary-grid">
+          <div
+            className={`secondary-grid${!loading ? " dash-fade-in" : ""}`}
+            key={loading ? "secondary-loading" : "secondary-loaded"}
+          >
             <SecondaryCard
               title="Avg Volume (Last 5)"
               value={
@@ -864,15 +848,17 @@ function Dashboard() {
                 ))}
               </div>
             ) : recentSessions.length === 0 ? (
-              <div className="empty-state">
-                <Dumbbell size={28} strokeWidth={1.4} />
+              <div className="empty-state dash-fade-in">
+                <div className="empty-state__icon">
+                  <Dumbbell size={26} strokeWidth={1.6} />
+                </div>
                 <p>No sessions logged yet.</p>
                 <button className="empty-btn" onClick={handleEmptyStateAddWorkout}>
                   Log your first workout
                 </button>
               </div>
             ) : (
-              <div className="activity-list">
+              <div className="activity-list dash-fade-in">
                 {recentSessions.map((session) => (
                   <RecentSessionRow key={session.key} session={session} />
                 ))}
@@ -887,12 +873,14 @@ function Dashboard() {
                 <Trophy size={16} strokeWidth={1.8} className="pr-trophy" />
               </div>
               {prEntries.length === 0 ? (
-                <div className="empty-state">
-                  <Trophy size={28} strokeWidth={1.4} />
+                <div className="empty-state dash-fade-in">
+                  <div className="empty-state__icon">
+                    <Trophy size={26} strokeWidth={1.6} />
+                  </div>
                   <p>No PRs recorded yet.</p>
                 </div>
               ) : (
-                <div className="activity-list">
+                <div className="activity-list dash-fade-in">
                   {prEntries.map(([exercise, weight]) => (
                     <div key={exercise} className="pr-row">
                       <p className="pr-row__name">{exercise}</p>

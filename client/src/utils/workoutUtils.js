@@ -389,6 +389,106 @@ export function formatSessionDate(date) {
 // Session card label, e.g. "Pull Session", "Powerlifting Session" (for
 // a custom "Other" name), or "Session" for legacy sessions that predate
 // Session Types entirely.
+/* ------------------------------------------------------------------ */
+/* Muscle breakdown (Muscle Body Map enhancement)                      */
+/*                                                                      */
+/* Single shared computation so the Dashboard's muscle map and any     */
+/* other consumer (e.g. Analytics) derive "sets/volume/last trained    */
+/* per muscle" the same way, instead of each recomputing it themselves */
+/* — the exact divergence bug already fixed once between Dashboard and */
+/* Analytics for the plain sets-distribution case. Pure: takes raw     */
+/* Workout documents + an optional cutoff Date, returns real numbers    */
+/* derived only from logged sets — nothing here is estimated or        */
+/* invented.                                                            */
+/* ------------------------------------------------------------------ */
+
+export function computeMuscleBreakdown(workouts, sinceDate) {
+  const relevant = sinceDate
+    ? workouts.filter((w) => {
+        const d = new Date(w.date || w.createdAt);
+        return d >= sinceDate;
+      })
+    : workouts;
+
+  const byMuscle = new Map();
+
+  relevant.forEach((w) => {
+    if (isCardioEntry(w)) return;
+    const muscle = w.exercise?.muscleGroup;
+    if (!muscle) return;
+
+    if (!byMuscle.has(muscle)) {
+      byMuscle.set(muscle, {
+        muscle,
+        sets: 0,
+        volume: 0,
+        lastTrained: null,
+        sessionIds: new Set(),
+        exerciseSets: new Map(),
+      });
+    }
+
+    const entry = byMuscle.get(muscle);
+    entry.sets += getSetCount(w);
+    entry.volume += getWorkoutVolume(w);
+
+    const workoutDate = new Date(w.date || w.createdAt);
+    if (!entry.lastTrained || workoutDate > entry.lastTrained) {
+      entry.lastTrained = workoutDate;
+    }
+
+    if (w.sessionId) entry.sessionIds.add(w.sessionId);
+
+    const exerciseName = w.exercise?.name;
+    if (exerciseName) {
+      entry.exerciseSets.set(
+        exerciseName,
+        (entry.exerciseSets.get(exerciseName) || 0) + getSetCount(w)
+      );
+    }
+  });
+
+  return Array.from(byMuscle.values()).map((entry) => {
+    const rankedExercises = [...entry.exerciseSets.entries()].sort(
+      (a, b) => b[1] - a[1]
+    );
+
+    return {
+      muscle: entry.muscle,
+      sets: entry.sets,
+      volume: entry.volume,
+      lastTrained: entry.lastTrained,
+      sessionCount: entry.sessionIds.size,
+      // Most-logged-sets exercise for this muscle in the window.
+      bestExercise: rankedExercises[0]?.[0] || null,
+      // Every exercise that contributed to this muscle in the window —
+      // lets a consumer cross-reference against personal-records data
+      // (a different, already-fetched source) to find whichever of
+      // these has the highest recorded PR, without this utility having
+      // to know anything about goals/PRs itself.
+      exercises: rankedExercises.map(([name]) => name),
+    };
+  });
+}
+
+// Push/Pull/Legs/Core is a standard training-split categorization (the
+// same one Guide.jsx already explains to users), applied here to real
+// logged set counts — not a new invented grouping.
+export const MUSCLE_SPLIT_CATEGORY = {
+  Chest: "Push",
+  Shoulders: "Push",
+  Triceps: "Push",
+  Back: "Pull",
+  Biceps: "Pull",
+  Forearms: "Pull",
+  Legs: "Legs",
+  Quads: "Legs",
+  Glutes: "Legs",
+  Calves: "Legs",
+  Hamstrings: "Legs",
+  Abs: "Core",
+};
+
 export function getSessionTypeLabel(session) {
   const { sessionType, customSessionType } = session;
 

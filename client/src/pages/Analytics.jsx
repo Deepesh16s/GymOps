@@ -2,7 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import "./analytics.css";
 import api from "../services/api";
 import { startOfWeek, formatDate } from "../utils/dateUtils";
-import { getWorkoutVolume, getHeaviestSet } from "../utils/workoutUtils";
+import {
+  getWorkoutVolume,
+  getHeaviestSet,
+  getSetCount,
+  isCardioEntry,
+  buildSessionSummaries,
+} from "../utils/workoutUtils";
 
 function Analytics() {
   const [workouts, setWorkouts] = useState([]);
@@ -21,6 +27,13 @@ function Analytics() {
     };
     fetchWorkouts();
   }, []);
+
+  // Sessions, grouped once (Analytics Consolidation — A4). "Frequency"
+  // below counts sessions from this, the same shared grouping Dashboard/
+  // WorkoutHistory/Calendar all use, instead of raw workout documents —
+  // previously a 5-exercise session inflated this chart to "5" the same
+  // day Dashboard's "Sessions Logged" correctly showed "1".
+  const allSessions = useMemo(() => buildSessionSummaries(workouts), [workouts]);
 
   // Volume per week, last 8 weeks
   const weeklyVolume = useMemo(() => {
@@ -45,7 +58,8 @@ function Analytics() {
 
   const maxWeeklyVolume = Math.max(...weeklyVolume.map((w) => w.volume), 1);
 
-  // Frequency: workouts per week, last 8 weeks
+  // Frequency: SESSIONS per week, last 8 weeks (not raw workout
+  // documents — see allSessions above).
   const weeklyFrequency = useMemo(() => {
     const weeks = [];
     for (let i = 7; i >= 0; i--) {
@@ -54,41 +68,52 @@ function Analytics() {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 7);
 
-      const count = workouts.filter((w) => {
-        const d = new Date(w.date || w.createdAt);
+      const count = allSessions.filter((s) => {
+        const d = new Date(s.date);
         return d >= weekStart && d < weekEnd;
       }).length;
 
       weeks.push({ label: formatDate(weekStart).slice(0, 6), count });
     }
     return weeks;
-  }, [workouts]);
+  }, [allSessions]);
 
   const maxFrequency = Math.max(...weeklyFrequency.map((w) => w.count), 1);
 
-  // Muscle distribution by total volume
+  // Muscle distribution by SET COUNT, matching the backend's
+  // /dashboard/muscle-distribution definition (Dashboard's Muscle Split
+  // widget) — previously this ranked by lifted volume instead, so the
+  // two pages could disagree on which muscle group ranked #1 for the
+  // same training history. Cardio entries have no muscleGroup/sets to
+  // contribute and are explicitly skipped rather than falling into an
+  // "Other" bucket.
   const muscleDistribution = useMemo(() => {
     const map = {};
     workouts.forEach((w) => {
+      if (isCardioEntry(w)) return;
       const muscle = w.exercise?.muscleGroup || "Other";
-      map[muscle] = (map[muscle] || 0) + getWorkoutVolume(w);
+      map[muscle] = (map[muscle] || 0) + getSetCount(w);
     });
     const total = Object.values(map).reduce((s, v) => s + v, 0) || 1;
     return Object.entries(map)
-      .map(([muscle, volume]) => ({ muscle, volume, pct: (volume / total) * 100 }))
-      .sort((a, b) => b.volume - a.volume);
+      .map(([muscle, sets]) => ({ muscle, sets, pct: (sets / total) * 100 }))
+      .sort((a, b) => b.sets - a.sets);
   }, [workouts]);
 
-  // PR progression: heaviest set ever, per exercise
+  // PR progression: heaviest set ever, per exercise. Cardio entries have
+  // no exercise/weight and previously surfaced as a bogus "Unknown — 0
+  // kg" record; excluded up front instead.
   const personalRecords = useMemo(() => {
     const map = {};
-    workouts.forEach((w) => {
-      const name = w.exercise?.name || "Unknown";
-      const heaviest = getHeaviestSet(w);
-      if (!map[name] || heaviest > map[name].weight) {
-        map[name] = { weight: heaviest, date: w.date || w.createdAt };
-      }
-    });
+    workouts
+      .filter((w) => !isCardioEntry(w))
+      .forEach((w) => {
+        const name = w.exercise?.name || "Unknown";
+        const heaviest = getHeaviestSet(w);
+        if (!map[name] || heaviest > map[name].weight) {
+          map[name] = { weight: heaviest, date: w.date || w.createdAt };
+        }
+      });
     return Object.entries(map)
       .map(([exercise, data]) => ({ exercise, ...data }))
       .sort((a, b) => b.weight - a.weight)
@@ -129,7 +154,7 @@ function Analytics() {
         <div className="analytics-grid">
           {/* Volume trend */}
           <section className="analytics-card">
-            <h2 className="analytics-card-title">Weekly Volume</h2>
+            <h2 className="analytics-card-title">Volume Trend (Last 8 Weeks)</h2>
             <div className="analytics-bars">
               {weeklyVolume.map((w) => (
                 <div className="analytics-bar-col" key={w.label}>
@@ -146,7 +171,7 @@ function Analytics() {
 
           {/* Frequency */}
           <section className="analytics-card">
-            <h2 className="analytics-card-title">Workout Frequency</h2>
+            <h2 className="analytics-card-title">Session Frequency (Last 8 Weeks)</h2>
             <div className="analytics-bars">
               {weeklyFrequency.map((w) => (
                 <div className="analytics-bar-col" key={w.label}>

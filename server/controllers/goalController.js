@@ -64,6 +64,24 @@ const validateCardioGoalConfig = ({ activityType, metric, period }) => {
 const buildGoalStatus = (current, target) =>
   Number(current) >= Number(target) ? "Completed" : "In Progress";
 
+// Fields a client is allowed to change via updateGoal. Deliberately
+// excludes `user`, `status`, `updateType`, `lastUpdated`, and any other
+// schema field — updateGoal used to spread the entire req.body into
+// findByIdAndUpdate, which let a request overwrite `user` and reassign
+// a goal to a different account. Whitelisting closes that hole.
+const ALLOWED_GOAL_UPDATE_FIELDS = [
+  "title",
+  "type",
+  "target",
+  "unit",
+  "exercise",
+  "deadline",
+  "activityType",
+  "metric",
+  "period",
+  "current",
+];
+
 exports.createGoal = async (req, res) => {
   try {
     const {
@@ -136,12 +154,12 @@ exports.createGoal = async (req, res) => {
       const sessionWorkouts = await getLatestSessionWorkouts(req.user._id);
 
       if (type === GOAL_TYPES.SESSION_EXERCISE) {
-        // Phase 8B fix: goes through getSessionMetricsFromWorkouts (the
-        // same function updateGoals.js's global recalculation uses via
+        // Goes through getSessionExerciseCount (the same helper
+        // updateGoals.js's global recalculation uses via
         // getLatestSessionMetrics) instead of raw sessionWorkouts.length,
-        // so cardio entries in a mixed session are no longer counted as
+        // so cardio entries in a mixed session are not counted as
         // "exercises" — one shared computation, not two.
-        current = metrics.getSessionMetricsFromWorkouts(sessionWorkouts).exerciseCount;
+        current = metrics.getSessionExerciseCount(sessionWorkouts);
       } else if (type === GOAL_TYPES.SESSION_VOLUME) {
         current = metrics.sumVolume(sessionWorkouts);
       } else {
@@ -233,7 +251,10 @@ exports.updateGoal = async (req, res) => {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    const updates = { ...req.body };
+    const updates = {};
+    ALLOWED_GOAL_UPDATE_FIELDS.forEach((field) => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
 
     const willBeStrengthPR =
       updates.type === GOAL_TYPES.STRENGTH_PR ||

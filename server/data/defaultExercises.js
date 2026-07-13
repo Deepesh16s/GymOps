@@ -59,20 +59,24 @@ const defaultExercises = [
   { name: "Tricep Kickback", muscleGroup: "Triceps" },
   { name: "Diamond Push Up", muscleGroup: "Triceps" },
 
-  // Legs
-  { name: "Squat", muscleGroup: "Legs" },
-  { name: "Front Squat", muscleGroup: "Legs" },
-  { name: "Hack Squat", muscleGroup: "Legs" },
-  { name: "Leg Press", muscleGroup: "Legs" },
-  { name: "Leg Extension", muscleGroup: "Legs" },
-  { name: "Calf Raise", muscleGroup: "Legs" },
-  { name: "Seated Calf Raise", muscleGroup: "Legs" },
-  { name: "Lunges", muscleGroup: "Legs" },
-  { name: "Bulgarian Split Squat", muscleGroup: "Legs" },
-  { name: "Hip Thrust", muscleGroup: "Legs" },
-  { name: "Cable Kickback", muscleGroup: "Legs" },
-  { name: "Adductor Machine", muscleGroup: "Legs" },
-  { name: "Abductor Machine", muscleGroup: "Legs" },
+  // Quads
+  { name: "Squat", muscleGroup: "Quads" },
+  { name: "Front Squat", muscleGroup: "Quads" },
+  { name: "Hack Squat", muscleGroup: "Quads" },
+  { name: "Leg Press", muscleGroup: "Quads" },
+  { name: "Leg Extension", muscleGroup: "Quads" },
+  { name: "Lunges", muscleGroup: "Quads" },
+  { name: "Bulgarian Split Squat", muscleGroup: "Quads" },
+  { name: "Adductor Machine", muscleGroup: "Quads" },
+
+  // Glutes
+  { name: "Hip Thrust", muscleGroup: "Glutes" },
+  { name: "Cable Kickback", muscleGroup: "Glutes" },
+  { name: "Abductor Machine", muscleGroup: "Glutes" },
+
+  // Calves
+  { name: "Calf Raise", muscleGroup: "Calves" },
+  { name: "Seated Calf Raise", muscleGroup: "Calves" },
 
   // Hamstrings
   { name: "Leg Curl", muscleGroup: "Hamstrings" },
@@ -81,6 +85,12 @@ const defaultExercises = [
   { name: "Romanian Deadlift", muscleGroup: "Hamstrings" },
   { name: "Stiff Leg Deadlift", muscleGroup: "Hamstrings" },
   { name: "Good Morning", muscleGroup: "Hamstrings" },
+
+  // Forearms
+  { name: "Wrist Curl", muscleGroup: "Forearms" },
+  { name: "Reverse Wrist Curl", muscleGroup: "Forearms" },
+  { name: "Reverse Curl", muscleGroup: "Forearms" },
+  { name: "Farmer's Carry", muscleGroup: "Forearms" },
 
   // Abs
   { name: "Rope Crunch", muscleGroup: "Abs" },

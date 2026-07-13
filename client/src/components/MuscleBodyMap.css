@@ -5,18 +5,173 @@
   flex-direction: column;
   align-items: center;
   position: relative;
+  width: 100%;
+  --map-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Blue -> Cyan intensity scale — each tier's own 2-stop gradient
+     chains into the next (Light ends where Moderate begins, etc.), so
+     the full None->Extreme range reads as one continuous, cohesive
+     scale. Deliberately in the blue family rather than a full
+     blue/green/amber/red thermal scale, since dark mode's own primary
+     accent is already blue — this keeps the heatmap consistent with
+     the rest of the product instead of introducing a clashing set of
+     hues.
+     None: Slate Gray · Light: Sky Blue · Moderate: Blue · High: Indigo
+     · Extreme: Cyan. */
+  --heat-none: #94a3b8;
+  --heat-light-a: #93c5fd;
+  --heat-light-b: #60a5fa;
+  --heat-moderate-a: #60a5fa;
+  --heat-moderate-b: #3b82f6;
+  --heat-high-a: #3b82f6;
+  --heat-high-b: #2563eb;
+  --heat-extreme-a: #2563eb;
+  --heat-extreme-b: #06b6d4;
+  --heat-outline: var(--go-border-soft);
+}
+
+[data-theme="dark"] .muscle-map {
+  --heat-none: #475569;
+  --heat-outline: #334155;
+}
+
+[data-theme="light"] .muscle-map {
+  --heat-outline: #cbd5e1;
+}
+
+.muscle-map__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.muscle-map__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.muscle-map__caption-inline {
+  font-size: 12.5px;
+  color: var(--go-text-faint);
+  margin-top: 3px;
+}
+
+.muscle-map__caption-inline strong {
+  color: var(--go-text);
+  font-weight: 700;
+}
+
+.muscle-map__mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  background: var(--go-surface-sunken);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.muscle-map__mode-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.muscle-map__mode-btn:hover {
+  color: var(--go-primary);
+}
+
+.muscle-map__mode-btn--active {
+  background: var(--go-primary);
+  color: #fff;
+}
+
+.muscle-map__view-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.muscle-map__view-btn {
+  flex: 1;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s var(--map-ease), color 0.2s var(--map-ease), border-color 0.2s var(--map-ease);
+}
+
+.muscle-map__view-btn--active {
+  background: var(--go-primary);
+  border-color: var(--go-primary);
+  color: #fff;
 }
 
 .muscle-map__main {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 20px;
+  width: 100%;
 }
 
 .muscle-map__bodies {
   display: flex;
   gap: 24px;
   justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+
+/* Now that this card is full-width (Dashboard's Muscle Split section),
+   the body diagrams are the visual centerpiece — sized up and centered
+   as a group instead of pinned to one side with dead space beside them. */
+@media (min-width: 700px) {
+  .body-svg {
+    width: 280px;
+  }
+
+  .muscle-map__bodies {
+    gap: 64px;
+  }
+
+  .muscle-map__main {
+    gap: 72px;
+  }
+}
+
+/* Soft ambient glow behind the figures, matching the blurred "orb"
+   accents already used on Dashboard's own background — ties the map
+   into the same premium visual language instead of sitting on a flat
+   background. */
+.muscle-map__bodies::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--heat-moderate-b) 16%, transparent) 0%,
+    transparent 70%
+  );
+  filter: blur(30px);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .muscle-map__body {
@@ -28,24 +183,40 @@
 .body-svg {
   width: 102px;
   height: auto;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.16));
 }
 
 .body-region {
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 0.5;
+  stroke: var(--heat-outline);
+  stroke-width: 0.6;
   cursor: pointer;
-  transition: fill 0.3s ease, opacity 0.15s ease, filter 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease;
+  transform-origin: center;
+  transition: fill 0.35s var(--map-ease), opacity 0.2s var(--map-ease),
+    filter 0.25s var(--map-ease), stroke 0.2s var(--map-ease),
+    stroke-width 0.2s var(--map-ease), transform 0.25s var(--map-ease);
+}
+
+.body-region:focus-visible {
+  outline: none;
+  stroke: var(--heat-moderate-b);
+  stroke-width: 2.5;
 }
 
 .body-region:hover {
-  opacity: 0.85;
-  filter: brightness(1.05);
+  opacity: 0.94;
+  filter: brightness(1.1) drop-shadow(0 0 10px color-mix(in srgb, var(--heat-moderate-b) 55%, transparent));
+  transform: scale(1.05);
+}
+
+.body-region--expanded {
+  stroke: var(--heat-moderate-b);
+  stroke-width: 2;
 }
 
 .body-static {
   fill: color-mix(in srgb, var(--go-text) 22%, transparent);
-  stroke: var(--go-border-soft);
-  stroke-width: 0.5;
+  stroke: var(--heat-outline);
+  stroke-width: 0.6;
 }
 
 .muscle-map__label {
@@ -60,13 +231,32 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
-  min-width: 108px;
+  /* Sized to its own content, not stretched to fill whatever space is
+     left in a full-width card — the bodies+sidelist group centers as
+     one unit instead. */
+  flex: 0 1 auto;
+  min-width: 220px;
+  max-width: 320px;
 }
 
 .muscle-map__sidelist-row {
   display: flex;
   align-items: center;
   gap: 7px;
+  cursor: pointer;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  border-radius: 8px;
+  transition: background 0.2s var(--map-ease);
+}
+
+.muscle-map__sidelist-row:hover {
+  background: var(--go-primary-50);
+}
+
+.muscle-map__sidelist-row--active {
+  background: var(--go-primary-50);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--go-primary) 30%, transparent);
 }
 
 .muscle-map__sidelist-bar {
@@ -133,17 +323,253 @@
   color: var(--go-text-faint);
 }
 
-.muscle-map__legend {
+.muscle-map__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--go-text-faint);
+  margin-top: 2px;
+}
+
+.muscle-map__tooltip-row--muted {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* ============================================================ */
+/* Detail panel (click-to-expand a muscle)                      */
+/* ============================================================ */
+
+.muscle-map__detail {
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+  animation: muscle-map-fade-in 0.3s var(--map-ease);
+}
+
+@keyframes muscle-map-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.muscle-map__detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.muscle-map__detail-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.muscle-map__detail-close {
+  border: none;
+  background: transparent;
+  color: var(--go-text-faint);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.muscle-map__detail-close:hover {
+  background: var(--go-border-soft);
+  color: var(--go-text);
+}
+
+.muscle-map__detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px 16px;
+}
+
+.muscle-map__detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.muscle-map__detail-item span {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--go-text-faint);
+}
+
+.muscle-map__detail-item strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.muscle-map__detail-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--go-text-faint);
+  font-style: italic;
+}
+
+/* ============================================================ */
+/* Summary panel (most/least trained, neglected, PPL/Core split) */
+/* ============================================================ */
+
+.muscle-map__summary {
+  width: 100%;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 20px;
+}
+
+/* Full-width card can comfortably fit the two single-value stats
+   (Most/Least trained) beside the two wide items instead of stacking
+   everything into just 2 columns. */
+@media (min-width: 700px) {
+  .muscle-map__summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.muscle-map__summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.muscle-map__summary-item--wide {
+  grid-column: 1 / -1;
+}
+
+.muscle-map__summary-label {
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--go-text-faint);
+}
+
+.muscle-map__summary-item strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.muscle-map__ppl-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 100px;
+  overflow: hidden;
+  background: var(--go-surface-sunken);
+  margin-top: 2px;
+}
+
+.muscle-map__ppl-seg {
+  height: 100%;
+  transition: width 0.4s var(--map-ease);
+}
+
+.muscle-map__ppl-seg--push { background: var(--go-primary); }
+.muscle-map__ppl-seg--pull { background: var(--go-primary-light); }
+.muscle-map__ppl-seg--legs { background: var(--go-primary-dark); }
+.muscle-map__ppl-seg--core { background: var(--go-text-faint); }
+
+.muscle-map__ppl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--go-text-muted);
+  align-items: center;
+}
+
+.muscle-map__ppl-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 3px;
+}
+
+.muscle-map__ppl-dot--push { background: var(--go-primary); }
+.muscle-map__ppl-dot--pull { background: var(--go-primary-light); }
+.muscle-map__ppl-dot--legs { background: var(--go-primary-dark); }
+.muscle-map__ppl-dot--core { background: var(--go-text-faint); }
+
+.muscle-map__legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   margin-top: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+.muscle-map__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--go-text-faint);
+  font-weight: 500;
 }
 
 .muscle-map__legend-swatch {
   width: 14px;
   height: 8px;
   border-radius: 2px;
+}
+
+.muscle-map__legend-swatch--none {
+  background: var(--go-illustration-surface);
+  border: 1px solid var(--go-border-soft);
+}
+
+/* Flat anchor color, not the same 2-stop gradient the body regions use
+   — in a 14x8px swatch the gradient blend between adjacent tiers
+   diluted the distinction (confirmed visually: High and Extreme read
+   as nearly the same blue). A solid color per tier keeps the legend
+   itself maximally scannable; the body regions still get the richer
+   gradient treatment where there's enough area for it to read as
+   depth instead of a wash. */
+.muscle-map__legend-swatch--light {
+  background: var(--heat-light-b);
+}
+
+.muscle-map__legend-swatch--moderate {
+  background: var(--heat-moderate-b);
+}
+
+.muscle-map__legend-swatch--high {
+  background: var(--heat-high-b);
+}
+
+.muscle-map__legend-swatch--extreme {
+  background: var(--heat-extreme-b);
 }
 
 .muscle-map__legend-label {
@@ -252,5 +678,18 @@
   .muscle-map__sidelist {
     width: 100%;
     min-width: 0;
+  }
+
+  .muscle-map__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .muscle-map__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .body-svg {
+    width: 130px;
   }
 }

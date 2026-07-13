@@ -99,7 +99,12 @@ const goalSchema = new mongoose.Schema(
   }
 );
 
-goalSchema.pre("save", function (next) {
+// Mongoose 7+ removed callback-style ("next") pre/post middleware —
+// hooks must now be synchronous (no `next` param at all) or return a
+// Promise/be async. This hook does neither async work nor branching that
+// needs a callback, so it's just a plain synchronous function; Mongoose
+// treats it as complete as soon as it returns.
+goalSchema.pre("save", function () {
   // Phase 8B: updateType can no longer be derived from `type` alone for
   // Cardio Goal — isAutoCardioGoal checks this document's own
   // activityType/metric/period to decide. Every other type is unchanged,
@@ -110,8 +115,6 @@ goalSchema.pre("save", function (next) {
       : "MANUAL";
 
   this.lastUpdated = new Date();
-
-  next();
 });
 
 module.exports = mongoose.model("Goal", goalSchema);

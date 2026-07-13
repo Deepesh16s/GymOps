@@ -84,6 +84,7 @@ function Profile() {
           res.data.user
         )
       );
+      window.dispatchEvent(new Event("gymops:user-updated"));
 
       setNameMsg(
         "Profile updated successfully."

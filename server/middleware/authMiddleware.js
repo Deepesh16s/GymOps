@@ -27,6 +27,12 @@ exports.protect = async (req, res, next) => {
       "-password"
     );
 
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Not authorized",
+      });
+    }
+
     next();
   } catch (error) {
     res.status(401).json({

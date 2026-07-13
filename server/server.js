@@ -26,6 +26,23 @@ app.use("/api/workouts", workoutRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/goals", goalRoutes);
 
+// Fallback-only: only reached when no route above has already handled
+// the request. Cannot alter the behavior of any existing endpoint.
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+// Fallback-only: only reached via next(err), which no existing
+// controller calls (each handles and responds to its own errors).
+// Exists solely as a safety net for a genuinely unhandled exception.
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  console.error(err);
+  res.status(500).json({ message: "Server Error" });
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

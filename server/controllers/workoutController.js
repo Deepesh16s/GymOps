@@ -1,4 +1,5 @@
 const Workout = require("../models/workout");
+const Exercise = require("../models/Exercise");
 const {
   updateGoalsForWorkout,
   updateGoalsForSession,
@@ -20,6 +21,16 @@ exports.createWorkout = async (req, res) => {
 
     validateWorkoutPayload({ workoutSets, sessionId, sessionDuration });
 
+    const exerciseDoc = await Exercise.findOne({
+      _id: exercise,
+      createdBy: req.user._id,
+    });
+    if (!exerciseDoc) {
+      const err = new Error("Selected exercise was not found");
+      err.status = 400;
+      throw err;
+    }
+
     const cleanSets = workoutSets.map((s) => ({
       weight: Number(s.weight),
       reps: Number(s.reps),
@@ -27,7 +38,7 @@ exports.createWorkout = async (req, res) => {
 
     const workout = await Workout.create({
       user: req.user._id,
-      exercise,
+      exercise: exerciseDoc._id,
       workoutSets: cleanSets,
       sessionId: sessionId.trim(),
       sessionDuration: Number(sessionDuration),
@@ -99,6 +110,33 @@ exports.createWorkoutSession = async (req, res) => {
         })),
       };
     });
+
+    // Verify every strength entry's exercise belongs to the requesting
+    // user, in one query rather than one per entry — mirrors
+    // goalController.createGoal's ownership check for the same relation.
+    const strengthExerciseIds = [
+      ...new Set(
+        cleanEntries
+          .filter((entry) => entry.entryType === "strength")
+          .map((entry) => String(entry.exercise))
+      ),
+    ];
+
+    if (strengthExerciseIds.length) {
+      const ownedExercises = await Exercise.find({
+        _id: { $in: strengthExerciseIds },
+        createdBy: req.user._id,
+      }).select("_id");
+
+      const ownedIds = new Set(ownedExercises.map((e) => String(e._id)));
+      const missingIds = strengthExerciseIds.filter((id) => !ownedIds.has(id));
+
+      if (missingIds.length) {
+        const err = new Error("One or more selected exercises were not found");
+        err.status = 400;
+        throw err;
+      }
+    }
 
     const trimmedSessionId = sessionId.trim();
     const numericSessionDuration = Number(sessionDuration);
@@ -265,18 +303,37 @@ exports.updateWorkout = async (req, res) => {
       });
     }
 
+    // Only workoutSets/exercise are editable here — previously the
+    // entire req.body (including `user`) was passed straight into
+    // findByIdAndUpdate, which let a request reassign a workout to a
+    // different account. Whitelisting closes that hole.
+    const updates = {};
+
     if (req.body.workoutSets !== undefined) {
       validateWorkoutSets(req.body.workoutSets);
 
-      req.body.workoutSets = req.body.workoutSets.map((s) => ({
+      updates.workoutSets = req.body.workoutSets.map((s) => ({
         weight: Number(s.weight),
         reps: Number(s.reps),
       }));
     }
 
+    if (req.body.exercise !== undefined) {
+      const exerciseDoc = await Exercise.findOne({
+        _id: req.body.exercise,
+        createdBy: req.user._id,
+      });
+      if (!exerciseDoc) {
+        return res.status(400).json({
+          message: "Selected exercise was not found",
+        });
+      }
+      updates.exercise = exerciseDoc._id;
+    }
+
     const updatedWorkout = await Workout.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       {
         new: true,
         runValidators: true,
@@ -284,8 +341,8 @@ exports.updateWorkout = async (req, res) => {
     );
 
     if (
-      req.body.workoutSets !== undefined ||
-      req.body.exercise !== undefined
+      updates.workoutSets !== undefined ||
+      updates.exercise !== undefined
     ) {
       await updateGoalsForWorkout(
         req.user._id,

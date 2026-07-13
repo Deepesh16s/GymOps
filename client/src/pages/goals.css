@@ -637,3 +637,242 @@
   transform: translateY(-2px);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--go-primary) 35%, transparent);
 }
+
+/* ==========================================================
+   Phase 8C — Goal Analytics & UX Enhancements
+   ========================================================== */
+
+/* Expandable goal card head — additive properties only; layout
+   (display/align-items/justify-content/gap) stays exactly as defined
+   in .goal-card__head above. */
+.goal-card__head {
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.goal-card__head:hover {
+  background: color-mix(in srgb, var(--go-primary) 4%, transparent);
+}
+
+.goal-card__head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.goal-card__chevron {
+  color: var(--go-text-faint, var(--go-text-muted));
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.goal-card__chevron--open {
+  transform: rotate(180deg);
+}
+
+.goal-card--expanded {
+  box-shadow:
+    var(--go-shadow-sm),
+    0 12px 32px color-mix(in srgb, var(--go-primary) 10%, transparent);
+}
+
+/* Additive properties on the existing .goal-badge base rule (icon +
+   label layout) — none of the properties already defined above are
+   changed. */
+.goal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* New health badge variants — Ahead / On Track. Completed and Behind
+   already exist above and are untouched. */
+.goal-badge--ahead {
+  color: var(--go-success-dark);
+  background: color-mix(in srgb, var(--go-success-light) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--go-success) 25%, transparent);
+}
+
+.goal-badge--on-track {
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
+}
+
+/* New progress bar variant — Ahead of schedule. --behind/--completed
+   already exist above and are untouched. */
+.progress-track--ahead .progress-fill {
+  background: linear-gradient(90deg, var(--go-success-light), var(--go-success));
+}
+
+/* Analytics panel inside an expanded goal card */
+.goal-analytics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--go-border-soft);
+  margin-top: 2px;
+}
+
+.goal-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 16px;
+}
+
+.goal-analytics-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.goal-analytics-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.goal-analytics-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.goal-analytics-overdue {
+  color: var(--go-danger-dark, #dc2626);
+  font-weight: 700;
+}
+
+.goal-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--go-text-muted);
+  line-height: 1.5;
+  background: var(--go-surface-sunken);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.goal-insight svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--go-primary);
+}
+
+/* Deadline field label inside the create/edit modal — the only new
+   labeled field; existing inputs stay label-less, matching the
+   original form's minimal style. */
+.goal-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+}
+
+/* Statistics header */
+.goal-stats-header {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.goal-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goal-stat-card__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+}
+
+.goal-stat-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--go-text);
+  letter-spacing: -0.02em;
+}
+
+/* Filter / sort bar */
+.goal-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.goal-filters-bar select {
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--go-text);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+.goal-filters-clear-btn {
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50, color-mix(in srgb, var(--go-primary) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.goal-filters-clear-btn:hover {
+  background: color-mix(in srgb, var(--go-primary) 16%, transparent);
+}
+
+/* Filtered (no-match) empty state — a lighter-weight variant of the
+   existing .goals-empty block above, for "goals exist but none match
+   the current filters" rather than "no goals at all". */
+.goals-empty--filtered {
+  padding: 40px 16px;
+}
+
+@media (max-width: 1280px) {
+  .goal-stats-header {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .goal-stats-header {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .goal-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-card__head,
+  .goal-card__chevron {
+    transition: none;
+  }
+}

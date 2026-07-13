@@ -109,9 +109,27 @@ exports.updateExercise = async (req, res) => {
       });
     }
 
+    // Only name/muscleGroup are editable here — previously the entire
+    // req.body (including createdBy/isDefault) was passed straight into
+    // findByIdAndUpdate, which let a request reassign an exercise's
+    // ownership. Whitelisting closes that hole.
+    const updates = {};
+    if (req.body.name !== undefined) {
+      updates.name = req.body.name.trim();
+      // findByIdAndUpdate is a query-level operation, so the model's
+      // pre("validate") hook (which derives normalizedName from name)
+      // never runs here — it only fires on .save()/.create(). Without
+      // this, normalizedName goes stale after a rename, causing false
+      // "Exercise already exists" collisions against the renamed doc.
+      updates.normalizedName = req.body.name.trim().toLowerCase();
+    }
+    if (req.body.muscleGroup !== undefined) {
+      updates.muscleGroup = req.body.muscleGroup;
+    }
+
     const updatedExercise = await Exercise.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       { new: true, runValidators: true }
     );
 

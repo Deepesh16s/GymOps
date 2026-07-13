@@ -29,19 +29,11 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
     fetchExercises();
   }, [muscleGroup]);
 
-  const getConfig = () => ({
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  });
-
   const fetchExercises = async () => {
     try {
-      let url = "/exercises";
-      if (muscleGroup) {
-        url += `?muscleGroup=${muscleGroup}`;
-      }
-      const res = await api.get(url, getConfig());
+      const res = await api.get("/exercises", {
+        params: muscleGroup ? { muscleGroup } : undefined,
+      });
       setExercises(res.data);
     } catch (error) {
       console.log(error);
@@ -67,7 +59,7 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
         return;
       }
 
-      const res = await api.post("/exercises", customExercise, getConfig());
+      const res = await api.post("/exercises", customExercise);
 
       alert("Exercise Added Successfully!");
       setShowCustomForm(false);
@@ -172,7 +164,15 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
             <option value="Shoulders">Shoulders</option>
             <option value="Biceps">Biceps</option>
             <option value="Triceps">Triceps</option>
-            <option value="Legs">Legs</option>
+            <option value="Forearms">Forearms</option>
+            {/* "Legs" kept here (filter-only) so exercises already
+                tagged with it before Quads/Glutes/Calves existed are
+                still findable — new exercises use the finer-grained
+                groups below instead (see the create-exercise dropdown). */}
+            <option value="Legs">Legs (legacy)</option>
+            <option value="Quads">Quads</option>
+            <option value="Glutes">Glutes</option>
+            <option value="Calves">Calves</option>
             <option value="Hamstrings">Hamstrings</option>
             <option value="Abs">Abs</option>
           </select>
@@ -232,7 +232,10 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
                 <option value="Shoulders">Shoulders</option>
                 <option value="Biceps">Biceps</option>
                 <option value="Triceps">Triceps</option>
-                <option value="Legs">Legs</option>
+                <option value="Forearms">Forearms</option>
+                <option value="Quads">Quads</option>
+                <option value="Glutes">Glutes</option>
+                <option value="Calves">Calves</option>
                 <option value="Hamstrings">Hamstrings</option>
                 <option value="Abs">Abs</option>
               </select>
