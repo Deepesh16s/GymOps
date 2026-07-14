@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Dumbbell,
   BarChart3,
+  TrendingUp,
   Calendar,
   Target,
   BookOpen,
@@ -17,6 +18,7 @@ import "./Navbar.css";
 const NAV_LINKS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/workouts", label: "Workouts", icon: Dumbbell },
+  { to: "/progression", label: "Progression", icon: TrendingUp },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/goals", label: "Goals", icon: Target },
@@ -47,7 +49,7 @@ function Navbar() {
 
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth > 900) setMobileMenuOpen(false);
+      if (window.innerWidth > 1080) setMobileMenuOpen(false);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);

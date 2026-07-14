@@ -1,0 +1,895 @@
+@import "../../styles/design-tokens.css";
+
+/* ---------------------------------------------------------------- */
+/* ProgressChart / TimelineChart                                     */
+/* ---------------------------------------------------------------- */
+
+.progress-chart {
+  width: 100%;
+  position: relative;
+}
+
+.progress-chart__skeleton {
+  width: 100%;
+}
+
+.progress-chart__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--go-text-faint);
+  text-align: center;
+  padding: 24px;
+}
+
+.progress-chart__empty-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.progress-chart__empty-title {
+  color: var(--go-text-muted);
+  font-weight: 600;
+  font-size: var(--go-text-body);
+}
+
+.progress-chart__empty-message {
+  font-size: var(--go-text-caption);
+  max-width: 280px;
+}
+
+/* ---------------------------------------------------------------- */
+/* PanelEmptyState — same shape as the chart empty state above, for    */
+/* non-chart panels ("no PRs logged yet", etc.)                       */
+/* ---------------------------------------------------------------- */
+
+.panel-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.panel-empty-state__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme="dark"] .panel-empty-state__icon {
+  color: var(--go-primary-light);
+}
+
+.panel-empty-state__message {
+  font-size: var(--go-text-body);
+  color: var(--go-text-muted);
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.progress-chart__tooltip {
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-sm);
+  box-shadow: var(--go-shadow-md);
+  padding: 10px 12px;
+  font-family: var(--go-font);
+  min-width: 140px;
+}
+
+.progress-chart__tooltip-label {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  margin: 0 0 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.progress-chart__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0;
+  font-size: var(--go-text-body);
+}
+
+.progress-chart__tooltip-row--muted {
+  color: var(--go-text-muted);
+  font-size: var(--go-text-caption);
+}
+
+.progress-chart__tooltip-key {
+  width: 10px;
+  height: 2px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.progress-chart__tooltip-key--primary {
+  background: var(--go-primary);
+}
+
+.progress-chart__tooltip-key--ma {
+  background: var(--go-text-muted);
+}
+
+.progress-chart__tooltip-value {
+  color: var(--go-text);
+  font-weight: 600;
+}
+
+.progress-chart__tooltip-note {
+  color: var(--go-text-faint);
+  font-weight: 400;
+}
+
+.progress-chart__tooltip-trophy {
+  color: var(--go-warning);
+}
+
+.progress-chart__legend {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.progress-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+}
+
+.progress-chart__legend-swatch {
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.progress-chart__legend-swatch--primary {
+  background: var(--go-primary);
+}
+
+.progress-chart__legend-swatch--ma {
+  background: var(--go-text-muted);
+  background-image: linear-gradient(90deg, var(--go-text-muted) 60%, transparent 40%);
+  background-size: 6px 2px;
+}
+
+/* ---------------------------------------------------------------- */
+/* TrendChart                                                         */
+/* ---------------------------------------------------------------- */
+
+.trend-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trend-chart__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trend-chart__title {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
+  color: var(--go-text);
+  margin: 0;
+}
+
+.trend-chart__subtitle {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  margin: 2px 0 0;
+}
+
+.trend-chart__head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.trend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: var(--go-radius-pill);
+  font-size: var(--go-text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.trend-badge--up {
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+}
+
+.trend-badge--down {
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+}
+
+.trend-badge--flat {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+}
+
+/* ---------------------------------------------------------------- */
+/* MetricCard                                                        */
+/* ---------------------------------------------------------------- */
+
+.metric-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.metric-card__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-primary-50);
+  color: var(--go-icon-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.metric-card__label {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  font-weight: 500;
+}
+
+.metric-card__value {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.metric-card__sub {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+}
+
+/* ---------------------------------------------------------------- */
+/* StatGroupCard                                                      */
+/* ---------------------------------------------------------------- */
+
+.stat-group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.stat-group-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-group-card__head svg {
+  color: var(--go-icon-accent);
+}
+
+.stat-group-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-group-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stat-group-card__row-label {
+  font-size: var(--go-text-body);
+  color: var(--go-text-muted);
+}
+
+.stat-group-card__row-figures {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-group-card__row-value {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+/* ---------------------------------------------------------------- */
+/* ProgressSummary                                                    */
+/* ---------------------------------------------------------------- */
+
+.progress-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.progress-summary__range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--go-text-body);
+  color: var(--go-text-muted);
+  margin: 0;
+}
+
+.progress-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* ---------------------------------------------------------------- */
+/* InsightCard                                                        */
+/* ---------------------------------------------------------------- */
+
+.insight-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+}
+
+.insight-card--unavailable {
+  opacity: 0.7;
+}
+
+.insight-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-primary-50);
+  color: var(--go-icon-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.insight-card--unavailable .insight-card__icon {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-faint);
+}
+
+.insight-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.insight-card__label {
+  font-size: var(--go-text-caption);
+  font-weight: 600;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.insight-card__value {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.insight-card__detail {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+}
+
+.insight-card__detail--muted {
+  color: var(--go-text-faint);
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------- */
+/* FilterBar                                                         */
+/* ---------------------------------------------------------------- */
+
+.progression-filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.progression-filterbar__primary {
+  display: flex;
+  gap: 4px;
+  background: var(--go-surface-sunken);
+  padding: 4px;
+  border-radius: var(--go-radius-sm);
+  flex-shrink: 0;
+}
+
+.progression-filterbar__tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: calc(var(--go-radius-sm) - 4px);
+  background: transparent;
+  color: var(--go-text-muted);
+  font-size: var(--go-text-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast);
+  white-space: nowrap;
+}
+
+.progression-filterbar__tab:hover {
+  background: var(--go-primary-50);
+  color: var(--go-text);
+}
+
+.progression-filterbar__tab--active {
+  background: var(--go-surface);
+  color: var(--go-primary-dark);
+  box-shadow: var(--go-shadow-xs);
+}
+
+[data-theme="dark"] .progression-filterbar__tab--active {
+  background: var(--go-surface-sunken);
+  color: var(--go-primary-light);
+  border: 1px solid var(--go-border-soft);
+}
+
+.progression-filterbar__secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.progression-filterbar__select {
+  padding: 8px 12px;
+  border-radius: var(--go-radius-sm);
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+  font-size: var(--go-text-body);
+  font-family: var(--go-font);
+  cursor: pointer;
+  transition: border-color var(--go-fast);
+}
+
+.progression-filterbar__select:hover {
+  border-color: var(--go-border-strong);
+}
+
+.progression-filterbar__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  padding: 0 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.progression-filterbar__toggle input {
+  accent-color: var(--go-primary);
+  cursor: pointer;
+}
+
+.progression-filterbar__tab:focus-visible,
+.progression-filterbar__select:focus-visible,
+.progression-filterbar__toggle input:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- */
+/* WorkoutLogTable                                                    */
+/* ---------------------------------------------------------------- */
+
+.workout-log__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workout-log__table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px;
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-sm);
+}
+
+.workout-log__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--go-text-body);
+  white-space: nowrap;
+}
+
+.workout-log__table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint);
+  background: var(--go-surface-sunken);
+  position: sticky;
+  top: 0;
+}
+
+.workout-log__table td {
+  padding: 9px 14px;
+  border-top: 1px solid var(--go-border-soft);
+  color: var(--go-text-muted);
+}
+
+.workout-log__table tbody tr:hover {
+  background: var(--go-primary-50);
+}
+
+.workout-log__exercise {
+  color: var(--go-text);
+  font-weight: 600;
+}
+
+.workout-log__set-count {
+  color: var(--go-text-faint);
+}
+
+.workout-log__more {
+  margin-top: 8px;
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* DistributionRow                                                    */
+/* ---------------------------------------------------------------- */
+
+.prog-exdist__hint {
+  font-size: var(--go-text-body);
+  color: var(--go-text-muted);
+  line-height: 1.5;
+}
+
+.prog-exdist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prog-exdist__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+  grid-template-areas:
+    "name count"
+    "track track";
+  /* A <button> only fills its parent's width when that parent is itself
+     a stretching flex/grid item — wrapping a row in an extra <div> (e.g.
+     for an expandable accordion) breaks that chain and the button
+     shrinks to its content instead. Declaring the width here directly
+     makes every row full-width regardless of what wraps it. */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.prog-exdist__row:hover {
+  border-color: var(--go-border-strong);
+  transform: translateY(-1px);
+}
+
+.prog-exdist__row--static {
+  cursor: default;
+}
+
+.prog-exdist__row--static:hover {
+  border-color: transparent;
+  transform: none;
+}
+
+.prog-exdist__row-name {
+  grid-area: name;
+  font-size: var(--go-text-body);
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.prog-exdist__row-count {
+  grid-area: count;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  white-space: nowrap;
+}
+
+/* DistributionRow's optional status badge (e.g. Muscle Balance's
+   Balanced/Needs Work/Overtrained) — a category read alongside the raw
+   percentage, since a label registers faster than a number. */
+.distribution-row__badge {
+  padding: 2px 8px;
+  border-radius: var(--go-radius-pill);
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.distribution-row__badge--balanced {
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+}
+
+.distribution-row__badge--warning {
+  background: var(--go-warning-50);
+  color: var(--go-warning);
+}
+
+.distribution-row__badge--danger {
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+}
+
+.prog-exdist__row-track {
+  grid-area: track;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--go-border-soft);
+  overflow: hidden;
+}
+
+/* Ranked variant — a leaderboard position instead of a proportional bar,
+   for lists placed where several bar-track rows already sit back to back. */
+.prog-exdist__row--ranked {
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "rank name count";
+}
+
+.prog-exdist__row-rank {
+  grid-area: rank;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  color: var(--go-text-muted);
+  flex-shrink: 0;
+}
+
+.prog-exdist__row--ranked:nth-child(1) .prog-exdist__row-rank {
+  background: var(--go-warning-50);
+  border-color: transparent;
+  color: var(--go-warning);
+}
+
+.prog-exdist__row-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--go-chart-accent);
+}
+
+/* ---------------------------------------------------------------- */
+/* PersonalRecordRow                                                  */
+/* ---------------------------------------------------------------- */
+
+.prog-pr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prog-pr__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--go-border-soft);
+}
+
+.prog-pr__row:last-child {
+  border-bottom: none;
+}
+
+/* Wide "landscape" tile grid — used where a Personal Records list can
+   run long (one row per exercise ever trained) and reads better as
+   several short columns than one tall one. Rows become self-contained
+   tiles instead of divider-separated lines in a single column. */
+.prog-pr--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.prog-pr--grid .prog-pr__row {
+  border-bottom: none;
+  background: var(--go-surface-sunken);
+  border-radius: var(--go-radius-sm);
+  padding: 10px 12px;
+  min-height: 64px;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.prog-pr--grid .prog-pr__row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--go-shadow-sm, 0 6px 16px rgba(0, 0, 0, 0.1));
+  background: var(--go-surface);
+}
+
+.prog-pr--grid .prog-pr__row-main {
+  min-width: 0;
+}
+
+.prog-pr__row-name {
+  font-size: var(--go-text-body);
+  font-weight: 600;
+  color: var(--go-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prog-pr--grid .prog-pr__row-name {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.prog-pr__row-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.prog-pr__row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.prog-pr__row-date {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  margin-top: 2px;
+}
+
+.prog-pr__row-figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.prog-pr__row-weight {
+  font-size: var(--go-text-body);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.prog-pr__row-est {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+}
+
+@media (max-width: 640px) {
+  .progress-summary__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .progression-filterbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .progression-filterbar__primary {
+    width: 100%;
+  }
+
+  .progression-filterbar__tab {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .progression-filterbar__secondary {
+    width: 100%;
+  }
+
+  .progression-filterbar__select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progression-filterbar__tab {
+    transition: none;
+  }
+}

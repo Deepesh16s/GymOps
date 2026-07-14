@@ -2,6 +2,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Flame,
   TrendingDown,
+  TrendingUp,
   Info,
   Trophy,
   Dumbbell,
@@ -113,20 +114,40 @@ function getPrForMuscle(entry, personalRecords) {
 // Weekly/Monthly/90 Days/Lifetime is instant (no extra request).
 // personalRecords: the exercise-name -> weight map already fetched by
 // Dashboard's session-summary pipeline (see getPrForMuscle above).
-function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} }) {
+// onSelectMuscle: optional (muscle) => void. When provided, the expanded
+// detail panel gains a "View full progression" action — Dashboard passes
+// a navigate-to-/progression callback, the Progression page itself passes
+// a callback that just switches its own Muscle filter, so this one map
+// component serves both without duplicating its body/detail-panel markup.
+function MuscleBodyMap({
+  workouts = [],
+  loading = false,
+  personalRecords = {},
+  onSelectMuscle = null,
+  selectMuscleLabel = "View full progression",
+}) {
   const [mode, setMode] = useState("month");
   const [hovered, setHovered] = useState(null);
   const [expandedMuscle, setExpandedMuscle] = useState(null);
-  const [isNarrow, setIsNarrow] = useState(
-    () => typeof window !== "undefined" && window.innerWidth <= 560
-  );
+  const [isNarrow, setIsNarrow] = useState(false);
   const [activeBodyView, setActiveBodyView] = useState("front");
   const wrapRef = useRef(null);
 
+  // Measures THIS component's own rendered width, not the viewport —
+  // this map now lives inside more than one layout (Dashboard's
+  // full-width card, Progression's narrower grid column), and a
+  // window-width check would stay "wide" on a big desktop screen even
+  // while the map itself is squeezed into a 300px column, causing the
+  // front/back bodies to render at full size and overflow their card.
+  // 560 matches the CSS @container threshold in MuscleBodyMap.css.
   useEffect(() => {
-    const onResize = () => setIsNarrow(window.innerWidth <= 560);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      setIsNarrow(entry.contentRect.width <= 560);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   const breakdownByMode = useMemo(() => {
@@ -218,7 +239,7 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
 
   const pctOf = (sets) => (totalSets > 0 ? Math.round((sets / totalSets) * 100) : 0);
 
-  const handleEnter = (region, e) => {
+  const handleEnter = (region, view, e) => {
     const info = regionFill[region];
     if (!info) return;
     const wrapBox = wrapRef.current?.getBoundingClientRect();
@@ -226,6 +247,7 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
     if (!wrapBox) return;
     setHovered({
       muscle: info.muscle,
+      view,
       x: targetBox.left - wrapBox.left + targetBox.width / 2,
       y: targetBox.top - wrapBox.top,
     });
@@ -239,13 +261,13 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
     setExpandedMuscle((prev) => (prev === info.muscle ? null : info.muscle));
   };
 
-  const regionProps = (region) => {
+  const regionProps = (region, view) => {
     const info = regionFill[region];
     const isTop = info && info.sets > 0 && info.muscle === topMuscle;
     const isExpanded = info && info.muscle === expandedMuscle;
     return {
       fill: info ? `url(#muscle-heat-${info.level})` : "url(#muscle-heat-none)",
-      onMouseEnter: (e) => handleEnter(region, e),
+      onMouseEnter: (e) => handleEnter(region, view, e),
       onMouseLeave: handleLeave,
       onClick: () => handleRegionClick(region),
       // Keyboard-operable, matching the sidelist rows below — without
@@ -325,6 +347,17 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
         </div>
       </div>
 
+      {hasData && (
+        <div className="muscle-map__legend">
+          {INTENSITY_LEVELS.map((level) => (
+            <span key={level} className="muscle-map__legend-item">
+              <span className={`muscle-map__legend-swatch muscle-map__legend-swatch--${level}`} />
+              {INTENSITY_LABELS[level]}
+            </span>
+          ))}
+        </div>
+      )}
+
       {!hasData ? (
         <div className="muscle-map__empty">
           <p>No sets logged yet.</p>
@@ -362,14 +395,14 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
               <svg width="0" height="0" style={{ position: "absolute" }}>
                 <defs>
                   <linearGradient id="muscle-heat-none" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--heat-none)" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="var(--heat-none)" stopOpacity="0.35" />
+                    <stop offset="0%" stopColor="var(--heat-none)" stopOpacity="0.34" />
+                    <stop offset="100%" stopColor="var(--heat-none)" stopOpacity="0.34" />
                   </linearGradient>
-                  {/* Cool-to-hot thermal scale (blue -> teal -> amber -> red)
-                      instead of shades of the brand color — reads as
-                      "intensity" at a glance and stays consistent whether
-                      the brand primary is green (light theme) or blue
-                      (dark theme). */}
+                  {/* One continuous navy -> bright-blue scale (see the
+                      token comment in MuscleBodyMap.css) — untrained
+                      regions stay dim so a trained region immediately
+                      pops instead of the whole body reading as equally
+                      "lit". */}
                   <linearGradient id="muscle-heat-light" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--heat-light-a)" />
                     <stop offset="100%" stopColor="var(--heat-light-b)" />
@@ -390,64 +423,165 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
               </svg>
 
               {showFront && (
-                <div className="muscle-map__body">
+                <div
+                  className={`muscle-map__body${
+                    hovered?.view === "back" ? " muscle-map__body--dim" : ""
+                  }`}
+                >
+                  <div className="muscle-map__figure">
                   <svg viewBox="0 0 160 340" className="body-svg">
-                    <circle cx="80" cy="20" r="16" className="body-static" />
-                    <rect x="72" y="33" width="16" height="13" rx="4" className="body-static" />
-
-                    <ellipse cx="44" cy="58" rx="16" ry="12" {...regionProps("shoulderL")} />
-                    <ellipse cx="116" cy="58" rx="16" ry="12" {...regionProps("shoulderR")} />
-
+                    <ellipse cx="80" cy="19" rx="12.5" ry="15.5" className="body-static" />
                     <path
-                      d="M58 64 H102 V99 Q80 110 58 99 Z"
-                      {...regionProps("chest")}
+                      d="M74,30 C72,34 71,39 72,44 C72,45 74,46 76,46 L84,46 C86,46 88,45 88,44 C89,39 88,34 86,30 C84,33 76,33 74,30 Z"
+                      className="body-static"
                     />
 
-                    <rect x="63" y="101" width="34" height="47" rx="11" {...regionProps("abs")} />
+                    <path
+                      d="M60,48 C50,43 38,44 30,52 C22,59 21,71 28,78 C35,85 46,85 54,78 C60,72 63,58 60,48 Z"
+                      {...regionProps("shoulderL", "front")}
+                    />
+                    <path
+                      d="M100,48 C110,43 122,44 130,52 C138,59 139,71 132,78 C125,85 114,85 106,78 C100,72 97,58 100,48 Z"
+                      {...regionProps("shoulderR", "front")}
+                    />
 
-                    <rect x="27" y="72" width="15" height="44" rx="7.5" {...regionProps("bicepL")} />
-                    <rect x="118" y="72" width="15" height="44" rx="7.5" {...regionProps("bicepR")} />
+                    {/* Pecs drawn as two separate tapering lobes (not one
+                        rectangle) — wider at the shoulder, narrowing to a
+                        point near the sternum, with a real gap between
+                        them so the chest reads as two muscles meeting in
+                        the middle rather than one rounded block. */}
+                    <path
+                      d="M57,56 C56,50 62,46 70,45 C75,45 78,48 78,53 Q76,68 78,83 C78,92 73,98 66,97 C59,95 55,87 55,77 C55,70 56,63 57,56 Z"
+                      {...regionProps("chest", "front")}
+                    />
+                    <path
+                      d="M103,56 C104,50 98,46 90,45 C85,45 82,48 82,53 Q84,68 82,83 C82,92 87,98 94,97 C101,95 105,87 105,77 C105,70 104,63 103,56 Z"
+                      {...regionProps("chest", "front")}
+                    />
 
-                    <rect x="25" y="118" width="14" height="40" rx="7" {...regionProps("forearmL")} />
-                    <rect x="121" y="118" width="14" height="40" rx="7" {...regionProps("forearmR")} />
+                    <path
+                      d="M60,98 C60,107 63,114 66,120 C63,127 62,133 64,140 C66,148 72,152 80,152 C88,152 94,148 96,140 C98,133 97,127 94,120 C97,114 100,107 100,98 Z"
+                      {...regionProps("abs", "front")}
+                    />
+                    <path d="M80,104 L80,150" className="body-detail-line" />
 
-                    <rect x="61" y="148" width="17" height="63" rx="8" {...regionProps("quadL")} />
-                    <rect x="82" y="148" width="17" height="63" rx="8" {...regionProps("quadR")} />
+                    <path
+                      d="M42,72 C46,78 47,88 45,96 C43,104 41,112 40,122 L40,128 C40,130 38,131 36,131 C34,131 32,130 32,128 L32,122 C30,112 27,104 25,96 C23,88 24,78 28,72 C32,69 38,69 42,72 Z"
+                      {...regionProps("bicepL", "front")}
+                    />
+                    <path
+                      d="M118,72 C114,78 113,88 115,96 C117,104 119,112 120,122 L120,128 C120,130 122,131 124,131 C126,131 128,130 128,128 L128,122 C130,112 133,104 135,96 C137,88 136,78 132,72 C128,69 122,69 118,72 Z"
+                      {...regionProps("bicepR", "front")}
+                    />
 
-                    <rect x="62" y="212" width="15" height="56" rx="7" className="body-static" />
-                    <rect x="83" y="212" width="15" height="56" rx="7" className="body-static" />
+                    <path
+                      d="M39,130 C42,134 43,140 42,148 C41,158 39,166 37,172 L33,172 C31,166 29,158 28,148 C27,140 28,134 31,130 C33,128 37,128 39,130 Z"
+                      {...regionProps("forearmL", "front")}
+                    />
+                    <path
+                      d="M121,130 C118,134 117,140 118,148 C119,158 121,166 123,172 L127,172 C129,166 131,158 132,148 C133,140 132,134 129,130 C127,128 123,128 121,130 Z"
+                      {...regionProps("forearmR", "front")}
+                    />
+
+                    <path
+                      d="M76,152 C80,160 81,174 79,188 C77,200 76,212 75,224 L64,224 C63,212 62,200 60,188 C58,174 59,160 63,152 C67,149 73,149 76,152 Z"
+                      {...regionProps("quadL", "front")}
+                    />
+                    <path
+                      d="M84,152 C80,160 79,174 81,188 C83,200 84,212 85,224 L96,224 C97,212 98,200 100,188 C102,174 101,160 97,152 C93,149 87,149 84,152 Z"
+                      {...regionProps("quadR", "front")}
+                    />
+                    <path d="M64,224 Q80,229 96,224" className="body-detail-line" />
+
+                    <path
+                      d="M63,224 C57,232 55,246 57,260 C58,271 62,281 66,288 L71,288 C74,281 76,271 76,260 C76,246 75,232 71,224 Z"
+                      className="body-static"
+                    />
+                    <path
+                      d="M97,224 C103,232 105,246 103,260 C102,271 98,281 94,288 L89,288 C86,281 84,271 84,260 C84,246 85,232 89,224 Z"
+                      className="body-static"
+                    />
+
+                    <ellipse cx="68" cy="292" rx="8.5" ry="4.5" className="body-static" />
+                    <ellipse cx="92" cy="292" rx="8.5" ry="4.5" className="body-static" />
                   </svg>
+                  </div>
                   <p className="muscle-map__label">Front</p>
                 </div>
               )}
 
               {showBack && (
-                <div className="muscle-map__body">
+                <div
+                  className={`muscle-map__body${
+                    hovered?.view === "front" ? " muscle-map__body--dim" : ""
+                  }`}
+                >
+                  <div className="muscle-map__figure">
                   <svg viewBox="0 0 160 340" className="body-svg">
-                    <circle cx="80" cy="20" r="16" className="body-static" />
-                    <rect x="72" y="33" width="16" height="13" rx="4" className="body-static" />
-
+                    <ellipse cx="80" cy="19" rx="12.5" ry="15.5" className="body-static" />
                     <path
-                      d="M52 58 H108 V95 Q80 104 52 95 Z"
-                      {...regionProps("upperBack")}
+                      d="M74,30 C72,34 71,39 72,44 C72,45 74,46 76,46 L84,46 C86,46 88,45 88,44 C89,39 88,34 86,30 C84,33 76,33 74,30 Z"
+                      className="body-static"
                     />
 
-                    <rect x="63" y="97" width="34" height="39" rx="10" {...regionProps("lowerBack")} />
+                    <path
+                      d="M52,50 C52,46 64,44 80,44 C96,44 108,46 108,50 L108,90 C108,98 100,104 90,102 C86,101 83,99 80,96 C77,99 74,101 70,102 C60,104 52,98 52,90 Z"
+                      {...regionProps("upperBack", "back")}
+                    />
 
-                    <rect x="27" y="72" width="15" height="44" rx="7.5" {...regionProps("tricepL")} />
-                    <rect x="118" y="72" width="15" height="44" rx="7.5" {...regionProps("tricepR")} />
+                    <path
+                      d="M58,92 C60,102 64,112 68,120 C65,128 63,136 64,144 C65,150 71,154 80,154 C89,154 95,150 96,144 C97,136 95,128 92,120 C96,112 100,102 102,92 C94,98 87,100 80,100 C73,100 66,98 58,92 Z"
+                      {...regionProps("lowerBack", "back")}
+                    />
+                    <path d="M80,46 L80,152" className="body-detail-line" />
 
-                    <rect x="25" y="118" width="14" height="40" rx="7" {...regionProps("forearmL")} />
-                    <rect x="121" y="118" width="14" height="40" rx="7" {...regionProps("forearmR")} />
+                    <path
+                      d="M42,72 C46,78 47,88 45,96 C43,104 41,112 40,122 L40,128 C40,130 38,131 36,131 C34,131 32,130 32,128 L32,122 C30,112 27,104 25,96 C23,88 24,78 28,72 C32,69 38,69 42,72 Z"
+                      {...regionProps("tricepL", "back")}
+                    />
+                    <path
+                      d="M118,72 C114,78 113,88 115,96 C117,104 119,112 120,122 L120,128 C120,130 122,131 124,131 C126,131 128,130 128,128 L128,122 C130,112 133,104 135,96 C137,88 136,78 132,72 C128,69 122,69 118,72 Z"
+                      {...regionProps("tricepR", "back")}
+                    />
 
-                    <path d="M59 137 H101 V153 Q80 161 59 153 Z" {...regionProps("glutes")} />
+                    <path
+                      d="M39,130 C42,134 43,140 42,148 C41,158 39,166 37,172 L33,172 C31,166 29,158 28,148 C27,140 28,134 31,130 C33,128 37,128 39,130 Z"
+                      {...regionProps("forearmL", "back")}
+                    />
+                    <path
+                      d="M121,130 C118,134 117,140 118,148 C119,158 121,166 123,172 L127,172 C129,166 131,158 132,148 C133,140 132,134 129,130 C127,128 123,128 121,130 Z"
+                      {...regionProps("forearmR", "back")}
+                    />
 
-                    <rect x="61" y="155" width="17" height="56" rx="8" {...regionProps("hamstringL")} />
-                    <rect x="82" y="155" width="17" height="56" rx="8" {...regionProps("hamstringR")} />
+                    <path
+                      d="M58,148 C58,142 66,138 80,138 C94,138 102,142 102,148 L102,160 C102,168 93,174 80,172 C67,174 58,168 58,160 Z"
+                      {...regionProps("glutes", "back")}
+                    />
+                    <path d="M60,161 Q80,167 100,161" className="body-detail-line" />
 
-                    <rect x="62" y="212" width="15" height="56" rx="7" {...regionProps("calfL")} />
-                    <rect x="83" y="212" width="15" height="56" rx="7" {...regionProps("calfR")} />
+                    <path
+                      d="M76,161 C80,169 81,182 79,196 C77,208 76,216 75,224 L64,224 C63,216 62,208 60,196 C58,182 59,169 63,161 C67,158 73,158 76,161 Z"
+                      {...regionProps("hamstringL", "back")}
+                    />
+                    <path
+                      d="M84,161 C80,169 79,182 81,196 C83,208 84,216 85,224 L96,224 C97,216 98,208 100,196 C102,182 101,169 97,161 C93,158 87,158 84,161 Z"
+                      {...regionProps("hamstringR", "back")}
+                    />
+                    <path d="M64,224 Q80,229 96,224" className="body-detail-line" />
+
+                    <path
+                      d="M63,224 C56,232 53,246 56,260 C58,271 62,281 66,288 L71,288 C74,281 76,271 76,260 C76,246 75,232 71,224 C69,222 65,222 63,224 Z"
+                      {...regionProps("calfL", "back")}
+                    />
+                    <path
+                      d="M97,224 C104,232 107,246 104,260 C102,271 98,281 94,288 L89,288 C86,281 84,271 84,260 C84,246 85,232 89,224 C91,222 95,222 97,224 Z"
+                      {...regionProps("calfR", "back")}
+                    />
+
+                    <ellipse cx="68" cy="292" rx="8.5" ry="4.5" className="body-static" />
+                    <ellipse cx="92" cy="292" rx="8.5" ry="4.5" className="body-static" />
                   </svg>
+                  </div>
                   <p className="muscle-map__label">Back</p>
                 </div>
               )}
@@ -578,10 +712,21 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
                       <strong>{expandedPr ? `${expandedPr.exercise} — ${expandedPr.weight} kg` : "—"}</strong>
                     </div>
                   </div>
-                  <p className="muscle-map__detail-note">
-                    <Info size={11} strokeWidth={2} /> Full progression history for individual
-                    muscles is coming in a future update.
-                  </p>
+                  {onSelectMuscle ? (
+                    <button
+                      type="button"
+                      className="muscle-map__detail-progression-btn"
+                      onClick={() => onSelectMuscle(expandedMuscle)}
+                    >
+                      <TrendingUp size={13} strokeWidth={2} />
+                      {selectMuscleLabel}
+                    </button>
+                  ) : (
+                    <p className="muscle-map__detail-note">
+                      <Info size={11} strokeWidth={2} /> Full progression history for individual
+                      muscles is coming in a future update.
+                    </p>
+                  )}
                 </>
               ) : (
                 <p className="muscle-map__detail-note">
@@ -640,15 +785,6 @@ function MuscleBodyMap({ workouts = [], loading = false, personalRecords = {} })
                 <i className="muscle-map__ppl-dot muscle-map__ppl-dot--core" />Core {summary.categoryPct.Core}%
               </span>
             </div>
-          </div>
-
-          <div className="muscle-map__legend">
-            {INTENSITY_LEVELS.map((level) => (
-              <span key={level} className="muscle-map__legend-item">
-                <span className={`muscle-map__legend-swatch muscle-map__legend-swatch--${level}`} />
-                {INTENSITY_LABELS[level]}
-              </span>
-            ))}
           </div>
         </>
       )}

@@ -53,9 +53,9 @@
 /* ── desktop nav links ───────────────────────────────────────── */
 .navbar-links {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   background: var(--go-surface-sunken);
-  padding: 4px;
+  padding: 3px;
   border-radius: var(--go-radius-md);
 }
 
@@ -64,19 +64,31 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: var(--go-radius-sm);
   color: var(--go-text-muted);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
-  transition: background var(--go-base), color var(--go-base);
+  transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-link svg {
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
 }
 
 .navbar-link:hover {
   background: var(--go-primary-50);
   color: var(--go-text);
+  transform: translateY(-1px);
+}
+
+.navbar-link:hover svg {
+  transform: scale(1.08);
 }
 
 .navbar-link-active {
@@ -85,17 +97,21 @@
   box-shadow: var(--go-shadow-xs);
 }
 
+.navbar-link-active:hover {
+  transform: none;
+}
+
 .navbar-link-indicator {
   position: absolute;
-  left: 14px;
-  right: 14px;
+  left: 12px;
+  right: 12px;
   bottom: 2px;
   height: 2px;
   border-radius: var(--go-radius-pill);
-  background: var(--go-primary);
+  background: linear-gradient(90deg, var(--go-primary), var(--go-primary-light));
   transform: scaleX(0);
   opacity: 0;
-  transition: transform var(--go-base), opacity var(--go-base);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
 
 .navbar-link-active .navbar-link-indicator {
@@ -159,14 +175,14 @@
   border-radius: var(--go-radius-md);
   box-shadow: var(--go-shadow-md);
   transition:
-    max-height var(--go-base),
-    opacity var(--go-base),
-    margin-top var(--go-base),
-    padding var(--go-base);
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease,
+    margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar-mobile-menu-open {
-  max-height: 420px;
+  max-height: 480px;
   opacity: 1;
   margin-top: 12px;
   padding: 8px;
@@ -183,7 +199,12 @@
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: background var(--go-fast), color var(--go-fast), padding-left var(--go-fast);
+  transition: background 0.18s ease, color 0.18s ease, padding-left 0.18s ease;
+}
+
+.navbar-mobile-link svg {
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
 }
 
 .navbar-mobile-link:hover {
@@ -192,13 +213,31 @@
   padding-left: 18px;
 }
 
+.navbar-mobile-link:hover svg {
+  transform: scale(1.08);
+}
+
 .navbar-mobile-link-active {
   background: var(--go-primary-50);
   color: var(--go-primary-dark);
   font-weight: 600;
 }
 
-@media (max-width: 900px) {
+/* Slightly tighter link spacing before the layout collapses to the
+   hamburger menu, so all 7 items keep breathing room instead of
+   crowding right up to the mobile breakpoint. */
+@media (max-width: 1180px) and (min-width: 1081px) {
+  .navbar {
+    padding: 14px 24px;
+  }
+
+  .navbar-link {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 1080px) {
   .navbar {
     padding: 12px 18px;
   }

@@ -9,6 +9,7 @@ import Register from "./pages/register";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/Profile";
 import WorkoutHistory from "./pages/WorkoutHistory";
+import Progression from "./pages/Progression";
 import Analytics from "./pages/Analytics";
 import CalendarPage from "./pages/Calendar";
 import Goals from "./pages/goals";
@@ -39,6 +40,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/workouts" element={<WorkoutHistory />} />
+              <Route path="/progression" element={<Progression />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/goals" element={<Goals />} />

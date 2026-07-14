@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import "./workoutHistory.css";
 import api from "../services/api";
+import { getWorkouts } from "../services/workoutService";
 import { SESSION_TYPE_FILTER_OPTIONS, getSessionTypeColor } from "../constants/sessionTypes";
 import { DATE_RANGE_OPTIONS, DATE_RANGE_ALL, DATE_RANGE_CUSTOM } from "../constants/dateRanges";
 import {
@@ -50,7 +51,7 @@ function WorkoutHistory() {
   const fetchWorkouts = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/workouts", { params: { limit: 500 } });
+      const res = await getWorkouts(500);
       setWorkouts(res.data);
     } catch (error) {
       console.log(error);

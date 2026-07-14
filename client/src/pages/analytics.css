@@ -1,104 +1,975 @@
 @import "../styles/design-tokens.css";
 
-.analytics-page {
-  min-height: 100vh;
-  background: var(--go-bg);
+/* Analytics reuses the Progression page shell (progression.css: page
+   background, hero, panel, stats-rail, insights-grid) and every chart
+   component's own CSS (components/progression/progression-charts.css,
+   pulled in transitively by whichever components Analytics renders).
+   This file only adds the handful of layout pieces unique to Analytics'
+   own sections. */
+
+/* Tighter vertical rhythm than Progression's — Analytics is meant to be
+   scanned top-to-bottom in one sitting, not lived in, so ~20% less
+   whitespace between sections/panels than the shared defaults. Scoped
+   under .analytics-page so Progression.jsx (which reuses the same
+   progression-main/section/panel classes) is unaffected. */
+.analytics-page .progression-main {
+  gap: 18px;
 }
 
-.analytics-main {
-  max-width: 1480px;
-  margin: 0 auto;
-  padding: 32px 44px 72px;
+/* Hero — its own card again (not merged with Overall Progress). */
+.analytics-hero--split {
+  padding: 26px 32px;
 }
 
-.analytics-placeholder {
-  background: color-mix(in srgb, var(--go-surface) 82%, transparent);
+.analytics-hero__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Overall Progress — a separate card directly under the Hero. Pulled up
+   by the parent .progression-main's own inter-section gap (18px) so the
+   two cards sit flush with zero visible whitespace between them, while
+   staying two distinct bordered/shadowed cards rather than one merged
+   block. */
+.analytics-hero__progress--standalone {
+  background: color-mix(in srgb, var(--go-surface) 78%, transparent);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
-  padding: 48px;
-  text-align: center;
-  color: var(--go-text-muted);
+  border-radius: var(--go-radius-md);
+  padding: 18px 22px;
+  box-shadow: var(--go-shadow-xs);
+  margin-top: -18px;
 }
 
-.analytics-placeholder h1 {
-  font-size: 1.6rem;
+.analytics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.analytics-page .progression-panel {
+  padding: 16px 18px;
+}
+
+.analytics-section__label {
+  font-size: var(--go-text-h2);
+  font-weight: 800;
+  color: var(--go-text);
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 640px) {
+  .analytics-section__label {
+    font-size: var(--go-text-h3);
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Delight moments — small celebratory tags, used sparingly            */
+/* ---------------------------------------------------------------- */
+
+.analytics-celebrate-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-warning-50);
+  color: var(--go-warning);
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  animation: analytics-celebrate-pop 0.4s ease;
+}
+
+.analytics-celebrate-badge--inline {
+  vertical-align: middle;
+}
+
+@keyframes analytics-celebrate-pop {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-celebrate-badge {
+    animation: none;
+  }
+}
+
+.analytics-progress-tile__trend-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.analytics-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.analytics-section__head .analytics-section__label {
+  margin: 0;
+}
+
+/* The dropdown always stays pinned to the right on its own row; a long
+   label (e.g. "EXERCISE DISTRIBUTION") truncates instead of wrapping the
+   select onto a second line below it. */
+.analytics-section__head .analytics-section__label,
+.analytics-section__head .progression-panel__label,
+.analytics-section__head .analytics-section__hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-section__head .progression-filterbar__select {
+  flex-shrink: 0;
+}
+
+/* Search inputs (unlike the compact range dropdowns) are fine wrapping
+   to their own line on narrow panels rather than forcing the label to
+   truncate — the label text matters more here than staying single-row. */
+.analytics-section__head--wrap {
+  flex-wrap: wrap;
+}
+
+.analytics-section__head--wrap .progression-panel__label,
+.analytics-section__head--wrap .analytics-section__label {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  flex: 1 1 auto;
+}
+
+/* Panel-level header row (e.g. Exercise Distribution's muscle filter) —
+   needs the bottom margin the section-level head doesn't, since it isn't
+   followed by a .analytics-section__hint pulled up to close the gap. */
+.progression-panel > .analytics-section__head {
+  margin-bottom: 14px;
+}
+
+.analytics-section__hint {
+  font-size: var(--go-text-body);
+  color: var(--go-text-muted);
+  margin-top: -8px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Training Score — the Hero's right-side headline stat               */
+/* ---------------------------------------------------------------- */
+
+.analytics-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 18px 32px;
+  border-radius: var(--go-radius-md);
+  background: color-mix(in srgb, var(--go-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
+  text-align: center;
+  flex-shrink: 0;
+  min-width: 220px;
+}
+
+.analytics-score__label {
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* The Training Score's headline numeral is a hero display figure, not a
+   heading — deliberately outside the type scale, same as the Latest PR
+   weight below. */
+.analytics-score__value {
+  font-size: 3.8rem;
+  font-weight: 800;
+  color: var(--go-primary-dark);
+  line-height: 1.1;
+}
+
+[data-theme="dark"] .analytics-score__value {
+  color: var(--go-primary-light);
+}
+
+.analytics-score__tag {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
   color: var(--go-text);
   margin-bottom: 8px;
 }
 
-.analytics-title { font-size: 1.5rem; color: var(--go-text); margin-bottom: 20px; }
-
-.analytics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+.analytics-score__value--empty {
+  color: var(--go-text-faint);
 }
 
-.analytics-card {
-  background: color-mix(in srgb, var(--go-surface) 82%, transparent);
-  border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
-  padding: 28px;
+.analytics-score__tag--muted {
+  font-weight: 500;
+  color: var(--go-text-faint);
+  font-style: italic;
 }
 
-.analytics-card-title { font-size: 1rem; color: var(--go-text); margin-bottom: 18px; }
-
-.analytics-bars {
+.analytics-score__trend {
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  height: 160px;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--go-text-body);
+  color: var(--go-text-faint);
+  margin-bottom: 8px;
 }
 
-.analytics-bar-col {
-  flex: 1;
+.analytics-score__formula {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  max-width: 230px;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+@media (max-width: 720px) {
+  .analytics-score {
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Score breakdown — "the maths behind your GymOps score", filling    */
+/* the space beside the score block instead of leaving it empty      */
+/* ---------------------------------------------------------------- */
+
+.analytics-score-breakdown {
+  flex: 1 1 280px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
+  gap: 10px;
+  align-self: stretch;
+  justify-content: center;
+}
+
+.analytics-score-breakdown__title {
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--go-text-faint);
+  margin: 0 0 2px;
+}
+
+.analytics-score-breakdown__list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 24px;
+}
+
+.analytics-score-breakdown__row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 8px;
 }
 
-.analytics-bar {
-  width: 100%;
-  border-radius: 6px 6px 0 0;
-  background: linear-gradient(180deg, var(--go-primary), var(--go-primary-dark));
-  min-height: 4px;
+.analytics-score-breakdown__row-label {
+  font-size: var(--go-text-body);
+  font-weight: 600;
+  color: var(--go-text);
 }
 
-.analytics-bar-alt { background: linear-gradient(180deg, var(--go-primary-light), var(--go-primary)); }
-.analytics-bar-label { font-size: 0.7rem; color: var(--go-text-faint); }
+.analytics-score-breakdown__row-value {
+  font-size: var(--go-text-body);
+  font-weight: 700;
+  color: var(--go-text);
+}
 
-.analytics-dist-list { display: flex; flex-direction: column; gap: 12px; }
-.analytics-dist-row { display: grid; grid-template-columns: 90px 1fr 40px; align-items: center; gap: 10px; }
-.analytics-dist-label { font-size: 0.85rem; color: var(--go-text-muted); }
-
-.analytics-dist-track {
-  height: 8px;
-  background: var(--go-primary-100);
+.analytics-score-breakdown__bar {
+  height: 5px;
   border-radius: 999px;
+  background: var(--go-surface-sunken);
   overflow: hidden;
+  margin-top: 5px;
 }
 
-.analytics-dist-fill { height: 100%; background: linear-gradient(90deg, var(--go-primary), var(--go-primary-dark)); }
-.analytics-dist-pct { font-size: 0.8rem; color: var(--go-text-muted); text-align: right; }
-
-.analytics-pr-list { display: flex; flex-direction: column; gap: 10px; }
-
-.analytics-pr-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--go-success-50);
-  border-radius: 12px;
+.analytics-score-breakdown__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--go-chart-accent);
 }
 
-.analytics-pr-exercise { font-size: 0.88rem; color: var(--go-text); font-weight: 500; }
-.analytics-pr-weight { font-size: 0.88rem; color: var(--go-success-dark); font-weight: 700; }
-.analytics-pr-date { font-size: 0.75rem; color: var(--go-text-faint); }
+.analytics-score-breakdown__caption {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  margin: 4px 0 0;
+  line-height: 1.3;
+}
 
 @media (max-width: 900px) {
-  .analytics-grid { grid-template-columns: 1fr; }
+  .analytics-score-breakdown__list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .analytics-score-breakdown {
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Overall Progress — "am I getting stronger?", right after the Hero  */
+/* ---------------------------------------------------------------- */
+
+.analytics-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.analytics-progress-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+}
+
+.analytics-progress-tile__label {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.analytics-progress-tile__basis {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  line-height: 1.2;
+}
+
+.analytics-progress-tile .trend-badge {
+  font-size: var(--go-text-body);
+  padding: 5px 11px;
+}
+
+.analytics-progress-tile__na {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.analytics-progress-tile__na-dash {
+  font-size: var(--go-text-h3);
+  font-weight: 700;
+  color: var(--go-text-faint);
+  line-height: 1;
+}
+
+.analytics-progress-tile__na-caption {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------- */
+/* Current Records search                                             */
+/* ---------------------------------------------------------------- */
+
+.analytics-pr-search {
+  padding: 8px 12px;
+  border-radius: var(--go-radius-sm);
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+  font-size: var(--go-text-body);
+  font-family: var(--go-font);
+  width: 180px;
+  min-width: 140px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.analytics-pr-search:focus {
+  outline: none;
+  border-color: var(--go-primary);
+}
+
+/* ---------------------------------------------------------------- */
+/* Chart range chips — right on the chart, no scrolling to change      */
+/* ---------------------------------------------------------------- */
+
+.analytics-chart-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.analytics-chip {
+  padding: 5px 12px;
+  border-radius: var(--go-radius-pill);
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  font-size: var(--go-text-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast), border-color var(--go-fast);
+}
+
+.analytics-chip:hover {
+  border-color: var(--go-border-strong);
+}
+
+.analytics-chip--active {
+  background: var(--go-primary);
+  border-color: var(--go-primary);
+  color: var(--go-surface);
+}
+
+.analytics-hero__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+/* Mini cards — Top/Neglected Muscles use these instead of another bar
+   list, since they sit in the same tab as several other bar-track
+   sections and a purely icon+figure card reads as a different shape. */
+.analytics-mini-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.analytics-mini-card-btn {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: 100%;
+}
+
+.analytics-mini-card-btn .metric-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.analytics-mini-card-btn:hover .metric-card {
+  transform: translateY(-2px);
+  box-shadow: var(--go-shadow-sm);
+}
+
+/* ---------------------------------------------------------------- */
+/* "Next chapter" CTA — Dive Into Progression, deliberately bigger and */
+/* more like a section transition than a plain inline button          */
+/* ---------------------------------------------------------------- */
+
+.analytics-next-chapter {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 28px 32px;
+  border-radius: var(--go-radius-md);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--go-primary) 10%, var(--go-surface)),
+    var(--go-surface)
+  );
+  border: 1px solid var(--go-border-soft);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.analytics-next-chapter:hover {
+  box-shadow: var(--go-shadow-md);
+  border-color: var(--go-border-strong);
+}
+
+.analytics-next-chapter__eyebrow {
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--go-primary-dark);
+}
+
+[data-theme="dark"] .analytics-next-chapter__eyebrow {
+  color: var(--go-primary-light);
+}
+
+.analytics-next-chapter__title {
+  font-size: var(--go-text-h3);
+  font-weight: 800;
+  color: var(--go-text);
+  margin: 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.analytics-next-chapter__sub {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  margin: 0;
+}
+
+.analytics-next-chapter__arrow {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--go-primary);
+  color: var(--go-surface);
+  transition: transform 0.2s ease;
+}
+
+.analytics-next-chapter:hover .analytics-next-chapter__arrow {
+  transform: translateX(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-next-chapter:hover .analytics-next-chapter__arrow {
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .analytics-next-chapter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 22px 24px;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Tabs — split the page (Overview/Strength/Muscles/Records/Advanced) */
+/* instead of one long scroll                                        */
+/* ---------------------------------------------------------------- */
+
+.analytics-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-pill);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.analytics-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.analytics-tab {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--go-radius-pill);
+  background: transparent;
+  color: var(--go-text-muted);
+  font-size: var(--go-text-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast), box-shadow var(--go-fast);
+}
+
+.analytics-tab:hover {
+  color: var(--go-text);
+}
+
+.analytics-tab--active {
+  background: var(--go-surface);
+  color: var(--go-primary-dark);
+  box-shadow: var(--go-shadow-xs);
+}
+
+[data-theme="dark"] .analytics-tab--active {
+  color: var(--go-primary-light);
+}
+
+@media (max-width: 720px) {
+  .analytics-tabs {
+    border-radius: var(--go-radius-md);
+  }
+
+  .analytics-tab {
+    flex: 1 1 0;
+  }
+}
+
+.analytics-panels-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+/* A filtered list (e.g. Exercise Distribution scoped to a muscle with
+   only one exercise logged) can collapse to a single row while its
+   sibling panel stays tall — align-items:start means the grid doesn't
+   stretch them to match, so a lopsided pair reads as broken rather than
+   "just not much data yet". A shared floor keeps both panels visually
+   balanced regardless of how few rows either one has. */
+.analytics-panels-grid-2 .progression-panel {
+  min-height: 240px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Latest PR spotlight — the page's one moment to celebrate, so it's   */
+/* deliberately the largest single figure on the page.                 */
+/* ---------------------------------------------------------------- */
+
+.analytics-latest-pr__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--go-warning);
+}
+
+.analytics-latest-pr__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Deliberately outside the type scale, same reasoning as the Training
+   Score value — this is the page's one hero display figure to celebrate,
+   not a heading. */
+.analytics-latest-pr__weight {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: var(--go-text);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.analytics-latest-pr__exercise {
+  font-size: var(--go-text-card-title);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.analytics-latest-pr__meta {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  margin-bottom: 8px;
+}
+
+.analytics-latest-pr__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+  font-size: var(--go-text-body);
+  font-weight: 700;
+}
+
+.analytics-latest-pr__footnote {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-faint);
+  margin-top: 8px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Current Records grouped by muscle                                  */
+/* ---------------------------------------------------------------- */
+
+.analytics-pr-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-pr-group__label {
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Detailed Breakdown accordion                                       */
+/* ---------------------------------------------------------------- */
+
+.analytics-breakdown-exercises {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 10px 16px;
+  padding-left: 12px;
+  border-left: 2px solid var(--go-border-soft);
+}
+
+.analytics-breakdown-exercise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+  font-size: var(--go-text-body);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.analytics-breakdown-exercise:hover {
+  background: var(--go-primary-50);
+}
+
+.analytics-breakdown-exercise__sets {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--go-text-caption);
+  font-weight: 500;
+  color: var(--go-text-muted);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- */
+/* Plateau Detection                                                  */
+/* ---------------------------------------------------------------- */
+
+.analytics-plateau-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.analytics-plateau-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+}
+
+.analytics-plateau-row__name {
+  font-size: var(--go-text-body);
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.analytics-plateau-row__detail {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Projected Milestone spotlight (the "Projected PR Forecaster") —     */
+/* deliberately a little more celebratory than the rest of the page's  */
+/* flat panels, since this is the one place Analytics looks forward    */
+/* instead of summarizing what already happened. Still built entirely  */
+/* from design tokens.                                                 */
+/* ---------------------------------------------------------------- */
+
+.analytics-projection-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--go-radius-sm);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--go-primary) 10%, var(--go-surface-sunken)),
+    var(--go-surface-sunken)
+  );
+  border: 1px solid color-mix(in srgb, var(--go-primary) 16%, transparent);
+}
+
+.analytics-projection-row__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .analytics-projection-row__icon {
+  color: var(--go-primary-light);
+}
+
+.analytics-projection-row__title {
+  font-size: var(--go-text-body);
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.analytics-projection-row__detail {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------- */
+/* Featured Insights — Biggest Win / Attention / Consistency           */
+/* ---------------------------------------------------------------- */
+
+.analytics-featured-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analytics-featured-insights__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.analytics-featured-insight {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--go-radius-md);
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-left: 3px solid var(--go-border-strong);
+}
+
+/* Attention (a real warning) is the one insight worth emphasizing over
+   the rest — full-width and a size step up from Biggest Win/Consistency
+   below it, rather than all three competing at equal weight. */
+.analytics-featured-insight--large {
+  padding: 18px 20px;
+  border-left-width: 4px;
+}
+
+.analytics-featured-insight--large .analytics-featured-insight__icon {
+  width: 38px;
+  height: 38px;
+}
+
+.analytics-featured-insight--large .analytics-featured-insight__value {
+  font-size: var(--go-text-card-title);
+}
+
+.analytics-featured-insight--large .analytics-featured-insight__detail {
+  font-size: var(--go-text-body);
+}
+
+.analytics-featured-insight--win {
+  border-left-color: var(--go-success);
+}
+
+.analytics-featured-insight--warning {
+  border-left-color: var(--go-warning);
+}
+
+.analytics-featured-insight--neutral {
+  border-left-color: var(--go-primary);
+}
+
+.analytics-featured-insight__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--go-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+}
+
+.analytics-featured-insight--win .analytics-featured-insight__icon {
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+}
+
+.analytics-featured-insight--warning .analytics-featured-insight__icon {
+  background: var(--go-warning-50);
+  color: var(--go-warning);
+}
+
+.analytics-featured-insight--neutral .analytics-featured-insight__icon {
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+}
+
+.analytics-featured-insight__label {
+  font-size: var(--go-text-caption);
+  font-weight: 700;
+  color: var(--go-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.analytics-featured-insight__value {
+  font-size: var(--go-text-body);
+  font-weight: 700;
+  color: var(--go-text);
+  margin-top: 2px;
+}
+
+.analytics-featured-insight__detail {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Secondary insights sit visually a step below the three featured ones
+   — smaller tiles, more per row, since they're reference material now
+   rather than the headline. */
+.analytics-insights-secondary {
+  margin-top: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.analytics-insights-secondary .insight-card {
+  padding: 11px 13px;
+}
+
+@media (max-width: 900px) {
+  .analytics-panels-grid-2 {
+    grid-template-columns: 1fr;
+  }
 }

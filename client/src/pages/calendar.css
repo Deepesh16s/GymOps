@@ -72,6 +72,9 @@
 }
 
 .calendar-today-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   height: 32px;
   padding: 0 14px;
   margin-left: 4px;
@@ -82,6 +85,7 @@
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: background var(--go-fast), transform var(--go-fast);
 }
 
@@ -105,6 +109,7 @@
 }
 
 .calendar-cell {
+  position: relative;
   height: 88px;
   border-radius: var(--go-radius-md);
   background: var(--go-surface-sunken);
@@ -118,6 +123,10 @@
   font-family: var(--go-font);
   color: var(--go-text);
   transition: transform var(--go-base), box-shadow var(--go-base), border-color var(--go-base), background var(--go-base);
+}
+
+.calendar-cell.is-weekend:not(.workout-day) {
+  background: color-mix(in srgb, var(--go-text) 4%, var(--go-surface-sunken));
 }
 
 .calendar-cell-day {
@@ -144,6 +153,96 @@
 
 .workout-day .calendar-cell-day { font-weight: 700; color: var(--go-success-dark); }
 
+/* Intensity tiers — relative to the single heaviest day ever logged
+   (see intensityTier() in Calendar.jsx). Every day used to render with
+   the exact same flat fill regardless of how much was actually trained;
+   these override .workout-day's flat fill so a light session and a
+   heavy one look visibly different at a glance. */
+.calendar-cell.intensity-light {
+  background: color-mix(in srgb, var(--go-success) 14%, var(--go-surface-sunken));
+  border-color: color-mix(in srgb, var(--go-success) 22%, transparent);
+}
+
+.calendar-cell.intensity-moderate {
+  background: color-mix(in srgb, var(--go-success) 30%, var(--go-surface-sunken));
+  border-color: color-mix(in srgb, var(--go-success) 42%, transparent);
+}
+
+.calendar-cell.intensity-moderate .calendar-cell-day {
+  font-weight: 700;
+  color: var(--go-success-dark);
+}
+
+.calendar-cell.intensity-heavy {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--go-success) 68%, transparent),
+    color-mix(in srgb, var(--go-success-dark) 55%, transparent)
+  );
+  border-color: var(--go-success-dark);
+}
+
+.calendar-cell.intensity-heavy .calendar-cell-day {
+  font-weight: 700;
+  color: #fff;
+}
+
+.calendar-cell.intensity-heavy .calendar-dot {
+  background: #fff;
+}
+
+/* PR day — a small star badge, independent of intensity tier (a light
+   session can still be a PR day). */
+.calendar-cell__pr-star {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  color: var(--go-warning);
+}
+
+.calendar-cell.intensity-heavy .calendar-cell__pr-star,
+.calendar-cell.is-selected .calendar-cell__pr-star {
+  color: #fde68a;
+}
+
+/* Session-type dots — small colored markers at the bottom of a trained
+   cell so the month can be scanned for "what kind" of training, not
+   just "did I train". */
+.calendar-cell__type-chips {
+  position: absolute;
+  bottom: 7px;
+  display: flex;
+  gap: 3px;
+}
+
+.calendar-cell__type-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--go-surface) 60%, transparent);
+}
+
+/* Streak connector — a subtle bridge across the grid gap between two
+   consecutive training days, so a run of workouts reads as one
+   continuous streak rather than isolated colored cells. */
+.calendar-cell__connector {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3px;
+  width: 10px;
+  background: color-mix(in srgb, var(--go-success-dark) 55%, transparent);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.calendar-cell__connector--prev { left: -10px; }
+.calendar-cell__connector--next { right: -10px; }
+
+.calendar-cell.intensity-heavy .calendar-cell__connector {
+  background: color-mix(in srgb, var(--go-success-dark) 80%, transparent);
+}
+
 .calendar-cell.is-today {
   border-color: var(--go-primary);
   box-shadow: 0 0 0 3px var(--go-primary-100);
@@ -152,7 +251,12 @@
 .calendar-cell.is-selected {
   background: linear-gradient(135deg, var(--go-primary), var(--go-primary-dark));
   border-color: var(--go-primary-dark);
-  box-shadow: var(--go-shadow-glow);
+  /* An inset white ring, not just the color-mix glow below — a selected
+     heavy-intensity day and a selected rest day both use --go-primary
+     for their fill, but a heavy day's own fill is ALSO green-family in
+     light theme, so the glow alone can visually disappear into it. The
+     ring reads regardless of what's underneath. */
+  box-shadow: var(--go-shadow-glow), inset 0 0 0 2px color-mix(in srgb, var(--go-surface) 70%, transparent);
 }
 
 .calendar-cell.is-selected .calendar-cell-day { color: #fff; }
@@ -420,6 +524,222 @@
 }
 
 .go-skeleton.calendar-cell { cursor: default; }
+
+/* ---------------------------------------------------------- */
+/* Month summary strip                                          */
+/* ---------------------------------------------------------- */
+
+.calendar-month-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -12px 0 20px;
+}
+
+.calendar-month-summary__chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+}
+
+.calendar-month-summary__value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.calendar-month-summary__label {
+  font-size: 0.72rem;
+  color: var(--go-text-muted);
+}
+
+/* ---------------------------------------------------------- */
+/* Grid wrap (hover preview anchor) + month transition           */
+/* ---------------------------------------------------------- */
+
+.calendar-grid-wrap {
+  position: relative;
+}
+
+.calendar-grid--slide-next {
+  animation: calendar-slide-next 0.28s ease;
+}
+
+.calendar-grid--slide-prev {
+  animation: calendar-slide-prev 0.28s ease;
+}
+
+@keyframes calendar-slide-next {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes calendar-slide-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-grid--slide-next,
+  .calendar-grid--slide-prev {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------- */
+/* Hover preview — no click required                            */
+/* ---------------------------------------------------------- */
+
+.calendar-hover-preview {
+  position: absolute;
+  transform: translate(-50%, -100%) translateY(-10px);
+  background: color-mix(in srgb, var(--go-text) 92%, transparent);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 5;
+  animation: calendar-tooltip-fade 0.15s ease;
+}
+
+@keyframes calendar-tooltip-fade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) translateY(-10px);
+  }
+}
+
+.calendar-hover-preview__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--go-surface);
+}
+
+.calendar-hover-preview__row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--go-surface) 85%, transparent);
+}
+
+.calendar-hover-preview__row--pr {
+  color: #fbbf24;
+}
+
+/* ---------------------------------------------------------- */
+/* Sidebar: bigger date header, timeline, day summary            */
+/* ---------------------------------------------------------- */
+
+.calendar-details-header__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.calendar-timeline-row {
+  display: flex;
+  gap: 10px;
+}
+
+.calendar-timeline-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 10px;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+.calendar-timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-surface) 60%, transparent);
+}
+
+.calendar-timeline-line {
+  width: 2px;
+  flex: 1;
+  min-height: 16px;
+  background: var(--go-border-soft);
+  margin-top: 4px;
+}
+
+.calendar-timeline-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+}
+
+.calendar-timeline-time {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--go-text-faint);
+}
+
+.calendar-day-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+.calendar-day-summary__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.calendar-day-summary__value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.calendar-day-summary__label {
+  font-size: 0.62rem;
+  color: var(--go-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 480px) {
+  .calendar-day-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 
 [data-theme="dark"] .calendar-month-label,
 [data-theme="dark"] .calendar-cell,

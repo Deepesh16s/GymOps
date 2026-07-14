@@ -549,8 +549,6 @@ function Dashboard() {
     }
   };
 
-  const prEntries = Object.entries(stats.personalRecords);
-
   const barChartData =
     weeklyVolumeData.length > 0
       ? weeklyVolumeData
@@ -716,6 +714,9 @@ function Dashboard() {
               workouts={muscleWorkouts}
               loading={loading}
               personalRecords={stats.personalRecords}
+              onSelectMuscle={(muscle) =>
+                navigate(`/progression?muscle=${encodeURIComponent(muscle)}`)
+              }
             />
           </div>
 
@@ -864,32 +865,6 @@ function Dashboard() {
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="activity-side">
-            <div className="activity-card activity-card--pr">
-              <div className="activity-card__head">
-                <p className="activity-card__title">Personal Records</p>
-                <Trophy size={16} strokeWidth={1.8} className="pr-trophy" />
-              </div>
-              {prEntries.length === 0 ? (
-                <div className="empty-state dash-fade-in">
-                  <div className="empty-state__icon">
-                    <Trophy size={26} strokeWidth={1.6} />
-                  </div>
-                  <p>No PRs recorded yet.</p>
-                </div>
-              ) : (
-                <div className="activity-list dash-fade-in">
-                  {prEntries.map(([exercise, weight]) => (
-                    <div key={exercise} className="pr-row">
-                      <p className="pr-row__name">{exercise}</p>
-                      <span className="pr-row__badge">{weight} kg</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </section>
       </main>

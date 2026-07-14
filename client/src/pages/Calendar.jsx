@@ -1,5 +1,5 @@
 import "./calendar.css";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import api from "../services/api";
 import {
   ChevronLeft,
@@ -13,8 +13,11 @@ import {
   Activity,
   Trash2,
   Loader2,
+  Star,
+  MapPin,
 } from "lucide-react";
 import { getSessionTypeColor } from "../constants/sessionTypes";
+import { prHistory } from "../utils/strengthUtils";
 import {
   buildSessionSummaries,
   getWorkoutVolume,
@@ -26,6 +29,18 @@ import {
   formatSessionEntryCountLabel,
   getSessionTypeLabel,
 } from "../utils/workoutUtils";
+
+// Relative to the single heaviest day ever logged (not a fixed kg
+// threshold) — so "Heavy" means the same thing whether a user's typical
+// session is 2,000kg or 20,000kg, matching how MuscleBodyMap scales its
+// own intensity tiers off the user's own max rather than an absolute cutoff.
+function intensityTier(volume, maxVolume) {
+  if (!volume || !maxVolume) return null;
+  const ratio = volume / maxVolume;
+  if (ratio > 0.75) return "heavy";
+  if (ratio > 0.4) return "moderate";
+  return "light";
+}
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -45,6 +60,11 @@ function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [expandedKeys, setExpandedKeys] = useState(() => new Set());
   const [deletingSessionKey, setDeletingSessionKey] = useState(null);
+  const [hoveredDateKey, setHoveredDateKey] = useState(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const [navDirection, setNavDirection] = useState("next");
+  const hasAutoSelected = useRef(false);
+  const gridWrapRef = useRef(null);
 
   const today = new Date();
 
@@ -71,6 +91,42 @@ function CalendarPage() {
   // Regrouped only when the raw workout list changes, mirroring the
   // `allSessions` memo pattern in WorkoutHistory.jsx.
   const allSessions = useMemo(() => buildSessionSummaries(workouts), [workouts]);
+
+  const recordEvents = useMemo(() => prHistory(workouts), [workouts]);
+  const prDateKeys = useMemo(
+    () => new Set(recordEvents.map((ev) => getLocalDateKey(ev.date))),
+    [recordEvents]
+  );
+
+  // Sessions grouped by day (not just a count) — powers intensity tiers,
+  // session-type chips, and the hover preview, all of which need the
+  // actual session data for that day, not just "did something happen".
+  const sessionsByDateKey = useMemo(() => {
+    const map = new Map();
+    allSessions.forEach((s) => {
+      const key = getLocalDateKey(s.date);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(s);
+    });
+    return map;
+  }, [allSessions]);
+
+  const volumeByDateKey = useMemo(() => {
+    const map = new Map();
+    sessionsByDateKey.forEach((sessions, key) => {
+      map.set(key, sessions.reduce((sum, s) => sum + (s.stats.volume || 0), 0));
+    });
+    return map;
+  }, [sessionsByDateKey]);
+
+  // Lifetime max (not just this month's max) so a tier means the same
+  // thing regardless of which month is in view — flipping to a new month
+  // never silently redefines what "Heavy" means.
+  const maxDayVolume = useMemo(() => {
+    let max = 0;
+    volumeByDateKey.forEach((v) => { if (v > max) max = v; });
+    return max;
+  }, [volumeByDateKey]);
 
   // Collapse any expanded session card whenever the selected day changes,
   // so expansion state never leaks from one day's sessions to another's.
@@ -113,7 +169,46 @@ function CalendarPage() {
     ? allSessions.filter((s) => getLocalDateKey(s.date) === selectedDate)
     : [];
 
+  // Auto-select today (or the most recently logged workout) once the
+  // data has loaded, so the details panel never opens on an unnecessary
+  // "tap any day" prompt when there's something to show right away. Runs
+  // exactly once — after that, the user's own clicks own selectedDate.
+  useEffect(() => {
+    if (loading || hasAutoSelected.current) return;
+    hasAutoSelected.current = true;
+    if (sessionCountsByDate.has(todayKey)) {
+      setSelectedDate(todayKey);
+      return;
+    }
+    if (allSessions.length > 0) {
+      const mostRecent = [...allSessions].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+      setSelectedDate(getLocalDateKey(mostRecent.date));
+      setViewMonth(new Date(mostRecent.date).getMonth());
+      setViewYear(new Date(mostRecent.date).getFullYear());
+    }
+  }, [loading, allSessions, sessionCountsByDate, todayKey]);
+
+  // This month's own headline numbers — a quick "how'd this month go"
+  // read above the grid, recomputed whenever the visible month changes.
+  const monthSummary = useMemo(() => {
+    const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
+    let sessionCount = 0;
+    let exerciseCount = 0;
+    let minutes = 0;
+    sessionsByDateKey.forEach((sessions, key) => {
+      if (!key.startsWith(monthPrefix)) return;
+      sessionCount += sessions.length;
+      sessions.forEach((s) => {
+        exerciseCount += s.stats.exerciseCount + s.stats.cardioCount;
+        minutes += s.sessionDuration || 0;
+      });
+    });
+    const prCount = recordEvents.filter((ev) => getLocalDateKey(ev.date).startsWith(monthPrefix)).length;
+    return { sessionCount, exerciseCount, prCount, hours: Math.round((minutes / 60) * 10) / 10 };
+  }, [sessionsByDateKey, recordEvents, viewMonth, viewYear]);
+
   const goToPrevMonth = () => {
+    setNavDirection("prev");
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear((y) => y - 1);
@@ -123,6 +218,7 @@ function CalendarPage() {
   };
 
   const goToNextMonth = () => {
+    setNavDirection("next");
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear((y) => y + 1);
@@ -132,9 +228,27 @@ function CalendarPage() {
   };
 
   const goToToday = () => {
+    setNavDirection(
+      viewYear === today.getFullYear() && viewMonth === today.getMonth()
+        ? navDirection
+        : new Date(viewYear, viewMonth) < new Date(today.getFullYear(), today.getMonth())
+        ? "next"
+        : "prev"
+    );
     setViewMonth(today.getMonth());
     setViewYear(today.getFullYear());
     setSelectedDate(todayKey);
+  };
+
+  const handleCellHover = (dateKey, e) => {
+    const wrapBox = gridWrapRef.current?.getBoundingClientRect();
+    const cellBox = e.currentTarget.getBoundingClientRect();
+    if (!wrapBox) return;
+    setHoverPos({
+      x: cellBox.left - wrapBox.left + cellBox.width / 2,
+      y: cellBox.top - wrapBox.top,
+    });
+    setHoveredDateKey(dateKey);
   };
 
   const toggleExpanded = (key) => {
@@ -225,10 +339,36 @@ function CalendarPage() {
                 className="calendar-today-btn"
                 onClick={goToToday}
               >
-                Today
+                <MapPin size={12} strokeWidth={2.2} />
+                Today &bull; {MONTH_NAMES[today.getMonth()].slice(0, 3)} {today.getDate()}
               </button>
             </div>
           </div>
+
+          {!loading && monthSummary.sessionCount > 0 && (
+            <div className="calendar-month-summary">
+              <div className="calendar-month-summary__chip">
+                <span className="calendar-month-summary__value">{monthSummary.sessionCount}</span>
+                <span className="calendar-month-summary__label">
+                  Workout{monthSummary.sessionCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="calendar-month-summary__chip">
+                <span className="calendar-month-summary__value">{monthSummary.exerciseCount}</span>
+                <span className="calendar-month-summary__label">Exercises</span>
+              </div>
+              <div className="calendar-month-summary__chip">
+                <span className="calendar-month-summary__value">{monthSummary.prCount}</span>
+                <span className="calendar-month-summary__label">PR{monthSummary.prCount !== 1 ? "s" : ""}</span>
+              </div>
+              {monthSummary.hours > 0 && (
+                <div className="calendar-month-summary__chip">
+                  <span className="calendar-month-summary__value">{monthSummary.hours}h</span>
+                  <span className="calendar-month-summary__label">Trained</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {loading ? (
             <div className="calendar-grid">
@@ -237,48 +377,98 @@ function CalendarPage() {
               ))}
             </div>
           ) : (
-            <div className="calendar-grid">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="calendar-weekday">
-                  {day}
-                </div>
-              ))}
+            <div className="calendar-grid-wrap" ref={gridWrapRef}>
+              <div
+                className={`calendar-grid calendar-grid--slide-${navDirection}`}
+                key={`${viewYear}-${viewMonth}`}
+              >
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                  <div key={day} className="calendar-weekday">
+                    {day}
+                  </div>
+                ))}
 
-              {calendarDays.map((day, index) => {
-                if (!day) {
-                  return <div key={index} className="calendar-cell empty" />;
-                }
+                {calendarDays.map((day, index) => {
+                  if (!day) {
+                    return <div key={index} className="calendar-cell empty" />;
+                  }
 
-                const dateKey = getDateKey(day);
-                const sessionCount = sessionCountsByDate.get(dateKey) || 0;
-                const hasWorkout = sessionCount > 0;
-                const isToday = dateKey === todayKey;
-                const isSelected = dateKey === selectedDate;
+                  const dateKey = getDateKey(day);
+                  const daySessions = sessionsByDateKey.get(dateKey) || [];
+                  const sessionCount = daySessions.length;
+                  const hasWorkout = sessionCount > 0;
+                  const isToday = dateKey === todayKey;
+                  const isSelected = dateKey === selectedDate;
+                  const isPrDay = prDateKeys.has(dateKey);
+                  const tier = hasWorkout
+                    ? intensityTier(volumeByDateKey.get(dateKey), maxDayVolume)
+                    : null;
+                  const dayOfWeek = index % 7;
+                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-                return (
-                  <button
-                    type="button"
-                    key={index}
-                    className={[
-                      "calendar-cell",
-                      hasWorkout ? "workout-day" : "",
-                      isToday ? "is-today" : "",
-                      isSelected ? "is-selected" : "",
-                    ].join(" ").trim()}
-                    onClick={() => setSelectedDate(dateKey)}
-                  >
-                    <span className="calendar-cell-day">{day}</span>
-                    {hasWorkout && sessionCount === 1 && (
-                      <div className="calendar-dot" />
-                    )}
-                    {hasWorkout && sessionCount > 1 && (
-                      <span className="calendar-session-count-badge">
-                        {sessionCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                  const prevKey = day > 1 ? getDateKey(day - 1) : null;
+                  const nextKey = day < daysInMonth ? getDateKey(day + 1) : null;
+                  const connectPrev = hasWorkout && prevKey && sessionCountsByDate.has(prevKey);
+                  const connectNext = hasWorkout && nextKey && sessionCountsByDate.has(nextKey);
+
+                  const sessionTypes = [...new Set(daySessions.map((s) => s.sessionType).filter(Boolean))];
+
+                  return (
+                    <button
+                      type="button"
+                      key={index}
+                      className={[
+                        "calendar-cell",
+                        hasWorkout ? "workout-day" : "",
+                        tier ? `intensity-${tier}` : "",
+                        isWeekend ? "is-weekend" : "",
+                        isToday ? "is-today" : "",
+                        isSelected ? "is-selected" : "",
+                        connectPrev ? "connect-prev" : "",
+                        connectNext ? "connect-next" : "",
+                      ].join(" ").trim()}
+                      onClick={() => setSelectedDate(dateKey)}
+                      onMouseEnter={(e) => hasWorkout && handleCellHover(dateKey, e)}
+                      onMouseLeave={() => setHoveredDateKey(null)}
+                    >
+                      {connectPrev && <span className="calendar-cell__connector calendar-cell__connector--prev" />}
+                      {connectNext && <span className="calendar-cell__connector calendar-cell__connector--next" />}
+                      <span className="calendar-cell-day">{day}</span>
+                      {isPrDay && (
+                        <Star size={11} strokeWidth={2} className="calendar-cell__pr-star" fill="currentColor" />
+                      )}
+                      {hasWorkout && sessionCount === 1 && (
+                        <div className="calendar-dot" />
+                      )}
+                      {hasWorkout && sessionCount > 1 && (
+                        <span className="calendar-session-count-badge">
+                          {sessionCount}
+                        </span>
+                      )}
+                      {sessionTypes.length > 0 && (
+                        <span className="calendar-cell__type-chips">
+                          {sessionTypes.slice(0, 3).map((t) => (
+                            <span
+                              key={t}
+                              className="calendar-cell__type-dot"
+                              style={{ background: getSessionTypeColor(t).text }}
+                              title={t}
+                            />
+                          ))}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {hoveredDateKey && (sessionsByDateKey.get(hoveredDateKey) || []).length > 0 && (
+                <CalendarHoverPreview
+                  sessions={sessionsByDateKey.get(hoveredDateKey)}
+                  isPrDay={prDateKeys.has(hoveredDateKey)}
+                  pos={hoverPos}
+                />
+              )}
             </div>
           )}
         </div>
@@ -286,17 +476,24 @@ function CalendarPage() {
         <div className="calendar-details-card go-card">
           <div className="calendar-details-header">
             <CalendarDays size={16} strokeWidth={1.8} />
-            <h2>{selectedDate ? formatLongDate(selectedDate) : "Select a day"}</h2>
+            <h2 className="calendar-details-header__title">
+              {selectedDate ? formatLongDate(selectedDate) : "Pick a day"}
+            </h2>
           </div>
 
+          {/* Reachable only when there's truly no workout history at all —
+              auto-select (above) always lands on today or the most recent
+              session otherwise, so this never shows a "tap any day" prompt
+              when there's actually something to tap. */}
           {!selectedDate && (
             <div className="go-empty">
               <div className="go-empty-icon">
                 <CalendarDays size={20} strokeWidth={1.8} />
               </div>
-              <p className="go-empty-title">No date selected</p>
+              <p className="go-empty-title">📅 No workouts yet</p>
               <p className="go-empty-sub">
-                Tap any day on the calendar to see what you trained.
+                Log your first session and this calendar will fill in with your
+                training history, sets, and personal records.
               </p>
             </div>
           )}
@@ -311,8 +508,8 @@ function CalendarPage() {
             </div>
           )}
 
-          <div className="calendar-session-list">
-            {selectedSessions.map((session) => {
+          <div className="calendar-session-list calendar-timeline">
+            {selectedSessions.map((session, sessionIndex) => {
               const isExpanded = expandedKeys.has(session.key);
               const { exerciseCount, cardioCount, setCount, volume, muscles } =
                 session.stats;
@@ -327,9 +524,21 @@ function CalendarPage() {
               const typeLabel = getSessionTypeLabel(session);
               const typeColor = getSessionTypeColor(session.sessionType);
               const isDeletingSession = deletingSessionKey === session.key;
+              const sessionTime = new Date(session.date).toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              const isLastSession = sessionIndex === selectedSessions.length - 1;
 
               return (
-                <div className="calendar-session-card" key={session.key}>
+                <div className="calendar-timeline-row" key={session.key}>
+                  <div className="calendar-timeline-rail">
+                    <span className="calendar-timeline-dot" style={{ background: typeColor.text }} />
+                    {!isLastSession && <span className="calendar-timeline-line" />}
+                  </div>
+                  <div className="calendar-timeline-content">
+                    <span className="calendar-timeline-time">{sessionTime}</span>
+                <div className="calendar-session-card">
                   <button
                     type="button"
                     className="calendar-session-card__head"
@@ -467,10 +676,46 @@ function CalendarPage() {
                       </div>
                     </div>
                   </div>
+                  </div>
+                  </div>
                 </div>
               );
             })}
           </div>
+
+          {selectedDate && selectedSessions.length > 0 && (
+            <div className="calendar-day-summary">
+              <div className="calendar-day-summary__item">
+                <span className="calendar-day-summary__value">{selectedSessions.length}</span>
+                <span className="calendar-day-summary__label">
+                  Workout{selectedSessions.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="calendar-day-summary__item">
+                <span className="calendar-day-summary__value">
+                  {selectedSessions.reduce(
+                    (sum, s) => sum + s.stats.exerciseCount + s.stats.cardioCount,
+                    0
+                  )}
+                </span>
+                <span className="calendar-day-summary__label">Exercises</span>
+              </div>
+              <div className="calendar-day-summary__item">
+                <span className="calendar-day-summary__value">
+                  {selectedSessions
+                    .reduce((sum, s) => sum + (s.stats.volume || 0), 0)
+                    .toLocaleString()}
+                </span>
+                <span className="calendar-day-summary__label">kg Lifted</span>
+              </div>
+              <div className="calendar-day-summary__item">
+                <span className="calendar-day-summary__value">
+                  {recordEvents.filter((ev) => getLocalDateKey(ev.date) === selectedDate).length}
+                </span>
+                <span className="calendar-day-summary__label">PRs</span>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -485,6 +730,40 @@ function formatLongDate(dateKey) {
     month: "long",
     day: "numeric",
   });
+}
+
+// Hover-only quick glance at a day's sessions — no click required. Shown
+// beside whichever cell is currently hovered, positioned via the same
+// wrap-relative x/y technique MuscleBodyMap uses for its own tooltip.
+function CalendarHoverPreview({ sessions, isPrDay, pos }) {
+  const totalExercises = sessions.reduce(
+    (sum, s) => sum + s.stats.exerciseCount + s.stats.cardioCount,
+    0
+  );
+  const totalVolume = sessions.reduce((sum, s) => sum + (s.stats.volume || 0), 0);
+  const types = [...new Set(sessions.map((s) => getSessionTypeLabel(s)))];
+
+  return (
+    <div className="calendar-hover-preview" style={{ left: pos.x, top: pos.y }}>
+      <span className="calendar-hover-preview__title">{types.join(" + ")}</span>
+      <span className="calendar-hover-preview__row">
+        <Dumbbell size={11} strokeWidth={2} />
+        {totalExercises} exercise{totalExercises !== 1 ? "s" : ""}
+      </span>
+      {totalVolume > 0 && (
+        <span className="calendar-hover-preview__row">
+          <Flame size={11} strokeWidth={2} />
+          {totalVolume.toLocaleString()} kg
+        </span>
+      )}
+      {isPrDay && (
+        <span className="calendar-hover-preview__row calendar-hover-preview__row--pr">
+          <Star size={11} strokeWidth={2} fill="currentColor" />
+          New PR
+        </span>
+      )}
+    </div>
+  );
 }
 
 export default CalendarPage;

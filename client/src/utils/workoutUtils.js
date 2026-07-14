@@ -1,5 +1,6 @@
 import { OTHER_SESSION_TYPE } from "../constants/sessionTypes";
 import { CARDIO_METRICS } from "../constants/cardioMetadata";
+import { dateKey } from "./dateUtils";
 import {
   DATE_RANGE_ALL,
   DATE_RANGE_TODAY,
@@ -488,6 +489,26 @@ export const MUSCLE_SPLIT_CATEGORY = {
   Hamstrings: "Legs",
   Abs: "Core",
 };
+
+// Consecutive-day training streak ending today — mirrors the backend's
+// current-streak definition (server/utils/goalMetrics.js
+// computeCurrentStreak, backing GET /dashboard/current-streak) exactly,
+// so Analytics can show the same figure computed client-side from the
+// workouts it already fetched instead of firing a second request.
+export function computeCurrentStreak(workouts) {
+  if (!workouts.length) return 0;
+
+  const trainedDays = new Set(workouts.map((w) => dateKey(w.date || w.createdAt)));
+
+  const cursor = new Date();
+  let streak = 0;
+  while (trainedDays.has(dateKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
 
 export function getSessionTypeLabel(session) {
   const { sessionType, customSessionType } = session;

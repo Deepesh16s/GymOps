@@ -513,23 +513,10 @@ section.charts-row {
 }
 
 .activity-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
-  align-items: start;
-}
-.activity-side {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  height: 100%;
+  display: block;
 }
 .activity-card--recent {
   min-height: 100%;
-}
-.activity-card--pr {
-  width: 100%;
-  padding: 30px 28px;
 }
 .activity-card {
   background: color-mix(in srgb, var(--go-surface) 82%, transparent);
@@ -547,20 +534,6 @@ section.charts-row {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-@media (max-width: 1100px) {
-  .activity-row {
-    grid-template-columns: 1fr;
-  }
-
-  .activity-side {
-    flex-direction: column;
-  }
-}
-@media (max-width: 700px) {
-  .activity-side {
-    flex-direction: column;
-  }
 }
 
 .activity-card:hover {
@@ -825,46 +798,6 @@ section.charts-row {
   color: var(--go-primary);
 }
 
-.pr-trophy {
-  color: var(--go-success);
-}
-
-.pr-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 11px;
-  transition: background 0.15s;
-}
-
-.pr-row:hover {
-  background: var(--go-primary-50);
-}
-
-.pr-row__name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--go-text-muted);
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-right: 10px;
-}
-
-.pr-row__badge {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--go-success-dark);
-  background: var(--go-success-50);
-  border: 1px solid color-mix(in srgb, var(--go-success) 18%, transparent);
-  border-radius: 100px;
-  padding: 3px 10px;
-  flex-shrink: 0;
-}
-
 .skeleton {
   border-radius: 6px;
   background: linear-gradient(
@@ -885,10 +818,6 @@ section.charts-row {
 @media (max-width: 1280px) {
   .primary-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .activity-row {
-    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -931,10 +860,6 @@ section.charts-row {
 
   .primary-grid {
     grid-template-columns: 1fr 1fr;
-  }
-
-  .activity-row {
-    grid-template-columns: 1fr;
   }
 }
 

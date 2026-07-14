@@ -1,132 +1,654 @@
 import { useState, useEffect, useMemo } from "react";
-import "./analytics.css";
-import api from "../services/api";
-import { startOfWeek, formatDate } from "../utils/dateUtils";
+import { useNavigate } from "react-router-dom";
 import {
-  getWorkoutVolume,
-  getHeaviestSet,
-  getSetCount,
-  isCardioEntry,
+  Dumbbell,
+  TrendingUp,
+  Flame,
+  Activity,
+  ChevronRight,
+  Rocket,
+  Sparkles,
+  AlertTriangle,
+  Trophy,
+} from "lucide-react";
+import "./progression.css";
+import "./analytics.css";
+
+import { getWorkouts } from "../services/workoutService";
+import { formatDate, dateKey } from "../utils/dateUtils";
+import {
   buildSessionSummaries,
+  computeMuscleBreakdown,
+  computeCurrentStreak,
+  isCardioEntry,
+  MUSCLE_SPLIT_CATEGORY,
 } from "../utils/workoutUtils";
+import { prHistory, estimate1RM } from "../utils/strengthUtils";
+import MetricCard from "../components/progression/MetricCard";
+import StatGroupCard from "../components/progression/StatGroupCard";
+import { TrendBadge } from "../components/progression/TrendChart";
+import BarTrendChart from "../components/progression/BarTrendChart";
+import TimelineChart from "../components/progression/TimelineChart";
+import InsightCard from "../components/progression/InsightCard";
+import DistributionRow from "../components/progression/DistributionRow";
+import PersonalRecordRow from "../components/progression/PersonalRecordRow";
+import PanelEmptyState from "../components/progression/PanelEmptyState";
+import {
+  TIME_RANGE_OPTIONS,
+  DEFAULT_TIME_RANGE,
+  getMetricDef,
+  getAvailableMuscles,
+  getOverallProgression,
+  getMuscleProgression,
+  getExerciseProgression,
+  getExerciseDistribution,
+  getConsistency,
+  buildProgressionSeries,
+  buildRecordTimeline,
+  describeTrend,
+  filterWorkoutsByTimeRange,
+  filterWorkoutsByMuscle,
+  compareRecentPeriods,
+  compareSessionHalves,
+  projectMilestone,
+  getInsights,
+} from "../progression";
+
+// Muscle groups that haven't produced at least 4 weekly/monthly buckets of
+// history yet can't say anything meaningful about direction — same floor
+// progressionInsights.js uses for its own muscle-level comparisons.
+const MIN_BUCKETS_FOR_TREND = 4;
+
+// Training Overview's chart control is a bucket-granularity toggle, not a
+// date-range filter — a date-range chip often didn't visibly change the
+// chart at all (the bucket window is anchored to the user's actual first/
+// last workout, not the requested range), which read as broken. Weekly
+// vs monthly bucketing, by contrast, always visibly changes the chart.
+const CHART_GRANULARITY_OPTIONS = [
+  { key: "week", label: "Weekly" },
+  { key: "month", label: "Monthly" },
+];
+
+// The page used to be one continuous scroll long enough for 3 pages worth
+// of content; splitting it into tabs (same route, no new nav entry) keeps
+// each view short without turning every section into its own page.
+const ANALYTICS_TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "strength", label: "Strength" },
+  { key: "muscles", label: "Muscles" },
+  { key: "records", label: "Personal Records" },
+  { key: "advanced", label: "Advanced" },
+];
+
+function formatRelativeDays(days) {
+  if (days < 14) return `${days} day${days === 1 ? "" : "s"}`;
+  if (days < 60) {
+    const weeks = Math.round(days / 7);
+    return `${weeks} week${weeks === 1 ? "" : "s"}`;
+  }
+  const months = Math.round(days / 30);
+  return `${months} month${months === 1 ? "" : "s"}`;
+}
+
+// Simple, disclosed heuristic (not a precise science) for the Muscle
+// Balance badges — "most/least of a fixed 4-way split" reads faster as a
+// label than as a raw percentage. Thresholds are deliberately generous
+// (a perfectly even split would be 25% each) since Core/Legs naturally
+// run lower than Push/Pull even in well-rounded training.
+function pplBadge(pct) {
+  if (pct >= 45) return { label: "Overtrained", tone: "danger" };
+  if (pct <= 10) return { label: "Needs Work", tone: "warning" };
+  return { label: "Balanced", tone: "balanced" };
+}
 
 function Analytics() {
+  const navigate = useNavigate();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchWorkouts = async () => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
       try {
-        const res = await api.get("/workouts", { params: { limit: 500 } });
-        setWorkouts(res.data);
-      } catch (error) {
-        console.log(error);
+        // Analytics summarizes the user's ENTIRE fitness history, not a
+        // recent slice — same lifetime-first fetch ceiling Progression
+        // uses (500 is the Dashboard/Workout History convention, which
+        // would silently truncate a long-tenured user's early history).
+        const res = await getWorkouts(5000);
+        if (!cancelled) setWorkouts(res.data);
+      } catch (err) {
+        console.error("Analytics fetch error:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    fetchWorkouts();
   }, []);
 
-  // Sessions, grouped once (Analytics Consolidation — A4). "Frequency"
-  // below counts sessions from this, the same shared grouping Dashboard/
-  // WorkoutHistory/Calendar all use, instead of raw workout documents —
-  // previously a 5-exercise session inflated this chart to "5" the same
-  // day Dashboard's "Sessions Logged" correctly showed "1".
   const allSessions = useMemo(() => buildSessionSummaries(workouts), [workouts]);
+  const strengthSessions = useMemo(
+    () => allSessions.filter((s) => s.stats.exerciseCount > 0),
+    [allSessions]
+  );
+  const recordEvents = useMemo(() => prHistory(workouts), [workouts]);
 
-  // Volume per week, last 8 weeks
-  const weeklyVolume = useMemo(() => {
-    const weeks = [];
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(startOfWeek());
-      weekStart.setDate(weekStart.getDate() - i * 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
+  // Every consumer below (hero stats, trend charts, muscle/exercise
+  // breakdowns, insights) is built from the shared Progression Engine or
+  // strengthUtils — nothing here re-derives volume/PR/trend math itself.
+  const overall = useMemo(() => getOverallProgression(workouts), [workouts]);
+  const availableMuscles = useMemo(() => getAvailableMuscles(workouts), [workouts]);
+  const insightsData = useMemo(() => getInsights(workouts), [workouts]);
+  const currentStreak = useMemo(() => computeCurrentStreak(workouts), [workouts]);
 
-      const volume = workouts
-        .filter((w) => {
-          const d = new Date(w.date || w.createdAt);
-          return d >= weekStart && d < weekEnd;
-        })
-        .reduce((sum, w) => sum + getWorkoutVolume(w), 0);
+  const consistency = useMemo(
+    () => getConsistency(strengthSessions, overall.summary.firstWorkoutDate, overall.summary.latestWorkoutDate),
+    [strengthSessions, overall]
+  );
 
-      weeks.push({ label: formatDate(weekStart).slice(0, 6), volume });
-    }
-    return weeks;
-  }, [workouts]);
+  const weeklySeries = useMemo(
+    () => buildProgressionSeries(workouts, { granularity: "week" }),
+    [workouts]
+  );
+  const weeklyAvgVolume = useMemo(() => {
+    const trained = weeklySeries.filter((p) => p.hasData);
+    if (!trained.length) return 0;
+    return Math.round(trained.reduce((s, p) => s + p.volume, 0) / trained.length);
+  }, [weeklySeries]);
 
-  const maxWeeklyVolume = Math.max(...weeklyVolume.map((w) => w.volume), 1);
-
-  // Frequency: SESSIONS per week, last 8 weeks (not raw workout
-  // documents — see allSessions above).
-  const weeklyFrequency = useMemo(() => {
-    const weeks = [];
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(startOfWeek());
-      weekStart.setDate(weekStart.getDate() - i * 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-
-      const count = allSessions.filter((s) => {
-        const d = new Date(s.date);
-        return d >= weekStart && d < weekEnd;
-      }).length;
-
-      weeks.push({ label: formatDate(weekStart).slice(0, 6), count });
-    }
-    return weeks;
+  const avgSessionDuration = useMemo(() => {
+    const withDuration = allSessions.filter((s) => s.sessionDuration != null);
+    if (!withDuration.length) return null;
+    return Math.round(withDuration.reduce((s, sess) => s + sess.sessionDuration, 0) / withDuration.length);
   }, [allSessions]);
 
-  const maxFrequency = Math.max(...weeklyFrequency.map((w) => w.count), 1);
+  const recordsThisMonth = useMemo(() => {
+    const now = new Date();
+    return recordEvents.filter((ev) => {
+      const d = new Date(ev.date);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }).length;
+  }, [recordEvents]);
 
-  // Muscle distribution by SET COUNT, matching the backend's
-  // /dashboard/muscle-distribution definition (Dashboard's Muscle Split
-  // widget) — previously this ranked by lifted volume instead, so the
-  // two pages could disagree on which muscle group ranked #1 for the
-  // same training history. Cardio entries have no muscleGroup/sets to
-  // contribute and are explicitly skipped rather than falling into an
-  // "Other" bucket.
-  const muscleDistribution = useMemo(() => {
-    const map = {};
-    workouts.forEach((w) => {
-      if (isCardioEntry(w)) return;
-      const muscle = w.exercise?.muscleGroup || "Other";
-      map[muscle] = (map[muscle] || 0) + getSetCount(w);
+  // "vs last month" verdict — the Hero's single headline comparison.
+  // Distinct from overall.trend (whole-history first-half-vs-second-half):
+  // this is specifically the most recent ~4 buckets against the ~4
+  // immediately before them, which is what "vs last month" plainly means.
+  const volumeVsLastPeriod = useMemo(
+    () => compareRecentPeriods(overall.series, "volume", 4),
+    [overall]
+  );
+  const strengthVsLastPeriod = useMemo(
+    () => compareRecentPeriods(overall.series, "estOneRM", 4),
+    [overall]
+  );
+  // Frequency and prCount already exist per-bucket on the same series —
+  // reused here as honest proxies for "Consistency" and "PR Rate" trend
+  // rather than inventing separate metrics for the Overall Progress strip.
+  const consistencyVsLastPeriod = useMemo(
+    () => compareRecentPeriods(overall.series, "frequency", 4),
+    [overall]
+  );
+  const prRateVsLastPeriod = useMemo(
+    () => compareRecentPeriods(overall.series, "prCount", 4),
+    [overall]
+  );
+
+  // compareRecentPeriods needs 8 trained CALENDAR WEEKS, which a lifter
+  // who trains frequently within a short span (e.g. 20+ sessions in a
+  // month) can fail for a long time despite clearly having enough data.
+  // This session-count fallback (compareSessionHalves) compares the
+  // first half of the user's actual logged sessions against the second
+  // half, unlocking with as few as 7 sessions regardless of calendar
+  // spread — used only when the calendar-based comparison isn't
+  // available yet.
+  const chronoSessions = useMemo(
+    () =>
+      [...allSessions]
+        .filter((s) => s.stats.exerciseCount > 0)
+        .sort((a, b) => new Date(a.date) - new Date(b.date)),
+    [allSessions]
+  );
+  const sessionVolumes = useMemo(() => chronoSessions.map((s) => s.stats.volume), [chronoSessions]);
+  const sessionBestEstOneRM = useMemo(
+    () =>
+      chronoSessions.map((s) => {
+        let best = 0;
+        s.workouts.forEach((w) => {
+          if (isCardioEntry(w)) return;
+          (w.workoutSets || []).forEach((set) => {
+            const est = estimate1RM(set.weight, set.reps);
+            if (est > best) best = est;
+          });
+        });
+        return best;
+      }),
+    [chronoSessions]
+  );
+  // Days between consecutive sessions, negated — a SHRINKING gap (more
+  // frequent training) is the improvement, so negating lets
+  // compareSessionHalves' "bigger average = up" convention read a
+  // shorter recent gap as "consistency trending up".
+  const sessionGapsInverted = useMemo(
+    () =>
+      chronoSessions.slice(1).map((s, i) => -((new Date(s.date) - new Date(chronoSessions[i].date)) / 86400000)),
+    [chronoSessions]
+  );
+  const sessionPrCounts = useMemo(() => {
+    const countsByDay = new Map();
+    recordEvents.forEach((ev) => {
+      const key = dateKey(ev.date);
+      countsByDay.set(key, (countsByDay.get(key) || 0) + 1);
     });
-    const total = Object.values(map).reduce((s, v) => s + v, 0) || 1;
-    return Object.entries(map)
-      .map(([muscle, sets]) => ({ muscle, sets, pct: (sets / total) * 100 }))
-      .sort((a, b) => b.sets - a.sets);
-  }, [workouts]);
+    return chronoSessions.map((s) => countsByDay.get(dateKey(s.date)) || 0);
+  }, [chronoSessions, recordEvents]);
 
-  // PR progression: heaviest set ever, per exercise. Cardio entries have
-  // no exercise/weight and previously surfaced as a bogus "Unknown — 0
-  // kg" record; excluded up front instead.
-  const personalRecords = useMemo(() => {
-    const map = {};
-    workouts
-      .filter((w) => !isCardioEntry(w))
-      .forEach((w) => {
-        const name = w.exercise?.name || "Unknown";
-        const heaviest = getHeaviestSet(w);
-        if (!map[name] || heaviest > map[name].weight) {
-          map[name] = { weight: heaviest, date: w.date || w.createdAt };
-        }
-      });
-    return Object.entries(map)
-      .map(([exercise, data]) => ({ exercise, ...data }))
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, 8);
-  }, [workouts]);
+  const volumeTrend = volumeVsLastPeriod || compareSessionHalves(sessionVolumes, 7);
+  const strengthTrend = strengthVsLastPeriod || compareSessionHalves(sessionBestEstOneRM, 7);
+  const consistencyTrend = consistencyVsLastPeriod || compareSessionHalves(sessionGapsInverted, 6);
+  const prRateTrend = prRateVsLastPeriod || compareSessionHalves(sessionPrCounts, 7);
+
+  const verdictText = useMemo(() => {
+    if (!volumeTrend) return "Log more workouts to unlock a month-over-month comparison.";
+    if (volumeTrend.direction === "up") return "You trained harder than last month.";
+    if (volumeTrend.direction === "down") return "Your training volume dipped compared to last month.";
+    return "You're holding a steady pace compared to last month.";
+  }, [volumeTrend]);
+
+  // Once neither the calendar-based nor the session-count-based
+  // comparison is available yet, tell the reader exactly how many more
+  // sessions (the faster of the two paths to unlock) are needed.
+  const sessionsUntilProgressUnlocks = Math.max(0, 7 - chronoSessions.length);
+
+  // Lifetime muscle breakdown — powers only the Hero's "Most Trained
+  // Muscle" stat, which (like the rest of the Hero) always summarizes
+  // the complete fitness history regardless of the section-level time
+  // filters below.
+  const muscleBreakdown = useMemo(() => computeMuscleBreakdown(workouts), [workouts]);
+  const muscleBySets = useMemo(
+    () => [...muscleBreakdown].sort((a, b) => b.sets - a.sets),
+    [muscleBreakdown]
+  );
+  const leastTrainedMuscle = muscleBySets.length > 1 ? muscleBySets[muscleBySets.length - 1] : null;
+  // Lifetime Push/Pull split for the "Recovery & Balance" KPI card —
+  // same categorization as the Muscle Balance section below, just scoped
+  // to complete history like the rest of the Hero/KPI row.
+  const lifetimePplPct = useMemo(() => {
+    const totals = { Push: 0, Pull: 0, Legs: 0, Core: 0 };
+    muscleBySets.forEach((m) => {
+      const cat = MUSCLE_SPLIT_CATEGORY[m.muscle];
+      if (cat) totals[cat] += m.sets;
+    });
+    const total = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
+    return Object.fromEntries(
+      Object.entries(totals).map(([k, v]) => [k, Math.round((v / total) * 100)])
+    );
+  }, [muscleBySets]);
+
+  // Training Score — a single 0-100 rollup of four things already
+  // computed above (consistency, progressive overload, muscle balance,
+  // PR frequency), so a reader gets one number to watch improve instead
+  // of reading four separate metrics every time. Each component is
+  // mapped onto a 0-100 scale independently, then averaged; nothing here
+  // is fabricated, every input traces back to a real figure shown
+  // elsewhere on this page.
+  // Named, per-factor breakdown of the Training Score — same clamp/average
+  // math as before, but kept labeled so the Hero can show exactly which
+  // real numbers produced the final score instead of just the average.
+  const trainingScoreBreakdown = useMemo(() => {
+    const clamp = (v) => Math.max(0, Math.min(100, v));
+    const pplValues = Object.values(lifetimePplPct);
+    const pplSpread = pplValues.length ? Math.max(...pplValues) - Math.min(...pplValues) : null;
+    return [
+      {
+        key: "consistency",
+        label: "Consistency",
+        value: consistency ? clamp(consistency.percent) : null,
+        caption: consistency
+          ? `${Math.round(consistency.percent)}% of expected sessions logged`
+          : "Log more workouts to unlock this",
+      },
+      {
+        key: "overload",
+        label: "Progressive Overload",
+        value: volumeTrend ? clamp(50 + volumeTrend.changePct) : null,
+        caption: volumeTrend
+          ? `Volume ${volumeTrend.changePct >= 0 ? "up" : "down"} ${Math.abs(volumeTrend.changePct)}% vs prior`
+          : "Log more workouts to unlock this",
+      },
+      {
+        key: "balance",
+        label: "Muscle Balance",
+        value: pplSpread != null ? clamp(100 - pplSpread) : null,
+        caption:
+          pplSpread != null
+            ? `${Math.round(pplSpread)}pt spread across push/pull/legs/core`
+            : "Log more workouts to unlock this",
+      },
+      {
+        key: "prFrequency",
+        label: "PR Frequency",
+        value: clamp((recordsThisMonth / 3) * 100),
+        caption: `${recordsThisMonth} new record${recordsThisMonth === 1 ? "" : "s"} this month`,
+      },
+    ];
+  }, [consistency, volumeTrend, lifetimePplPct, recordsThisMonth]);
+
+  const trainingScore = useMemo(() => {
+    const available = trainingScoreBreakdown.filter((p) => p.value != null);
+    if (!available.length) return null;
+    return Math.round(available.reduce((s, p) => s + p.value, 0) / available.length);
+  }, [trainingScoreBreakdown]);
+
+  const trainingScoreLabel =
+    trainingScore == null
+      ? null
+      : trainingScore >= 85
+      ? "Excellent"
+      : trainingScore >= 70
+      ? "Good"
+      : trainingScore >= 50
+      ? "Fair"
+      : "Needs Work";
+
+  // Directional read on the score, not a fabricated point delta — the
+  // average of the same real vs-last-period changes already shown in
+  // Overall Progress, so "trending up/down" always traces back to real
+  // numbers a reader can find elsewhere on the page.
+  const trainingScoreTrend = useMemo(() => {
+    const deltas = [volumeTrend, strengthTrend, consistencyTrend, prRateTrend]
+      .filter(Boolean)
+      .map((t) => t.changePct);
+    if (!deltas.length) return null;
+    const avg = Math.round(deltas.reduce((s, v) => s + v, 0) / deltas.length);
+    const direction = avg > 5 ? "up" : avg < -5 ? "down" : "flat";
+    return { direction, changePct: avg };
+  }, [volumeTrend, strengthTrend, consistencyTrend, prRateTrend]);
+
+  const mostImprovedInsight = insightsData.available
+    ? insightsData.insights.find((i) => i.key === "mostImprovedMuscle")
+    : null;
+
+  // Training Overview charts let the reader pick the bucket granularity
+  // directly (Weekly vs Monthly, labeled "Jan"/"Feb"/... in monthly mode)
+  // instead of filtering by date range — always lifetime history, just
+  // bucketed coarser or finer.
+  const [chartGranularity, setChartGranularity] = useState("week");
+  const chartSeries = useMemo(
+    () => buildProgressionSeries(workouts, { granularity: chartGranularity }),
+    [workouts, chartGranularity]
+  );
+  const chartVolumeTrend = useMemo(() => describeTrend(chartSeries, "volume"), [chartSeries]);
+  const chartFrequencyTrend = useMemo(() => describeTrend(chartSeries, "frequency"), [chartSeries]);
+
+  // Muscle Balance gets its own time-range scope (default lifetime).
+  const [overviewRange, setOverviewRange] = useState(DEFAULT_TIME_RANGE);
+  const overviewWorkouts = useMemo(
+    () => filterWorkoutsByTimeRange(workouts, overviewRange),
+    [workouts, overviewRange]
+  );
+  const overviewMuscleBreakdown = useMemo(
+    () => computeMuscleBreakdown(overviewWorkouts),
+    [overviewWorkouts]
+  );
+  const overviewMuscleBySets = useMemo(
+    () => [...overviewMuscleBreakdown].sort((a, b) => b.sets - a.sets),
+    [overviewMuscleBreakdown]
+  );
+  const overviewTotalMuscleSets = useMemo(
+    () => overviewMuscleBySets.reduce((s, m) => s + m.sets, 0) || 1,
+    [overviewMuscleBySets]
+  );
+  // Push/Pull/Legs/Core split — the same standard training-split
+  // categorization MuscleBodyMap already applies on Dashboard, reused
+  // here as plain percentages rather than re-rendering that interactive
+  // body-map widget a second time on this page.
+  const overviewPplPct = useMemo(() => {
+    const totals = { Push: 0, Pull: 0, Legs: 0, Core: 0 };
+    overviewMuscleBySets.forEach((m) => {
+      const cat = MUSCLE_SPLIT_CATEGORY[m.muscle];
+      if (cat) totals[cat] += m.sets;
+    });
+    const total = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
+    return Object.fromEntries(
+      Object.entries(totals).map(([k, v]) => [k, Math.round((v / total) * 100)])
+    );
+  }, [overviewMuscleBySets]);
+  const topMuscles = overviewMuscleBySets.slice(0, 2);
+  // Only called out once there's enough breadth of trained muscles that
+  // the bottom ones are meaningfully under-trained, not just "the only
+  // other muscle you happened to also do".
+  const neglectedMuscles = overviewMuscleBySets.length > 4 ? overviewMuscleBySets.slice(-2).reverse() : [];
+
+  // Detailed Breakdown rows expand in place to show that muscle's
+  // exercises instead of navigating away — computed on demand for
+  // whichever single muscle is expanded rather than eagerly for all of
+  // them.
+  const [expandedBreakdownMuscle, setExpandedBreakdownMuscle] = useState(null);
+  const expandedBreakdownExercises = useMemo(() => {
+    if (!expandedBreakdownMuscle) return [];
+    return getExerciseDistribution(filterWorkoutsByMuscle(overviewWorkouts, expandedBreakdownMuscle));
+  }, [expandedBreakdownMuscle, overviewWorkouts]);
+
+  // Exercise Distribution is scoped to one muscle at a time — mixing
+  // every muscle's exercises into one ranked list mostly just reflected
+  // whichever muscle had the most sets, rather than saying anything about
+  // exercise choice within a muscle. Defaults to the most-trained muscle
+  // in the current range. Lives inside Advanced Analytics (a drill-down),
+  // not the top-level Muscle Balance summary.
+  const [exerciseMuscleFilter, setExerciseMuscleFilter] = useState("");
+  useEffect(() => {
+    if (!exerciseMuscleFilter && overviewMuscleBySets.length) {
+      setExerciseMuscleFilter(overviewMuscleBySets[0].muscle);
+    }
+  }, [overviewMuscleBySets, exerciseMuscleFilter]);
+  const exerciseDistribution = useMemo(
+    () => getExerciseDistribution(filterWorkoutsByMuscle(overviewWorkouts, exerciseMuscleFilter)),
+    [overviewWorkouts, exerciseMuscleFilter]
+  );
+
+  // Advanced Analytics gets its own independent time-range scope (default
+  // lifetime) — separate state from Muscle Balance's above.
+  const [advancedRange, setAdvancedRange] = useState(DEFAULT_TIME_RANGE);
+  const [activeTab, setActiveTab] = useState("overview");
+  const advancedWorkouts = useMemo(
+    () => filterWorkoutsByTimeRange(workouts, advancedRange),
+    [workouts, advancedRange]
+  );
+  const advancedMuscleBreakdown = useMemo(
+    () => computeMuscleBreakdown(advancedWorkouts),
+    [advancedWorkouts]
+  );
+  const muscleByVolume = useMemo(() => {
+    const total = advancedMuscleBreakdown.reduce((s, m) => s + m.volume, 0) || 1;
+    return [...advancedMuscleBreakdown]
+      .sort((a, b) => b.volume - a.volume)
+      .map((m) => ({ ...m, volumePct: (m.volume / total) * 100 }));
+  }, [advancedMuscleBreakdown]);
+
+  const advancedExerciseDistribution = useMemo(
+    () => getExerciseDistribution(advancedWorkouts),
+    [advancedWorkouts]
+  );
+  const exerciseByVolume = useMemo(() => {
+    const total = advancedExerciseDistribution.reduce((s, e) => s + e.volume, 0) || 1;
+    return [...advancedExerciseDistribution]
+      .sort((a, b) => b.volume - a.volume)
+      .map((e) => ({ ...e, volumePct: (e.volume / total) * 100 }));
+  }, [advancedExerciseDistribution]);
+
+  // "What's Getting Stronger" leaderboard — Exercise Performance sorted by
+  // estimated-1RM trend (not volume), so it actually answers "what's
+  // improving fastest" rather than "what do I do the most of". Exercises
+  // without enough history for a trend sort to the bottom and get an
+  // honest "not enough history" note instead of a silent blank.
+  const strengthLeaderboard = useMemo(() => {
+    const withTrend = exerciseByVolume.slice(0, 8).map((e) => ({
+      exercise: e.exercise,
+      progression: getExerciseProgression(workouts, e.exercise, { rangeKey: advancedRange }),
+    }));
+    return withTrend
+      .sort((a, b) => {
+        const av = a.progression.trend.estOneRM?.changePct ?? -Infinity;
+        const bv = b.progression.trend.estOneRM?.changePct ?? -Infinity;
+        return bv - av;
+      })
+      .slice(0, 5);
+  }, [exerciseByVolume, workouts, advancedRange]);
+
+  // Projected PR Forecaster — extrapolates each exercise's estimated-1RM
+  // trend (progressionEngine.projectMilestone, a plain linear regression
+  // over already-computed series data) to guess when it'll cross the
+  // next round-number milestone. Scoped to lifetime history regardless of
+  // advancedRange, since a short recent window rarely has enough trained
+  // points for a regression to mean anything. Only the single best (soonest)
+  // projection is shown — a spotlight, not a list — and the whole panel is
+  // omitted when nothing qualifies rather than showing an empty section.
+  const topProjectedMilestone = useMemo(() => {
+    const projections = exerciseByVolume
+      .slice(0, 8)
+      .map((e) => ({
+        exercise: e.exercise,
+        projection: projectMilestone(getExerciseProgression(workouts, e.exercise).series, "estOneRM"),
+      }))
+      .filter((e) => e.projection);
+    if (!projections.length) return null;
+    return projections.sort((a, b) => a.projection.daysAhead - b.projection.daysAhead)[0];
+  }, [exerciseByVolume, workouts]);
+
+  // Per-muscle trend for the Plateau Detection panel, scoped to
+  // advancedRange like the rest of Advanced Analytics. Omitted from the
+  // page entirely when nothing qualifies (see plateauedMuscles usage
+  // below) rather than showing an empty-state hint that just wastes
+  // vertical space every time training is going well.
+  const advancedMuscleTrends = useMemo(
+    () =>
+      availableMuscles.map((muscle) => ({
+        muscle,
+        progression: getMuscleProgression(workouts, muscle, { rangeKey: advancedRange }),
+      })),
+    [workouts, availableMuscles, advancedRange]
+  );
+  const plateauedMuscles = useMemo(
+    () =>
+      advancedMuscleTrends
+        .filter(
+          ({ progression }) =>
+            progression.series.length >= MIN_BUCKETS_FOR_TREND &&
+            progression.trend.volume &&
+            progression.trend.volume.direction !== "up"
+        )
+        .map(({ muscle, progression }) => ({ muscle, trend: progression.trend.volume })),
+    [advancedMuscleTrends]
+  );
+
+  // Current record per exercise (latest prHistory event, deduped) — the
+  // "Current Records" list, grouped by muscle. Recent Records reuses the
+  // same prHistory output undeduped, newest first, for genuine PR
+  // *history*.
+  const personalRecordsLatest = useMemo(() => {
+    const latestByExercise = new Map();
+    recordEvents.forEach((ev) => latestByExercise.set(ev.exercise, ev));
+    return Array.from(latestByExercise.values()).sort((a, b) => b.weight - a.weight);
+  }, [recordEvents]);
+
+  const currentRecordsByMuscle = useMemo(() => {
+    const groups = new Map();
+    personalRecordsLatest.forEach((r) => {
+      const muscle = r.muscle || "Other";
+      if (!groups.has(muscle)) groups.set(muscle, []);
+      groups.get(muscle).push(r);
+    });
+    return Array.from(groups.entries())
+      .map(([muscle, records]) => ({ muscle, records }))
+      .sort((a, b) => b.records[0].weight - a.records[0].weight);
+  }, [personalRecordsLatest]);
+
+  // Current Records can run to dozens of exercises across every muscle
+  // group — a plain substring search over the exercise name so a specific
+  // lift can be found without scanning every group.
+  const [prSearch, setPrSearch] = useState("");
+  const filteredCurrentRecordsByMuscle = useMemo(() => {
+    const term = prSearch.trim().toLowerCase();
+    if (!term) return currentRecordsByMuscle;
+    return currentRecordsByMuscle
+      .map(({ muscle, records }) => ({
+        muscle,
+        records: records.filter((r) => r.exercise.toLowerCase().includes(term)),
+      }))
+      .filter(({ records }) => records.length > 0);
+  }, [currentRecordsByMuscle, prSearch]);
+
+  const recentRecords = useMemo(() => [...recordEvents].reverse().slice(0, 10), [recordEvents]);
+  const recordTimeline = useMemo(() => buildRecordTimeline(workouts), [workouts]);
+  const mostRecentPr = recordEvents.length ? recordEvents[recordEvents.length - 1] : null;
+
+  // The PR immediately before the current one for that same exercise —
+  // prHistory's events are already strictly increasing per exercise, so
+  // the prior occurrence of the same name IS the previous record.
+  const latestPrPrevious = useMemo(() => {
+    if (!mostRecentPr) return null;
+    for (let i = recordEvents.length - 2; i >= 0; i--) {
+      if (recordEvents[i].exercise === mostRecentPr.exercise) return recordEvents[i];
+    }
+    return null;
+  }, [recordEvents, mostRecentPr]);
+
+  const heaviestLiftEver = personalRecordsLatest.length
+    ? [...personalRecordsLatest].sort((a, b) => b.weight - a.weight)[0]
+    : null;
+
+  // A small celebratory moment — the just-logged PR isn't merely a new
+  // record for its own exercise (every entry in recordEvents already is),
+  // it's the heaviest weight logged across every exercise, ever.
+  const isLifetimePr =
+    !!mostRecentPr && !!heaviestLiftEver && heaviestLiftEver.exercise === mostRecentPr.exercise;
+
+  // Intelligent Insights — feature the most useful 1-3 up top (a "biggest
+  // win", something worth "attention", and a consistency read), then the
+  // rest below at lower visual priority, instead of six equally-weighted
+  // cards competing for attention.
+  const improvedInsight = insightsData.available
+    ? insightsData.insights.find((i) => i.key === "mostImprovedMuscle")
+    : null;
+  const fastestInsight = insightsData.available
+    ? insightsData.insights.find((i) => i.key === "fastestImprovingExercise")
+    : null;
+  const consistencyInsight = insightsData.available
+    ? insightsData.insights.find((i) => i.key === "highestConsistency")
+    : null;
+  const imbalanceInsight = insightsData.available
+    ? insightsData.insights.find((i) => i.key === "trainingImbalance")
+    : null;
+
+  const biggestWinInsight = useMemo(() => {
+    const candidates = [improvedInsight, fastestInsight].filter((i) => i?.available);
+    if (!candidates.length) return null;
+    return candidates.reduce((best, c) => (!best || c.changePct > best.changePct ? c : best), null);
+  }, [improvedInsight, fastestInsight]);
+
+  const attentionInsight = imbalanceInsight?.available && !imbalanceInsight.balanced ? imbalanceInsight : null;
+
+  const remainingInsights = useMemo(() => {
+    if (!insightsData.available) return [];
+    const featuredKeys = new Set(
+      [biggestWinInsight?.key, attentionInsight?.key, consistencyInsight?.key].filter(Boolean)
+    );
+    return insightsData.insights.filter((i) => !featuredKeys.has(i.key));
+  }, [insightsData, biggestWinInsight, attentionInsight, consistencyInsight]);
 
   if (loading) {
     return (
-      <div className="analytics-page">
-        <main className="analytics-main">
-          <div className="analytics-placeholder">
+      <div className="progression-page analytics-page">
+        <main className="progression-main">
+          <div className="progression-empty-page">
+            <div className="progression-empty-page__icon">
+              <Activity size={28} strokeWidth={1.6} />
+            </div>
             <h1>Progress Analytics</h1>
-            <p>Loading your data...</p>
+            <p>Crunching your training history...</p>
           </div>
         </main>
       </div>
@@ -135,11 +657,14 @@ function Analytics() {
 
   if (workouts.length === 0) {
     return (
-      <div className="analytics-page">
-        <main className="analytics-main">
-          <div className="analytics-placeholder">
+      <div className="progression-page analytics-page">
+        <main className="progression-main">
+          <div className="progression-empty-page">
+            <div className="progression-empty-page__icon">
+              <Activity size={28} strokeWidth={1.6} />
+            </div>
             <h1>Progress Analytics</h1>
-            <p>Log a few workouts and your trends will show up here.</p>
+            <p>Log a few workouts and your complete training story will show up here.</p>
           </div>
         </main>
       </div>
@@ -147,75 +672,749 @@ function Analytics() {
   }
 
   return (
-    <div className="analytics-page">
-      <main className="analytics-main">
-        <h1 className="analytics-title">Progress Analytics</h1>
-
-        <div className="analytics-grid">
-          {/* Volume trend */}
-          <section className="analytics-card">
-            <h2 className="analytics-card-title">Volume Trend (Last 8 Weeks)</h2>
-            <div className="analytics-bars">
-              {weeklyVolume.map((w) => (
-                <div className="analytics-bar-col" key={w.label}>
-                  <div
-                    className="analytics-bar"
-                    style={{ height: `${(w.volume / maxWeeklyVolume) * 100}%` }}
-                    title={`${w.volume.toLocaleString()} kg`}
-                  />
-                  <span className="analytics-bar-label">{w.label}</span>
-                </div>
-              ))}
+    <div className="progression-page analytics-page">
+      <main className="progression-main">
+        {/* HERO — answers "how am I doing?" */}
+        <section className="progression-hero analytics-hero--split">
+          <div className="analytics-hero__top">
+            <div>
+              <span className="progression-hero__eyebrow">
+                <span className="progression-hero__dot" />
+                Analytics
+                {currentStreak >= 3 && (
+                  <span className="analytics-celebrate-badge analytics-celebrate-badge--inline">
+                    🔥 {currentStreak} day streak
+                  </span>
+                )}
+              </span>
+              <h1 className="progression-hero__title">Your Training Summary</h1>
+              <p className="progression-hero__sub">{verdictText}</p>
             </div>
-          </section>
 
-          {/* Frequency */}
-          <section className="analytics-card">
-            <h2 className="analytics-card-title">Session Frequency (Last 8 Weeks)</h2>
-            <div className="analytics-bars">
-              {weeklyFrequency.map((w) => (
-                <div className="analytics-bar-col" key={w.label}>
-                  <div
-                    className="analytics-bar analytics-bar-alt"
-                    style={{ height: `${(w.count / maxFrequency) * 100}%` }}
-                    title={`${w.count} workouts`}
-                  />
-                  <span className="analytics-bar-label">{w.label}</span>
-                </div>
-              ))}
+            <div className="analytics-score">
+              <span className="analytics-score__label">GymOps Training Score</span>
+              {trainingScore != null ? (
+                <>
+                  <span className="analytics-score__value">{trainingScore}</span>
+                  <span className="analytics-score__tag">{trainingScoreLabel}</span>
+                  {trainingScoreTrend && (
+                    <div className="analytics-score__trend">
+                      <TrendBadge trend={trainingScoreTrend} />
+                      <span>vs last month</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="analytics-score__value analytics-score__value--empty">—</span>
+                  <span className="analytics-score__tag analytics-score__tag--muted">
+                    Log more workouts to unlock this
+                  </span>
+                </>
+              )}
+              <p className="analytics-score__formula">
+                From consistency, progressive overload, muscle balance &amp; PR frequency
+              </p>
             </div>
-          </section>
 
-          {/* Muscle distribution */}
-          <section className="analytics-card">
-            <h2 className="analytics-card-title">Muscle Distribution</h2>
-            <div className="analytics-dist-list">
-              {muscleDistribution.map((m) => (
-                <div className="analytics-dist-row" key={m.muscle}>
-                  <span className="analytics-dist-label">{m.muscle}</span>
-                  <div className="analytics-dist-track">
-                    <div className="analytics-dist-fill" style={{ width: `${m.pct}%` }} />
+            <div className="analytics-score-breakdown">
+              <p className="analytics-score-breakdown__title">The maths behind your GymOps score</p>
+              <div className="analytics-score-breakdown__list">
+                {trainingScoreBreakdown.map((part) => (
+                  <div className="analytics-score-breakdown__row" key={part.key}>
+                    <div className="analytics-score-breakdown__row-head">
+                      <span className="analytics-score-breakdown__row-label">{part.label}</span>
+                      <span className="analytics-score-breakdown__row-value">
+                        {part.value != null ? Math.round(part.value) : "—"}
+                      </span>
+                    </div>
+                    <div className="analytics-score-breakdown__bar">
+                      <div
+                        className="analytics-score-breakdown__bar-fill"
+                        style={{ width: `${part.value != null ? part.value : 0}%` }}
+                      />
+                    </div>
+                    <p className="analytics-score-breakdown__caption">{part.caption}</p>
                   </div>
-                  <span className="analytics-dist-pct">{m.pct.toFixed(0)}%</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* PR progression */}
-          <section className="analytics-card">
-            <h2 className="analytics-card-title">Personal Records</h2>
-            <div className="analytics-pr-list">
-              {personalRecords.map((pr) => (
-                <div className="analytics-pr-row" key={pr.exercise}>
-                  <span className="analytics-pr-exercise">{pr.exercise}</span>
-                  <span className="analytics-pr-weight">{pr.weight} kg</span>
-                  <span className="analytics-pr-date">{formatDate(pr.date)}</span>
-                </div>
-              ))}
-            </div>
-          </section>
+        {/* OVERALL PROGRESS — answers "am I getting stronger?", placed
+            directly under the hero with no gap between the two cards. */}
+        <section className="analytics-hero__progress analytics-hero__progress--standalone">
+          <p className="progression-panel__label">Overall Progress</p>
+          <div className="analytics-progress-grid">
+            {[
+              { label: "Strength", basis: "Estimated 1RM, recent vs. prior sessions", trend: strengthTrend },
+              { label: "Volume", basis: "Total kg lifted, recent vs. prior sessions", trend: volumeTrend },
+              {
+                label: "Consistency",
+                basis: "Days between sessions, recent vs. prior",
+                trend: consistencyTrend,
+              },
+              { label: "PR Rate", basis: "New records set, recent vs. prior sessions", trend: prRateTrend },
+            ].map(({ label, basis, trend }) => (
+              <div className="analytics-progress-tile" key={label}>
+                <span className="analytics-progress-tile__label">{label}</span>
+                <span className="analytics-progress-tile__basis">{basis}</span>
+                {trend ? (
+                  <div className="analytics-progress-tile__trend-row">
+                    <TrendBadge trend={trend} />
+                    {trend.direction === "up" && trend.changePct >= 50 && (
+                      <span className="analytics-celebrate-badge analytics-celebrate-badge--inline">⬆ Big jump</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="analytics-progress-tile__na">
+                    <span className="analytics-progress-tile__na-dash">—</span>
+                    <span className="analytics-progress-tile__na-caption">
+                      {sessionsUntilProgressUnlocks > 0
+                        ? `Available after ${sessionsUntilProgressUnlocks} more session${
+                            sessionsUntilProgressUnlocks === 1 ? "" : "s"
+                          }`
+                        : "Waiting for enough data"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* TABS — the page used to be one continuous scroll long enough
+            for 3 pages; each tab now only renders its own section. */}
+        <div className="analytics-tabs" role="tablist" aria-label="Analytics sections">
+          {ANALYTICS_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              className={`analytics-tab ${activeTab === tab.key ? "analytics-tab--active" : ""}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {activeTab === "overview" && (
+        <>
+        {/* KEY KPIS — three merged, dashboard-style cards instead of nine
+            single tiles */}
+        <div className="analytics-hero__grid">
+          <StatGroupCard
+            title="Training"
+            icon={Dumbbell}
+            rows={[
+              { label: "Sessions", value: allSessions.length },
+              {
+                label: "Consistency",
+                value: consistency ? `${consistency.percent}%` : "—",
+              },
+              { label: "Current streak", value: `${currentStreak} day${currentStreak === 1 ? "" : "s"}` },
+              {
+                label: "Avg duration",
+                value: avgSessionDuration != null ? `${avgSessionDuration} min` : "—",
+              },
+            ]}
+          />
+          <StatGroupCard
+            title="Strength"
+            icon={TrendingUp}
+            rows={[
+              {
+                label: "Volume lifted",
+                value: `${overall.summary.totalVolume.toLocaleString()} kg`,
+                trend: overall.trend.volume,
+              },
+              { label: "Total PRs", value: recordEvents.length },
+              { label: "PRs this month", value: recordsThisMonth },
+              { label: "Weekly avg volume", value: `${weeklyAvgVolume.toLocaleString()} kg` },
+            ]}
+          />
+          <StatGroupCard
+            title="Recovery & Balance"
+            icon={Activity}
+            rows={[
+              { label: "Most trained", value: muscleBySets[0]?.muscle || "—" },
+              { label: "Least trained", value: leastTrainedMuscle?.muscle || "—" },
+              { label: "Push / Pull", value: `${lifetimePplPct.Push}% / ${lifetimePplPct.Pull}%` },
+              {
+                label: "Most improved",
+                value: mostImprovedInsight?.available ? mostImprovedInsight.value : "Log more workouts to unlock this",
+              },
+            ]}
+          />
+        </div>
+
+        {/* INSIGHTS — prioritized, not six equal cards */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Insights</p>
+          {!insightsData.available ? (
+            <div className="progression-panel">
+              <PanelEmptyState icon={Sparkles} message={insightsData.reason} />
+            </div>
+          ) : (
+            <>
+              <div className="analytics-featured-insights">
+                {/* Attention (a real warning, e.g. training imbalance) is
+                    the single most actionable insight when present, so it
+                    gets the full-width, larger treatment — Biggest Win and
+                    Consistency are good-to-know, not urgent. */}
+                {attentionInsight && (
+                  <div className="analytics-featured-insight analytics-featured-insight--warning analytics-featured-insight--large">
+                    <div className="analytics-featured-insight__icon">
+                      <AlertTriangle size={18} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <p className="analytics-featured-insight__label">Attention</p>
+                      <p className="analytics-featured-insight__value">{attentionInsight.value}</p>
+                      <p className="analytics-featured-insight__detail">{attentionInsight.detail}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="analytics-featured-insights__row">
+                  {biggestWinInsight && (
+                    <div className="analytics-featured-insight analytics-featured-insight--win">
+                      <div className="analytics-featured-insight__icon">
+                        <Sparkles size={16} strokeWidth={2} />
+                      </div>
+                      <div>
+                        <p className="analytics-featured-insight__label">Biggest Win</p>
+                        <p className="analytics-featured-insight__value">{biggestWinInsight.value}</p>
+                        <p className="analytics-featured-insight__detail">{biggestWinInsight.detail}</p>
+                      </div>
+                    </div>
+                  )}
+                  {consistencyInsight?.available && (
+                    <div className="analytics-featured-insight analytics-featured-insight--neutral">
+                      <div className="analytics-featured-insight__icon">
+                        <Flame size={16} strokeWidth={2} />
+                      </div>
+                      <div>
+                        <p className="analytics-featured-insight__label">Consistency</p>
+                        <p className="analytics-featured-insight__value">{consistencyInsight.value}</p>
+                        <p className="analytics-featured-insight__detail">{consistencyInsight.detail}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!biggestWinInsight && !attentionInsight && !consistencyInsight?.available && (
+                  <p className="prog-exdist__hint">Log more sessions to unlock featured insights.</p>
+                )}
+              </div>
+
+              {remainingInsights.length > 0 && (
+                <div className="progression-insights-grid analytics-insights-secondary">
+                  {remainingInsights.map((insight) => (
+                    <InsightCard key={insight.key} insight={insight} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+        </>
+        )}
+
+        {activeTab === "strength" && (
+        <>
+        {/* TRAINING OVERVIEW — what happened, at a glance */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Training Overview</p>
+
+          <div className="analytics-panels-grid-2">
+            <BarTrendChart
+              title="Volume Trend"
+              subtitle={`Training volume per ${chartGranularity}`}
+              series={chartSeries}
+              metricKey="volume"
+              metricDef={getMetricDef("volume")}
+              trend={chartVolumeTrend}
+              height={220}
+              emptyTitle="No volume logged yet"
+              emptyMessage="Log a few sessions to see your volume trend."
+            />
+            <BarTrendChart
+              title="Session Frequency"
+              subtitle={`Sessions logged per ${chartGranularity}`}
+              series={chartSeries}
+              metricKey="frequency"
+              metricDef={getMetricDef("frequency")}
+              trend={chartFrequencyTrend}
+              height={220}
+              emptyTitle="No sessions logged yet"
+              emptyMessage="Log a few sessions to see your frequency trend."
+            />
+          </div>
+
+          <div className="analytics-chart-chips">
+            {CHART_GRANULARITY_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                className={`analytics-chip ${chartGranularity === opt.key ? "analytics-chip--active" : ""}`}
+                onClick={() => setChartGranularity(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* WHAT'S GETTING STRONGER — leaderboard, moved up from the old
+            Advanced Analytics drill-down since it's core strength content,
+            not a power-user extra. */}
+        <section className="analytics-section">
+          <div className="analytics-section__head">
+            <p className="analytics-section__label">What's Getting Stronger</p>
+            <select
+              className="progression-filterbar__select"
+              value={advancedRange}
+              onChange={(e) => setAdvancedRange(e.target.value)}
+              aria-label="Select time range for strength leaderboard"
+            >
+              {TIME_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="progression-panel">
+            {strengthLeaderboard.length === 0 ? (
+              <PanelEmptyState icon={Flame} message="Log a few exercises to see performance trends." />
+            ) : (
+              <div className="progression-stats-rail">
+                {strengthLeaderboard.map((e) => (
+                  <MetricCard
+                    key={e.exercise}
+                    label={e.exercise}
+                    icon={Flame}
+                    value={e.progression.stats.bestSet ? `${e.progression.stats.bestSet.estOneRM} kg` : "—"}
+                    trend={e.progression.trend.estOneRM}
+                    sub={!e.progression.trend.estOneRM ? "Log more workouts to unlock this" : null}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {topProjectedMilestone && (
+            <div className="progression-panel">
+              <p className="progression-panel__label">Projected Milestone</p>
+              <div className="analytics-projection-row">
+                <div className="analytics-projection-row__icon">
+                  <Rocket size={14} strokeWidth={2} />
+                </div>
+                <div className="analytics-projection-row__body">
+                  <p className="analytics-projection-row__title">
+                    You're on track for {topProjectedMilestone.exercise} {topProjectedMilestone.projection.target} kg
+                  </p>
+                  <p className="analytics-projection-row__detail">
+                    Estimated in ~{formatRelativeDays(topProjectedMilestone.projection.daysAhead)}, based on your
+                    recent estimated-1RM trend — a projection, not a guarantee.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {plateauedMuscles.length > 0 && (
+            <div className="progression-panel">
+              <p className="progression-panel__label">Plateau Detection</p>
+              <div className="analytics-plateau-list">
+                {plateauedMuscles.map(({ muscle, trend }) => (
+                  <div className="analytics-plateau-row" key={muscle}>
+                    <div>
+                      <p className="analytics-plateau-row__name">{muscle}</p>
+                      <p className="analytics-plateau-row__detail">
+                        {trend.direction === "flat"
+                          ? "Volume has held steady — consider progressive overload."
+                          : "Volume is trending down over its logged history."}
+                      </p>
+                    </div>
+                    <TrendBadge trend={trend} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+        </>
+        )}
+
+        {activeTab === "muscles" && (
+        <>
+        {/* MUSCLE BALANCE — "am I balanced?", answered immediately */}
+        <section className="analytics-section">
+          <div className="analytics-section__head">
+            <p className="analytics-section__label">Muscle Balance</p>
+            <select
+              className="progression-filterbar__select"
+              value={overviewRange}
+              onChange={(e) => setOverviewRange(e.target.value)}
+              aria-label="Select time range for Muscle Balance"
+            >
+              {TIME_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {overviewMuscleBySets.length === 0 ? (
+            <div className="progression-panel">
+              <PanelEmptyState message="No muscle groups logged in this range." />
+            </div>
+          ) : (
+            <>
+              <div className="progression-panel">
+                <p className="progression-panel__label">Push / Pull / Legs / Core</p>
+                <div className="prog-exdist">
+                  {["Push", "Pull", "Legs", "Core"].map((cat) => (
+                    <DistributionRow
+                      key={cat}
+                      label={cat}
+                      sub={`${overviewPplPct[cat]}%`}
+                      pct={overviewPplPct[cat]}
+                      badge={pplBadge(overviewPplPct[cat])}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="analytics-panels-grid-2">
+                <div className="progression-panel">
+                  <p className="progression-panel__label">Top Muscles</p>
+                  <div className="analytics-mini-cards">
+                    {topMuscles.map((m) => (
+                      <button
+                        type="button"
+                        key={m.muscle}
+                        className="analytics-mini-card-btn"
+                        onClick={() => navigate(`/progression?muscle=${encodeURIComponent(m.muscle)}`)}
+                      >
+                        <MetricCard label={m.muscle} value={`${m.sets} sets`} icon={Dumbbell} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="progression-panel">
+                  <p className="progression-panel__label">Neglected Muscles</p>
+                  {neglectedMuscles.length === 0 ? (
+                    <p className="prog-exdist__hint">Nothing stands out as neglected in this range.</p>
+                  ) : (
+                    <div className="analytics-mini-cards">
+                      {neglectedMuscles.map((m) => (
+                        <button
+                          type="button"
+                          key={m.muscle}
+                          className="analytics-mini-card-btn"
+                          onClick={() => navigate(`/progression?muscle=${encodeURIComponent(m.muscle)}`)}
+                        >
+                          <MetricCard label={m.muscle} value={`${m.sets} sets`} icon={Activity} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="progression-panel">
+                <p className="progression-panel__label">Detailed Breakdown</p>
+                <p className="analytics-section__hint" style={{ marginTop: -4, marginBottom: 10 }}>
+                  Click a muscle to see its exercises.
+                </p>
+                <div className="prog-exdist">
+                  {overviewMuscleBySets.slice(0, 8).map((m) => (
+                    <div key={m.muscle}>
+                      <DistributionRow
+                        label={m.muscle}
+                        sub={`${m.sets} sets`}
+                        pct={(m.sets / overviewTotalMuscleSets) * 100}
+                        onSelect={() =>
+                          setExpandedBreakdownMuscle((prev) => (prev === m.muscle ? null : m.muscle))
+                        }
+                      />
+                      {expandedBreakdownMuscle === m.muscle && (
+                        <div className="analytics-breakdown-exercises">
+                          {expandedBreakdownExercises.length === 0 ? (
+                            <p className="prog-exdist__hint">No exercises logged for {m.muscle} in this range.</p>
+                          ) : (
+                            expandedBreakdownExercises.map((e) => (
+                              <button
+                                type="button"
+                                key={e.exercise}
+                                className="analytics-breakdown-exercise"
+                                onClick={() => navigate(`/progression?exercise=${encodeURIComponent(e.exercise)}`)}
+                              >
+                                <span>{e.exercise}</span>
+                                <span className="analytics-breakdown-exercise__sets">
+                                  {e.sets} sets <ChevronRight size={12} strokeWidth={2} />
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* EXERCISE DISTRIBUTION + VOLUME PER MUSCLE — moved up from the
+            old Advanced Analytics drill-down since both are muscle-centric,
+            not power-user extras. */}
+        <section className="analytics-section">
+          <div className="analytics-section__head">
+            <p className="prog-exdist__hint" style={{ margin: 0 }}>
+              Time range for this section
+            </p>
+            <select
+              className="progression-filterbar__select"
+              value={advancedRange}
+              onChange={(e) => setAdvancedRange(e.target.value)}
+              aria-label="Select time range for exercise/muscle volume"
+            >
+              {TIME_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="analytics-section__head">
+            <p className="prog-exdist__hint" style={{ margin: 0 }}>
+              Muscle filter for Exercise Distribution
+            </p>
+            <select
+              className="progression-filterbar__select"
+              value={exerciseMuscleFilter}
+              onChange={(e) => setExerciseMuscleFilter(e.target.value)}
+              aria-label="Select muscle for Exercise Distribution"
+            >
+              {overviewMuscleBySets.map((m) => (
+                <option key={m.muscle} value={m.muscle}>
+                  {m.muscle}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="analytics-panels-grid-2">
+            <div className="progression-panel">
+              <p className="progression-panel__label">Exercise Distribution</p>
+              {exerciseDistribution.length === 0 ? (
+                <PanelEmptyState icon={Dumbbell} message="No exercises logged in this range." />
+              ) : (
+                <div className="prog-exdist">
+                  {exerciseDistribution.slice(0, 8).map((e, i) => (
+                    <DistributionRow
+                      key={e.exercise}
+                      rank={i + 1}
+                      label={e.exercise}
+                      sub={`${e.sets} sets`}
+                      pct={e.pct}
+                      onSelect={() => navigate(`/progression?exercise=${encodeURIComponent(e.exercise)}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="progression-panel">
+              <p className="progression-panel__label">Volume per Muscle</p>
+              {muscleByVolume.length === 0 ? (
+                <PanelEmptyState message="No muscle groups logged yet." />
+              ) : (
+                <div className="prog-exdist">
+                  {muscleByVolume.slice(0, 8).map((m) => (
+                    <DistributionRow
+                      key={m.muscle}
+                      label={m.muscle}
+                      sub={`${Math.round(m.volume).toLocaleString()} kg`}
+                      pct={m.volumePct}
+                      onSelect={() => navigate(`/progression?muscle=${encodeURIComponent(m.muscle)}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+        </>
+        )}
+
+        {activeTab === "records" && (
+        <>
+        {/* PERSONAL RECORDS — "what did I just achieve?" first */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Personal Records</p>
+
+          <div className="progression-panel analytics-latest-pr">
+            <div className="analytics-latest-pr__head">
+              <Trophy size={16} strokeWidth={2} />
+              <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                Latest PR
+              </p>
+            </div>
+            {mostRecentPr ? (
+              <div className="analytics-latest-pr__body">
+                {isLifetimePr && (
+                  <span className="analytics-celebrate-badge">🏆 New Lifetime PR</span>
+                )}
+                <p className="analytics-latest-pr__weight">{mostRecentPr.weight} kg</p>
+                <p className="analytics-latest-pr__exercise">{mostRecentPr.exercise}</p>
+                <p className="analytics-latest-pr__meta">{formatDate(mostRecentPr.date)}</p>
+                <p className="analytics-latest-pr__delta">
+                  {latestPrPrevious ? (
+                    <>
+                      <TrendingUp size={13} strokeWidth={2.2} />+
+                      {Math.round((mostRecentPr.weight - latestPrPrevious.weight) * 10) / 10} kg since{" "}
+                      {formatDate(latestPrPrevious.date)}
+                    </>
+                  ) : (
+                    "First recorded PR for this exercise"
+                  )}
+                </p>
+                {heaviestLiftEver && heaviestLiftEver.exercise !== mostRecentPr.exercise && (
+                  <p className="analytics-latest-pr__footnote">
+                    All-time heaviest lift: {heaviestLiftEver.weight} kg ({heaviestLiftEver.exercise})
+                  </p>
+                )}
+              </div>
+            ) : (
+              <PanelEmptyState icon={Trophy} message="No personal records logged yet." />
+            )}
+          </div>
+
+          <div className="progression-panel">
+            <p className="progression-panel__label">PR Timeline</p>
+            <TimelineChart series={recordTimeline} height={300} />
+          </div>
+
+          <div className="progression-panel">
+            <p className="progression-panel__label">Recent Records</p>
+            {recentRecords.length === 0 ? (
+              <PanelEmptyState icon={Trophy} message="No personal records logged yet." />
+            ) : (
+              <div className="prog-pr prog-pr--grid">
+                {recentRecords.map((r, i) => (
+                  <PersonalRecordRow key={`${r.exercise}-${r.date}-${i}`} record={r} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="progression-panel">
+            <div className="analytics-section__head analytics-section__head--wrap">
+              <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                Current Records — by Muscle
+              </p>
+              <input
+                type="text"
+                className="analytics-pr-search"
+                placeholder="Search exercise PR..."
+                value={prSearch}
+                onChange={(e) => setPrSearch(e.target.value)}
+                aria-label="Search exercise PR"
+              />
+            </div>
+            {currentRecordsByMuscle.length === 0 ? (
+              <PanelEmptyState icon={Trophy} message="No personal records logged yet." />
+            ) : filteredCurrentRecordsByMuscle.length === 0 ? (
+              <p className="prog-exdist__hint">No exercise PR matches "{prSearch}".</p>
+            ) : (
+              <div className="analytics-pr-groups">
+                {filteredCurrentRecordsByMuscle.map(({ muscle, records }) => (
+                  <div className="analytics-pr-group" key={muscle}>
+                    <p className="analytics-pr-group__label">{muscle}</p>
+                    <div className="prog-pr prog-pr--grid">
+                      {records.map((r) => (
+                        <PersonalRecordRow key={r.exercise} record={r} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        </>
+        )}
+
+        {activeTab === "advanced" && (
+        <>
+        {/* ADVANCED ANALYTICS — power-user drill-down; the leaderboard,
+            milestone and plateau panels now live in the Strength tab, and
+            Exercise Distribution / Volume per Muscle live in Muscles, so
+            this tab is just the detailed per-exercise volume ranking. */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Advanced Analytics</p>
+          <div className="analytics-section__head">
+            <p className="prog-exdist__hint" style={{ margin: 0 }}>
+              Time range for this section
+            </p>
+            <select
+              className="progression-filterbar__select"
+              value={advancedRange}
+              onChange={(e) => setAdvancedRange(e.target.value)}
+              aria-label="Select time range for Advanced Analytics"
+            >
+              {TIME_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="progression-panel">
+            <p className="progression-panel__label">Volume per Exercise</p>
+            {exerciseByVolume.length === 0 ? (
+              <PanelEmptyState icon={Dumbbell} message="No exercises logged yet." />
+            ) : (
+              <div className="prog-exdist">
+                {exerciseByVolume.slice(0, 8).map((e, i) => (
+                  <DistributionRow
+                    key={e.exercise}
+                    rank={i + 1}
+                    label={e.exercise}
+                    sub={`${Math.round(e.volume).toLocaleString()} kg`}
+                    pct={e.volumePct}
+                    onSelect={() => navigate(`/progression?exercise=${encodeURIComponent(e.exercise)}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button type="button" className="analytics-next-chapter" onClick={() => navigate("/progression")}>
+            <div className="analytics-next-chapter__text">
+              <span className="analytics-next-chapter__eyebrow">Next up</span>
+              <p className="analytics-next-chapter__title">Dive Into Progression</p>
+              <p className="analytics-next-chapter__sub">
+                See strength curves, PR history, exercise timelines and muscle growth.
+              </p>
+            </div>
+            <span className="analytics-next-chapter__arrow">
+              <ChevronRight size={22} strokeWidth={2.4} />
+            </span>
+          </button>
+        </section>
+        </>
+        )}
       </main>
     </div>
   );

@@ -1,0 +1,354 @@
+@import "../styles/design-tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.progression-page {
+  min-height: 100vh;
+  background: var(--go-bg);
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--go-text);
+  --prog-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes prog-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progression-main {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 32px 44px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: prog-fade-in 0.45s var(--prog-ease);
+}
+
+/* ---------------------------------------------------------------- */
+/* Hero                                                               */
+/* ---------------------------------------------------------------- */
+
+.progression-hero {
+  background: color-mix(in srgb, var(--go-surface) 78%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 28px;
+  padding: 36px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  box-shadow:
+    var(--go-shadow-xs),
+    0 8px 32px color-mix(in srgb, var(--go-primary) 7%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--go-surface) 90%, transparent);
+}
+
+.progression-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--go-text-caption);
+  font-weight: 500;
+  color: var(--go-success);
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+
+.progression-hero__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--go-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-success) 22%, transparent);
+}
+
+.progression-hero__title {
+  font-size: var(--go-text-h1);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--go-text);
+}
+
+.progression-hero__sub {
+  margin-top: 8px;
+  font-size: var(--go-text-card-title);
+  color: var(--go-text-muted);
+  line-height: 1.55;
+  max-width: 440px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Overview: body map / selected statistics (concise, no big chart)   */
+/* ---------------------------------------------------------------- */
+
+.progression-panel {
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  padding: 20px 22px;
+  box-shadow: var(--go-shadow-xs);
+}
+
+/* Deliberately below the type scale's caption (12px) step — a
+   consistent, all-caps "kicker" treatment for panel titles across both
+   Progression and Analytics, not an extra untracked size. */
+.progression-panel__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--go-text-faint);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.progression-panel__label::before {
+  content: "";
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--go-primary);
+  flex-shrink: 0;
+}
+
+/* A full-width standalone panel now (no longer paired beside the
+   narrower Muscle Split map), so its tiles tile horizontally instead of
+   stacking into one tall, narrow column. */
+.progression-stats-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Timeline hero — the page's centerpiece                             */
+/* ---------------------------------------------------------------- */
+
+.progression-timeline-hero {
+  padding: 28px 30px 24px;
+  border-color: var(--go-border-strong);
+  box-shadow:
+    var(--go-shadow-sm),
+    0 0 0 1px color-mix(in srgb, var(--go-primary) 8%, transparent);
+}
+
+.progression-timeline-hero .progression-panel__label {
+  font-size: 12px;
+  margin-bottom: 18px;
+}
+
+.progression-timeline-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+.progression-timeline-hero__breakdown {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+.progression-timeline-hero__breakdown-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  margin-bottom: 10px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Advanced Analytics — collapsible                                   */
+/* ---------------------------------------------------------------- */
+
+.progression-advanced {
+  padding: 0;
+  overflow: hidden;
+}
+
+.progression-advanced__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 18px 22px;
+  border: none;
+  background: transparent;
+  color: var(--go-text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.18s ease;
+}
+
+.progression-advanced__toggle:hover {
+  background: var(--go-primary-50);
+}
+
+.progression-advanced__toggle:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: -2px;
+}
+
+.progression-advanced__chevron {
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--go-text-faint);
+  flex-shrink: 0;
+}
+
+.progression-advanced__chevron--open {
+  transform: rotate(90deg);
+}
+
+.progression-advanced__body {
+  padding: 0 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.progression-advanced__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------- */
+/* Insights grid — Analytics is now the only renderer of                */
+/* progression/progressionInsights.getInsights() output, but this class */
+/* stays here since Analytics already imports this page-shell file.     */
+/* ---------------------------------------------------------------- */
+
+.progression-insights-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* Ranked-distribution rows (.prog-exdist*) and Personal Record rows
+   (.prog-pr*) live in components/progression/progression-charts.css —
+   DistributionRow.jsx and PersonalRecordRow.jsx are shared components
+   (Progression + Analytics both render them), so their styles belong
+   alongside the other reusable chart component CSS, not this page file. */
+
+.progression-analytics-pointer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.progression-analytics-pointer__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-primary);
+  color: var(--go-surface);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--go-fast);
+}
+
+.progression-analytics-pointer__btn:hover {
+  opacity: 0.9;
+}
+
+/* ---------------------------------------------------------------- */
+/* Empty page state (no strength history at all)                     */
+/* ---------------------------------------------------------------- */
+
+.progression-empty-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 120px 20px;
+  color: var(--go-text-muted);
+}
+
+.progression-empty-page__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--go-radius-md);
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.progression-empty-page h1 {
+  font-size: var(--go-text-h3);
+  color: var(--go-text);
+}
+
+/* ---------------------------------------------------------------- */
+/* Responsive                                                         */
+/* ---------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .progression-main {
+    padding: 24px 20px 56px;
+  }
+
+  .progression-hero {
+    padding: 26px 24px;
+  }
+
+  .progression-hero__title {
+    font-size: var(--go-text-h2);
+  }
+
+  .progression-timeline-hero__stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .progression-analytics-pointer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .progression-analytics-pointer__btn {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progression-main {
+    animation: none;
+  }
+
+  .progression-advanced__chevron {
+    transition: none;
+  }
+}

@@ -33,6 +33,12 @@
 
   --go-icon-accent: var(--go-primary-dark);
 
+  /* Chart/bar fill accent — deliberately separate from --go-primary so
+     charts don't compete with buttons/score/active-state for the same
+     bright accent. Unchanged (still green) in light theme, where
+     --go-primary was never the "too much blue" problem. */
+  --go-chart-accent: var(--go-primary);
+
   --go-danger-dark: #dc2626;
   --go-danger-50: rgba(239, 68, 68, 0.08);
 
@@ -53,6 +59,19 @@
 
   --go-fast: 0.15s ease;
   --go-base: 0.25s ease;
+
+  /* Type scale — a fixed set of steps so text sizes stop drifting by
+     1-2px increments across components. Doesn't cover the oversized
+     "hero stat" numerals (Training Score, PR weight) or the 11px
+     all-caps eyebrow/kicker labels, which are deliberately outside this
+     scale rather than an extra untracked size. */
+  --go-text-h1: 3rem; /* 48px */
+  --go-text-h2: 2rem; /* 32px */
+  --go-text-h3: 1.5rem; /* 24px */
+  --go-text-section: 1.125rem; /* 18px */
+  --go-text-card-title: 1rem; /* 16px */
+  --go-text-body: 0.875rem; /* 14px */
+  --go-text-caption: 0.75rem; /* 12px */
 
   --go-font:
     Inter,
@@ -105,6 +124,11 @@
   --go-success-100: rgba(16, 185, 129, 0.2);
 
   --go-icon-accent: var(--go-primary-light);
+
+  /* Softer than --go-primary's #4f7cff — dark theme's charts/bars stay
+     blue-family but visibly de-emphasized against buttons/score/active
+     state, which keep the brighter --go-primary. */
+  --go-chart-accent: #6f8eff;
 
   --go-danger-dark: #f87171;
   --go-danger-50: rgba(239, 68, 68, 0.16);
