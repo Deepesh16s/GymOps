@@ -2,7 +2,8 @@
 // already computed by progressionEngine/strengthUtils. When there isn't
 // enough history for a particular insight to be meaningful, it is omitted
 // with a plain-language reason instead of guessed at.
-import { buildSessionSummaries, MUSCLE_SPLIT_CATEGORY } from "../utils/workoutUtils";
+import { buildSessionSummaries } from "../utils/workoutUtils";
+import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
 import { getAvailableMuscles, getAvailableExercises } from "./progressionFilters";
 import { getMuscleProgression, getExerciseProgression } from "./progressionEngine";
 

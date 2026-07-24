@@ -10,6 +10,11 @@ import {
   Sparkles,
   AlertTriangle,
   Trophy,
+  HeartPulse,
+  Zap,
+  Target,
+  Award,
+  Gauge,
 } from "lucide-react";
 import "./progression.css";
 import "./analytics.css";
@@ -21,9 +26,22 @@ import {
   computeMuscleBreakdown,
   computeCurrentStreak,
   isCardioEntry,
-  MUSCLE_SPLIT_CATEGORY,
 } from "../utils/workoutUtils";
+import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
 import { prHistory, estimate1RM } from "../utils/strengthUtils";
+import {
+  cardioPrHistory,
+  getAvailableCardioActivities,
+  getCardioActivityProgression,
+  getCardioOverview,
+  getCardioDistribution,
+  getCardioVariantDistribution,
+  CARDIO_METRICS_REGISTRY,
+  CARDIO_DEFAULT_METRIC,
+  getCardioMetricDef,
+} from "../progression/cardioProgressionEngine";
+import CardioSessionChart from "../components/progression/CardioSessionChart";
+import { getGoals } from "../services/goalService";
 import MetricCard from "../components/progression/MetricCard";
 import StatGroupCard from "../components/progression/StatGroupCard";
 import { TrendBadge } from "../components/progression/TrendChart";
@@ -76,6 +94,7 @@ const ANALYTICS_TABS = [
   { key: "overview", label: "Overview" },
   { key: "strength", label: "Strength" },
   { key: "muscles", label: "Muscles" },
+  { key: "cardio", label: "Cardio" },
   { key: "records", label: "Personal Records" },
   { key: "advanced", label: "Advanced" },
 ];
@@ -134,6 +153,10 @@ function Analytics() {
     [allSessions]
   );
   const recordEvents = useMemo(() => prHistory(workouts), [workouts]);
+  // Phase 12 — same chronological PR-event pattern as recordEvents
+  // above, computed by the cardio engine's own cardioPrHistory rather
+  // than re-deriving PR detection here.
+  const cardioRecordEvents = useMemo(() => cardioPrHistory(workouts), [workouts]);
 
   // Every consumer below (hero stats, trend charts, muscle/exercise
   // breakdowns, insights) is built from the shared Progression Engine or
@@ -479,6 +502,79 @@ function Analytics() {
       .map((e) => ({ ...e, volumePct: (e.volume / total) * 100 }));
   }, [advancedExerciseDistribution]);
 
+  // ------------------------------------------------------------------
+  // CARDIO — same time-range-scoped pattern as Muscle Balance/Advanced
+  // above, fed by cardioProgressionEngine instead of re-deriving any of
+  // this. No new workout fetch: `workouts` is the same array every other
+  // tab already reads.
+  // ------------------------------------------------------------------
+  const [cardioRange, setCardioRange] = useState(DEFAULT_TIME_RANGE);
+  const availableCardioActivities = useMemo(() => getAvailableCardioActivities(workouts), [workouts]);
+  const [selectedCardioActivity, setSelectedCardioActivity] = useState("");
+
+  // Defaults to the first activity actually present in the user's data
+  // once it's known — never fabricated, matches getAvailableMuscles'
+  // own "nothing force-listed" convention.
+  useEffect(() => {
+    if (!selectedCardioActivity && availableCardioActivities.length) {
+      setSelectedCardioActivity(availableCardioActivities[0]);
+    }
+  }, [availableCardioActivities, selectedCardioActivity]);
+
+  const [cardioMetric, setCardioMetric] = useState(CARDIO_DEFAULT_METRIC);
+  const cardioMetricDef = getCardioMetricDef(cardioMetric);
+
+  const cardioActivityProgression = useMemo(
+    () =>
+      selectedCardioActivity
+        ? getCardioActivityProgression(workouts, selectedCardioActivity, { rangeKey: cardioRange })
+        : { series: [], stats: null, prEvents: [] },
+    [workouts, selectedCardioActivity, cardioRange]
+  );
+
+  const cardioWeekOverview = useMemo(() => getCardioOverview(workouts, { period: "week" }), [workouts]);
+  const cardioMonthOverview = useMemo(() => getCardioOverview(workouts, { period: "month" }), [workouts]);
+  const cardioDistribution = useMemo(() => getCardioDistribution(workouts), [workouts]);
+  // Phase 12 — optional drill-down within the selected activity (e.g.
+  // Running -> Outdoor 12km, Treadmill 8km). Gracefully empty when no
+  // variant has ever been logged for this activity, so the section
+  // below simply doesn't render rather than showing an empty list.
+  const cardioVariantDistribution = useMemo(
+    () => (selectedCardioActivity ? getCardioVariantDistribution(workouts, selectedCardioActivity) : []),
+    [workouts, selectedCardioActivity]
+  );
+
+  // Weekly consistency for cardio, reusing the exact same getConsistency
+  // function strength already uses (see `consistency` above) — just fed
+  // cardio-only sessions instead of strength ones.
+  const cardioSessionsOnly = useMemo(
+    () => allSessions.filter((s) => s.stats.cardioCount > 0),
+    [allSessions]
+  );
+  const cardioConsistency = useMemo(() => {
+    if (!cardioSessionsOnly.length) return getConsistency(cardioSessionsOnly, null, null);
+    const times = cardioSessionsOnly.map((s) => new Date(s.date).getTime());
+    return getConsistency(cardioSessionsOnly, new Date(Math.min(...times)), new Date(Math.max(...times)));
+  }, [cardioSessionsOnly]);
+
+  // Cardio Goal completion rate — the one Cardio stat that needs goals,
+  // which nothing on this page fetches otherwise. One small independent
+  // fetch (see the effect below), not folded into the workouts Promise.
+  const [goals, setGoals] = useState([]);
+  useEffect(() => {
+    getGoals()
+      .then((res) => setGoals(res.data))
+      .catch((err) => console.log(err));
+  }, []);
+  const cardioGoalCompletionRate = useMemo(() => {
+    const cardioGoals = goals.filter((g) => g.type === "Cardio Goal");
+    if (!cardioGoals.length) return null;
+    const completed = cardioGoals.filter((g) => g.status === "Completed").length;
+    return Math.round((completed / cardioGoals.length) * 100);
+  }, [goals]);
+
+  const hasCardioData = cardioWeekOverview.hasCardioData;
+
   // "What's Getting Stronger" leaderboard — Exercise Performance sorted by
   // estimated-1RM trend (not volume), so it actually answers "what's
   // improving fastest" rather than "what do I do the most of". Exercises
@@ -554,6 +650,14 @@ function Analytics() {
     return Array.from(latestByExercise.values()).sort((a, b) => b.weight - a.weight);
   }, [recordEvents]);
 
+  // Phase 12 — same "latest event per key" dedup as personalRecordsLatest
+  // above, keyed by activityType instead of exercise name.
+  const personalCardioRecordsLatest = useMemo(() => {
+    const latestByActivity = new Map();
+    cardioRecordEvents.forEach((ev) => latestByActivity.set(ev.activityType, { ...ev, isCardio: true }));
+    return Array.from(latestByActivity.values());
+  }, [cardioRecordEvents]);
+
   const currentRecordsByMuscle = useMemo(() => {
     const groups = new Map();
     personalRecordsLatest.forEach((r) => {
@@ -561,14 +665,25 @@ function Analytics() {
       if (!groups.has(muscle)) groups.set(muscle, []);
       groups.get(muscle).push(r);
     });
-    return Array.from(groups.entries())
+    const strengthGroups = Array.from(groups.entries())
       .map(([muscle, records]) => ({ muscle, records }))
       .sort((a, b) => b.records[0].weight - a.records[0].weight);
-  }, [personalRecordsLatest]);
+
+    // Cardio has no muscle group, so its current records get their own
+    // pseudo-group appended at the end rather than forced into the
+    // muscle-sorted list above (which sorts by `.weight`, a field cardio
+    // records don't have) — only added when cardio records actually
+    // exist, so a strength-only history renders this identically to
+    // before.
+    return personalCardioRecordsLatest.length
+      ? [...strengthGroups, { muscle: "Cardio", records: personalCardioRecordsLatest }]
+      : strengthGroups;
+  }, [personalRecordsLatest, personalCardioRecordsLatest]);
 
   // Current Records can run to dozens of exercises across every muscle
   // group — a plain substring search over the exercise name so a specific
-  // lift can be found without scanning every group.
+  // lift can be found without scanning every group. Cardio records have
+  // no `exercise` field, so the search matches on `activityType` instead.
   const [prSearch, setPrSearch] = useState("");
   const filteredCurrentRecordsByMuscle = useMemo(() => {
     const term = prSearch.trim().toLowerCase();
@@ -576,12 +691,24 @@ function Analytics() {
     return currentRecordsByMuscle
       .map(({ muscle, records }) => ({
         muscle,
-        records: records.filter((r) => r.exercise.toLowerCase().includes(term)),
+        records: records.filter((r) =>
+          (r.isCardio ? r.activityType : r.exercise).toLowerCase().includes(term)
+        ),
       }))
       .filter(({ records }) => records.length > 0);
   }, [currentRecordsByMuscle, prSearch]);
 
-  const recentRecords = useMemo(() => [...recordEvents].reverse().slice(0, 10), [recordEvents]);
+  // Merges the two chronological PR-event streams (strength + cardio,
+  // each already sorted ascending by their own engine) before taking the
+  // 10 most recent overall — a strength-only history produces the exact
+  // same output as before since cardioRecordEvents is simply empty.
+  const recentRecords = useMemo(() => {
+    const cardioEvents = cardioRecordEvents.map((ev) => ({ ...ev, isCardio: true }));
+    const merged = [...recordEvents, ...cardioEvents].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+    return merged.reverse().slice(0, 10);
+  }, [recordEvents, cardioRecordEvents]);
   const recordTimeline = useMemo(() => buildRecordTimeline(workouts), [workouts]);
   const mostRecentPr = recordEvents.length ? recordEvents[recordEvents.length - 1] : null;
 
@@ -1255,6 +1382,154 @@ function Analytics() {
         </>
         )}
 
+        {activeTab === "cardio" && (
+        <>
+        {!hasCardioData ? (
+          <section className="analytics-section">
+            <div className="progression-panel">
+              <PanelEmptyState icon={HeartPulse} message="No cardio logged yet — add a run, ride, or other activity from a workout session to see trends here." />
+            </div>
+          </section>
+        ) : (
+          <>
+          {/* CARDIO OVERVIEW — weekly/monthly totals, favorite activity,
+              goal completion rate. Same MetricCard tile every other tab
+              already uses. */}
+          <section className="analytics-section">
+            <p className="analytics-section__label">Cardio Overview</p>
+            <div className="progression-stats-rail">
+              <MetricCard label="This Week" value={`${cardioWeekOverview.periodDistance} km`} sub={`${cardioWeekOverview.periodDuration} min · ${cardioWeekOverview.periodSessions} sessions`} icon={HeartPulse} />
+              <MetricCard label="This Month" value={`${cardioMonthOverview.periodDistance} km`} sub={`${cardioMonthOverview.periodDuration} min · ${cardioMonthOverview.periodSessions} sessions`} icon={Activity} />
+              <MetricCard label="Favorite Activity" value={cardioWeekOverview.favoriteActivity || "—"} icon={Flame} />
+              <MetricCard
+                label="Longest Activity"
+                value={cardioWeekOverview.longestActivity ? `${cardioWeekOverview.longestActivity.duration} min` : "—"}
+                sub={cardioWeekOverview.longestActivity?.activityType}
+                icon={Award}
+              />
+              <MetricCard
+                label="Fastest Pace"
+                value={cardioWeekOverview.fastestPace ? `${cardioWeekOverview.fastestPace.pace} min/km` : "—"}
+                sub={cardioWeekOverview.fastestPace?.activityType}
+                icon={Zap}
+              />
+              <MetricCard label="Average Pace" value={cardioWeekOverview.avgPace ? `${cardioWeekOverview.avgPace} min/km` : "—"} icon={Gauge} />
+              <MetricCard
+                label="Weekly Consistency"
+                value={cardioConsistency ? `${cardioConsistency.percent}%` : "—"}
+                sub={cardioConsistency ? `${cardioConsistency.weeksTrained}/${cardioConsistency.totalWeeks} weeks` : "Not enough history yet"}
+                icon={TrendingUp}
+              />
+              <MetricCard
+                label="Goal Completion"
+                value={cardioGoalCompletionRate != null ? `${cardioGoalCompletionRate}%` : "—"}
+                sub={cardioGoalCompletionRate == null ? "No Cardio Goals yet" : null}
+                icon={Target}
+              />
+            </div>
+          </section>
+
+          {/* ACTIVITY TREND — per-activity distance/duration/pace, same
+              CardioSessionChart the Progression cardio mode reuses. */}
+          <section className="analytics-section">
+            <div className="analytics-section__head analytics-section__head--wrap">
+              <p className="analytics-section__label">Activity Trend</p>
+              <div className="analytics-section__head-controls">
+                <select
+                  className="progression-filterbar__select"
+                  value={selectedCardioActivity}
+                  onChange={(e) => setSelectedCardioActivity(e.target.value)}
+                  aria-label="Select cardio activity"
+                >
+                  {availableCardioActivities.map((activity) => (
+                    <option key={activity} value={activity}>
+                      {activity}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="progression-filterbar__select"
+                  value={cardioMetric}
+                  onChange={(e) => setCardioMetric(e.target.value)}
+                  aria-label="Select cardio metric"
+                >
+                  {CARDIO_METRICS_REGISTRY.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="progression-filterbar__select"
+                  value={cardioRange}
+                  onChange={(e) => setCardioRange(e.target.value)}
+                  aria-label="Select time range for Activity Trend"
+                >
+                  {TIME_RANGE_OPTIONS.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="progression-panel">
+              <CardioSessionChart
+                series={cardioActivityProgression.series}
+                metricKey={cardioMetric}
+                metricDef={cardioMetricDef}
+                height={260}
+              />
+            </div>
+          </section>
+
+          {/* ACTIVITY DISTRIBUTION — reuses DistributionRow, same ranked-
+              bar shape every other distribution list on this page uses. */}
+          <section className="analytics-section">
+            <p className="analytics-section__label">Activity Distribution</p>
+            <div className="progression-panel">
+              <div className="prog-exdist">
+                {cardioDistribution.map((a, i) => (
+                  <DistributionRow
+                    key={a.activityType}
+                    rank={i + 1}
+                    label={a.activityType}
+                    sub={`${a.sessions} sessions · ${a.distance} km`}
+                    pct={a.pct}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Phase 12 — optional variant drill-down (e.g. Running ->
+              Outdoor 12km, Treadmill 8km). Only renders when the
+              selected activity actually has logged variants — an
+              activity with no variant data (or no variants defined at
+              all, like Elliptical) simply omits this section. */}
+          {cardioVariantDistribution.length > 0 && (
+            <section className="analytics-section">
+              <p className="analytics-section__label">{selectedCardioActivity} by Variant</p>
+              <div className="progression-panel">
+                <div className="prog-exdist">
+                  {cardioVariantDistribution.map((v, i) => (
+                    <DistributionRow
+                      key={v.variant}
+                      rank={i + 1}
+                      label={v.variant}
+                      sub={`${v.sessions} sessions · ${v.distance} km`}
+                      pct={v.pct}
+                    />
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+          </>
+        )}
+        </>
+        )}
+
         {activeTab === "records" && (
         <>
         {/* PERSONAL RECORDS — "what did I just achieve?" first */}
@@ -1310,7 +1585,7 @@ function Analytics() {
             ) : (
               <div className="prog-pr prog-pr--grid">
                 {recentRecords.map((r, i) => (
-                  <PersonalRecordRow key={`${r.exercise}-${r.date}-${i}`} record={r} />
+                  <PersonalRecordRow key={`${r.isCardio ? r.activityType : r.exercise}-${r.date}-${i}`} record={r} />
                 ))}
               </div>
             )}
@@ -1319,7 +1594,7 @@ function Analytics() {
           <div className="progression-panel">
             <div className="analytics-section__head analytics-section__head--wrap">
               <p className="progression-panel__label" style={{ marginBottom: 0 }}>
-                Current Records — by Muscle
+                Current Records
               </p>
               <input
                 type="text"
@@ -1341,7 +1616,7 @@ function Analytics() {
                     <p className="analytics-pr-group__label">{muscle}</p>
                     <div className="prog-pr prog-pr--grid">
                       {records.map((r) => (
-                        <PersonalRecordRow key={r.exercise} record={r} />
+                        <PersonalRecordRow key={r.isCardio ? r.activityType : r.exercise} record={r} />
                       ))}
                     </div>
                   </div>

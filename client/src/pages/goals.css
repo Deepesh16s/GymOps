@@ -261,6 +261,23 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  transition: box-shadow 0.3s ease, outline-color 0.3s ease;
+}
+
+/* Phase 13C.1 — Deep Links: brief highlight when arriving here via a
+   Goal notification's "scroll to that goal" action, so the scroll
+   destination is obvious even after motion settles. Fades on its own
+   (Goals.jsx clears isHighlighted ~2s later) — not a persistent state. */
+.goal-card--highlighted {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+  box-shadow: var(--go-shadow-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-card {
+    transition: none;
+  }
 }
 
 .goal-card__head {
@@ -276,6 +293,23 @@
   color: var(--go-text);
   line-height: 1.3;
   margin-bottom: 6px;
+}
+
+/* Phase 13C, section 14 — small inline flag when the reminder engine
+   has an active reminder for this goal (see GoalCard.jsx). Deliberately
+   quiet (not a full pill) so it reads as a supplementary hint next to
+   the title, not competing with the health/status badge on the right. */
+.goal-card__reminder-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--go-warning-50);
+  color: var(--go-warning);
+  vertical-align: middle;
 }
 
 .goal-type-badge {
@@ -779,6 +813,54 @@
   font-size: 12.5px;
   font-weight: 600;
   color: var(--go-text-muted);
+}
+
+.goal-field-label--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.goal-field-label--checkbox input {
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* Shown in place of the Target input for Daily goals tracked over a
+   week/month, whose target is server-auto-computed (days in the
+   window) rather than user-entered. */
+.goal-field-hint {
+  font-size: 12.5px;
+  color: var(--go-text-muted);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md, 8px);
+  padding: 8px 12px;
+  margin: 0;
+}
+
+.goal-milestone-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.goal-milestone-preset-btn {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: var(--go-radius-pill, 999px);
+  padding: 7px 14px;
+  cursor: pointer;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  transition: background 0.2s ease;
+}
+
+.goal-milestone-preset-btn:hover {
+  background: color-mix(in srgb, var(--go-primary) 12%, var(--go-surface-sunken));
+  color: var(--go-primary-dark, var(--go-primary));
 }
 
 /* Statistics header */

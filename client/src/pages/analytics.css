@@ -145,6 +145,16 @@
   flex-shrink: 0;
 }
 
+/* Groups multiple selects (e.g. Cardio's activity/metric/range) as one
+   unit that wraps together, rather than each select wrapping onto its
+   own line independently. */
+.analytics-section__head-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* Search inputs (unlike the compact range dropdowns) are fine wrapping
    to their own line on narrow panels rather than forcing the label to
    truncate — the label text matters more here than staying single-row. */

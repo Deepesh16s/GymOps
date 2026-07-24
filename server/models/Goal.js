@@ -78,6 +78,16 @@ const goalSchema = new mongoose.Schema(
       default: null,
     },
 
+    // Only meaningful when period is one of DAILY_PERIODS (daily-weekly/
+    // daily-monthly/daily-lifetime) — the per-day metric threshold (e.g.
+    // 10,000 steps/day). `target` for those periods means something else
+    // (a day-count or streak length, not the raw metric), so this field
+    // exists separately rather than overloading `target`'s meaning.
+    dailyTarget: {
+      type: Number,
+      default: null,
+    },
+
     deadline: {
       type: Date,
       default: null,

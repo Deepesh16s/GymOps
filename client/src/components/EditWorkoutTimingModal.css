@@ -1,0 +1,244 @@
+@import "../styles/design-tokens.css";
+
+.edit-timing-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: color-mix(in srgb, var(--go-text) 45%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.edit-timing-modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow:
+    var(--go-shadow-sm),
+    0 20px 48px color-mix(in srgb, var(--go-text) 18%, transparent);
+}
+
+.edit-timing-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.edit-timing-modal-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--go-primary-50);
+  color: var(--go-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.edit-timing-modal-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-timing-modal-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--go-text);
+  letter-spacing: -0.01em;
+}
+
+.edit-timing-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--go-text-muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.edit-timing-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--go-text-faint);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.edit-timing-modal-close:hover {
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+}
+
+.edit-timing-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-timing-modal-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--go-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 14px;
+}
+
+.edit-timing-modal-body .edit-timing-modal-label:first-child {
+  margin-top: 0;
+}
+
+.edit-timing-modal-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface);
+  color: var(--go-text);
+  font-size: 0.92rem;
+  font-family: inherit;
+}
+
+.edit-timing-modal-input:focus {
+  outline: none;
+  border-color: var(--go-primary);
+  box-shadow: 0 0 0 3px var(--go-primary-100);
+}
+
+.edit-timing-modal-input:disabled {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-faint);
+  cursor: not-allowed;
+}
+
+.edit-timing-modal-duration-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-timing-modal-duration-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.edit-timing-modal-input--number {
+  width: 56px;
+  text-align: center;
+  padding: 11px 8px;
+}
+
+.edit-timing-modal-duration-unit {
+  font-size: 0.8rem;
+  color: var(--go-text-faint);
+  font-weight: 500;
+}
+
+.edit-timing-modal-duration-preview {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--go-primary-dark);
+}
+
+[data-theme="dark"] .edit-timing-modal-duration-preview {
+  color: var(--go-primary-light);
+}
+
+.edit-timing-modal-divider {
+  height: 1px;
+  background: var(--go-border-soft);
+  margin: 16px 0 4px;
+}
+
+.edit-timing-modal-radio {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.88rem;
+  color: var(--go-text);
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.edit-timing-modal-radio input[type="radio"] {
+  accent-color: var(--go-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.edit-timing-modal-warning {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--go-warning);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.edit-timing-modal-error {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--go-danger-dark);
+  margin-top: 8px;
+}
+
+.edit-timing-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.edit-timing-modal-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.edit-timing-modal-btn:active {
+  transform: scale(0.97);
+}
+
+.edit-timing-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.edit-timing-modal-btn--cancel {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+}
+
+.edit-timing-modal-btn--cancel:hover {
+  background: var(--go-border-soft);
+}
+
+.edit-timing-modal-btn--confirm {
+  background: var(--go-primary);
+  color: #fff;
+}
+
+.edit-timing-modal-btn--confirm:hover {
+  opacity: 0.92;
+}

@@ -6,6 +6,7 @@ const {
   createWorkoutSession,
   getWorkouts,
   updateWorkout,
+  updateWorkoutSessionTiming,
   deleteWorkout,
   deleteWorkoutSession,
 } = require("../controllers/workoutController");
@@ -46,6 +47,12 @@ router.delete(
   "/session/:sessionId",
   protect,
   deleteWorkoutSession
+);
+
+router.put(
+  "/session/:sessionId/timing",
+  protect,
+  updateWorkoutSessionTiming
 );
 
 router.delete(

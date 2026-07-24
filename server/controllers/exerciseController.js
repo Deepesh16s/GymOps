@@ -1,4 +1,5 @@
 const Exercise = require("../models/Exercise");
+const { MUSCLES } = require("../constants/muscles");
 
 exports.createExercise = async (req, res) => {
   try {
@@ -7,6 +8,15 @@ exports.createExercise = async (req, res) => {
     if (!name || !muscleGroup) {
       return res.status(400).json({
         message: "Name and muscle group are required",
+      });
+    }
+
+    // Legacy "Legs" (and any other unrecognized value) is intentionally
+    // rejected here — it's only ever accepted on already-existing
+    // documents, never as a choice for newly created exercises.
+    if (!MUSCLES.includes(muscleGroup)) {
+      return res.status(400).json({
+        message: "Invalid muscle group",
       });
     }
 
@@ -124,6 +134,11 @@ exports.updateExercise = async (req, res) => {
       updates.normalizedName = req.body.name.trim().toLowerCase();
     }
     if (req.body.muscleGroup !== undefined) {
+      if (!MUSCLES.includes(req.body.muscleGroup)) {
+        return res.status(400).json({
+          message: "Invalid muscle group",
+        });
+      }
       updates.muscleGroup = req.body.muscleGroup;
     }
 

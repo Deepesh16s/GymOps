@@ -9,6 +9,9 @@ const exerciseRoutes = require("./routes/exerciseRoutes");
 const workoutRoutes = require("./routes/workoutRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const goalRoutes = require("./routes/goalRoutes");
+const dailyStepsRoutes = require("./routes/dailyStepsRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const plannedWorkoutRoutes = require("./routes/plannedWorkoutRoutes");
 
 const app = express();
 
@@ -25,6 +28,9 @@ app.use("/api/exercises", exerciseRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/goals", goalRoutes);
+app.use("/api/daily-steps", dailyStepsRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/planned-workouts", plannedWorkoutRoutes);
 
 // Fallback-only: only reached when no route above has already handled
 // the request. Cannot alter the behavior of any existing endpoint.

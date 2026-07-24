@@ -58,11 +58,67 @@ const GLOBAL_AUTO_GOAL_TYPES = AUTO_GOAL_TYPES.filter(
 ).concat(GOAL_TYPES.CARDIO);
 
 // Phase 8B — reusable period enum. Use these values instead of the
-// string literals "weekly"/"monthly" anywhere a Cardio Goal's period is
-// read, compared, or validated.
+// string literals "weekly"/"monthly"/"milestone" anywhere a Cardio
+// Goal's period is read, compared, or validated.
+//
+// Phase 12: added MILESTONE for one-time achievement goals ("First 5K",
+// "Marathon") — these have no recurring window to reset each week/month,
+// so computeCardioGoalMetric treats this value as "lifetime max single
+// entry" rather than "sum since period start" (see that function). A
+// milestone goal can therefore never regress once achieved.
+//
+// Post-Phase-12: added three DAILY_* values and NEXT_SESSION. These are
+// still just `period` values — the Goal Creation UI never shows all
+// seven as one flat list (see Goals.jsx: Goal Style -> Track Over
+// composes/decomposes into one of these under the hood), but the data
+// model and every computation in goalMetrics.js stays a flat enum, same
+// as before.
+//
+// DAILY_WEEKLY / DAILY_MONTHLY: "consistency" goals — current = how many
+// days in the window (so far) hit goal.dailyTarget; target is
+// auto-computed (days in the window), never user-entered. See
+// getAutoDailyTargetDays below and computeCardioGoalMetric's daily
+// branch.
+//
+// DAILY_LIFETIME: a "streak" goal — current = the longest all-time
+// consecutive-day streak of hitting goal.dailyTarget (recomputed fresh
+// from full history every time, so it can only stay the same or grow,
+// same non-regressing property MILESTONE has). target is user-entered
+// (the streak length to reach, e.g. 30).
+//
+// NEXT_SESSION: a one-shot challenge — current is 0 until the first
+// matching cardio session logged AFTER the goal's createdAt exists, then
+// current is that single session's value, permanently (does not
+// re-target on later sessions).
 const GOAL_PERIODS = {
   WEEKLY: "weekly",
   MONTHLY: "monthly",
+  MILESTONE: "milestone",
+  DAILY_WEEKLY: "daily-weekly",
+  DAILY_MONTHLY: "daily-monthly",
+  DAILY_LIFETIME: "daily-lifetime",
+  NEXT_SESSION: "next-session",
+};
+
+// The three periods whose `current` is a day-count or streak-length
+// rather than a raw metric sum — goalController uses this to know when
+// dailyTarget is required and when unit/target should be auto-derived
+// instead of taken from the request body.
+const DAILY_PERIODS = [
+  GOAL_PERIODS.DAILY_WEEKLY,
+  GOAL_PERIODS.DAILY_MONTHLY,
+  GOAL_PERIODS.DAILY_LIFETIME,
+];
+
+// Auto-computed `target` for the two windowed daily periods — "days in
+// the window", not user-entered. DAILY_LIFETIME has no window (its
+// target is the user's chosen streak length) so it's not handled here.
+const getAutoDailyTargetDays = (period, now = new Date()) => {
+  if (period === GOAL_PERIODS.DAILY_WEEKLY) return 7;
+  if (period === GOAL_PERIODS.DAILY_MONTHLY) {
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  }
+  return null;
 };
 
 // Pseudo-metric: not a real cardio.data.* field, but a natural fit for
@@ -110,6 +166,8 @@ module.exports = {
   AUTO_GOAL_TYPES,
   GLOBAL_AUTO_GOAL_TYPES,
   GOAL_PERIODS,
+  DAILY_PERIODS,
+  getAutoDailyTargetDays,
   CARDIO_SESSION_METRIC,
   CARDIO_GOAL_METRICS,
   isAutoCardioGoal,

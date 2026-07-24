@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import DarkModeToggle from "./DarkModeToggle";
 import ProfileDropdown from "./ProfileDropdown";
+import NotificationCenter from "./NotificationCenter";
 import "./Navbar.css";
 
 const NAV_LINKS = [
@@ -89,6 +90,8 @@ function Navbar() {
 
       <div className="navbar-right">
         <DarkModeToggle />
+
+        <NotificationCenter />
 
         <ProfileDropdown />
 

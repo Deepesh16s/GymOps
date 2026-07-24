@@ -1,52 +1,69 @@
-import { useState, useEffect, useMemo } from "react";
-import {
-  ChevronDown,
-  Clock,
-  Layers,
-  Flame,
-  Dumbbell,
-  Activity,
-  Trash2,
-  Loader2,
-} from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Dumbbell, FilterX, Trophy } from "lucide-react";
 import "./workoutHistory.css";
 import api from "../services/api";
 import { getWorkouts } from "../services/workoutService";
-import { SESSION_TYPE_FILTER_OPTIONS, getSessionTypeColor } from "../constants/sessionTypes";
-import { DATE_RANGE_OPTIONS, DATE_RANGE_ALL, DATE_RANGE_CUSTOM } from "../constants/dateRanges";
+import EditWorkoutTimingModal from "../components/EditWorkoutTimingModal";
+import SessionCard from "../components/workoutHistory/SessionCard";
+import HistoryFilterBar from "../components/workoutHistory/HistoryFilterBar";
+import SessionSummaryBar from "../components/workoutHistory/SessionSummaryBar";
+import EmptyState from "../components/workoutHistory/EmptyState";
+import HistorySkeleton from "../components/workoutHistory/HistorySkeleton";
+import useFavoriteSessions from "../hooks/useFavoriteSessions";
+import { DATE_RANGE_ALL } from "../constants/dateRanges";
+import { DURATION_RANGE_ALL } from "../constants/durationRanges";
 import {
-  getWorkoutVolume,
-  getSetCount,
-  formatSetBreakdown,
-  isCardioEntry,
-  getCardioActivityName,
-  formatCardioSummary,
   buildSessionSummaries,
+  buildPRIndex,
+  attachSessionPRs,
+  attachPreviousBestToPRs,
+  getSessionRecordKeys,
+  getSessionMilestones,
+  computeHistorySummary,
   filterSessionsBySearch,
   filterSessionsByMuscle,
   filterSessionsBySessionType,
   filterSessionsByDateRange,
+  filterSessionsByDuration,
+  filterSessionsByPROnly,
+  filterSessionsByFavorites,
   sortSessions,
-  formatSessionDate,
-  formatSessionEntryCountLabel,
   getSessionTypeLabel,
 } from "../utils/workoutUtils";
+import { cardioPrHistory, buildCardioPRIndex } from "../progression/cardioProgressionEngine";
 
-const MAX_VISIBLE_MUSCLE_CHIPS = 3;
+const DEFAULT_FILTERS = {
+  search: "",
+  muscle: "All",
+  sessionType: "All",
+  dateRange: DATE_RANGE_ALL,
+  customStart: "",
+  customEnd: "",
+  duration: DURATION_RANGE_ALL,
+  order: "newest",
+  onlyPR: false,
+  onlyFavorites: false,
+};
 
 function WorkoutHistory() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [muscle, setMuscle] = useState("All");
-  const [sessionType, setSessionType] = useState("All");
-  const [dateRange, setDateRange] = useState(DATE_RANGE_ALL);
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  const [order, setOrder] = useState("newest");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [deletingId, setDeletingId] = useState(null);
   const [deletingSessionKey, setDeletingSessionKey] = useState(null);
   const [expandedKeys, setExpandedKeys] = useState(() => new Set());
+  const [editingTimingSession, setEditingTimingSession] = useState(null);
+
+  // Phase 13C.1 — Deep Links: "PR notification -> Workout History ->
+  // expand that session automatically" (?expandSession=<sessionId>, set
+  // by notificationTriggers.js/NotificationCenter's navigate call).
+  const sessionRefs = useRef({});
+  const hasAppliedSessionDeepLink = useRef(false);
+
+  const { favoriteKeys, isFavorite, toggleFavorite } = useFavoriteSessions();
 
   const fetchWorkouts = async () => {
     setLoading(true);
@@ -69,29 +86,108 @@ function WorkoutHistory() {
   // visible set of sessions.
   useEffect(() => {
     setExpandedKeys(new Set());
-  }, [search, muscle, sessionType, dateRange, customStart, customEnd, order]);
+  }, [filters]);
+
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => setFilters(DEFAULT_FILTERS);
+
+  const hasActiveFilters = useMemo(
+    () => JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS),
+    [filters]
+  );
 
   const muscleOptions = useMemo(() => {
     const set = new Set(workouts.map((w) => w.exercise?.muscleGroup).filter(Boolean));
     return ["All", ...Array.from(set).sort()];
   }, [workouts]);
 
-  // Workouts are grouped into sessions exactly once per `workouts` change.
-  // Filtering, muscle-matching, and sorting below all operate on this
-  // already-grouped + already-summarized list, so a session's stats are
-  // never recalculated just because a filter or sort order changed.
-  const allSessions = useMemo(() => buildSessionSummaries(workouts), [workouts]);
+  // Workouts are grouped into sessions + PR-tagged exactly once per
+  // `workouts` change. Filtering, muscle-matching, and sorting below all
+  // operate on this already-grouped + already-summarized list, so a
+  // session's stats/PRs are never recalculated just because a filter or
+  // sort order changed.
+  const prIndex = useMemo(() => buildPRIndex(workouts), [workouts]);
+  // Phase 12 — same pattern as prIndex above, parallel index for cardio
+  // PR events (distance/pace/duration/calories records per activity).
+  // Passed alongside prIndex into attachSessionPRs, which merges both
+  // into the same session.prs array (see that function's own comment).
+  const cardioPrIndex = useMemo(() => buildCardioPRIndex(workouts), [workouts]);
+  const allSessions = useMemo(() => {
+    const withPRs = attachSessionPRs(buildSessionSummaries(workouts), prIndex, cardioPrIndex);
+    // Cross-references the same prHistory/cardioPrHistory streams a
+    // second time (no re-detection) to attach "previous best" onto each
+    // PR already found above, for the timeline's PR celebration (Phase
+    // 10B, extended to cardio in Phase 12).
+    return attachPreviousBestToPRs(withPRs, workouts, cardioPrHistory(workouts));
+  }, [workouts, prIndex, cardioPrIndex]);
+
+  // "Best session ever" superlatives are computed over the FULL session
+  // list, not the filtered one, so a card's Highest Volume/Longest
+  // Session badge never shifts depending on which filters happen to be
+  // active — see getSessionRecordKeys' own doc comment.
+  const { highestVolumeKeys, longestDurationKeys } = useMemo(
+    () => getSessionRecordKeys(allSessions),
+    [allSessions]
+  );
+
+  // Session Timeline milestones (Phase 10B) — same "computed once over
+  // the full list" rule as the superlatives above, so a milestone chip
+  // doesn't flicker depending on active filters.
+  const milestonesByKey = useMemo(() => getSessionMilestones(allSessions), [allSessions]);
 
   const visibleSessions = useMemo(() => {
-    let result = filterSessionsBySearch(allSessions, search);
-    result = filterSessionsByMuscle(result, muscle);
-    result = filterSessionsBySessionType(result, sessionType);
-    result = filterSessionsByDateRange(result, dateRange, customStart, customEnd);
-    result = sortSessions(result, order);
+    let result = filterSessionsBySearch(allSessions, filters.search);
+    result = filterSessionsByMuscle(result, filters.muscle);
+    result = filterSessionsBySessionType(result, filters.sessionType);
+    result = filterSessionsByDateRange(result, filters.dateRange, filters.customStart, filters.customEnd);
+    result = filterSessionsByDuration(result, filters.duration);
+    result = filterSessionsByPROnly(result, filters.onlyPR);
+    result = filterSessionsByFavorites(result, filters.onlyFavorites, favoriteKeys);
+    result = sortSessions(result, filters.order);
     return result;
-  }, [allSessions, search, muscle, sessionType, dateRange, customStart, customEnd, order]);
+  }, [allSessions, filters, favoriteKeys]);
 
-  const isCustomRange = dateRange === DATE_RANGE_CUSTOM;
+  // Deep link from a PR/Longest-Workout notification
+  // (/workouts?expandSession=<sessionId>) — waits for sessions to load,
+  // expands the matching one, scrolls it into view, then strips the
+  // param so a refresh doesn't re-trigger it. Same ref-guard pattern
+  // Calendar.jsx's own date deep link already uses.
+  useEffect(() => {
+    if (hasAppliedSessionDeepLink.current) return;
+    const sessionId = searchParams.get("expandSession");
+    if (!sessionId || loading) return;
+
+    const match = visibleSessions.find((s) => s.sessionId === sessionId);
+    if (!match) return;
+
+    hasAppliedSessionDeepLink.current = true;
+    setExpandedKeys((prev) => new Set([...prev, match.key]));
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+      sessionRefs.current[match.key]?.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    });
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("expandSession");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [searchParams, loading, visibleSessions, setSearchParams]);
+
+  // Reacts to the active filters (e.g. narrows to "This Month" averages
+  // when that date range is selected) rather than always summarizing
+  // the entire history.
+  const summary = useMemo(() => computeHistorySummary(visibleSessions), [visibleSessions]);
 
   const toggleExpanded = (key) => {
     setExpandedKeys((prev) => {
@@ -161,6 +257,29 @@ function WorkoutHistory() {
     }
   };
 
+  // Applies the response from PUT /workouts/session/:id/timing (same
+  // startedAt/endedAt/sessionDuration/timingMode the backend just wrote
+  // to every document in the session) to every one of THIS session's
+  // workout documents in local state — mirrors the backend's own
+  // updateMany-by-sessionId, no refetch needed.
+  const handleTimingSaved = (updated) => {
+    setWorkouts((prev) =>
+      prev.map((w) =>
+        w.sessionId === updated.sessionId
+          ? {
+              ...w,
+              startedAt: updated.startedAt,
+              endedAt: updated.endedAt,
+              sessionDuration: updated.sessionDuration,
+              timingMode: updated.timingMode,
+            }
+          : w
+      )
+    );
+  };
+
+  const hasAnyWorkouts = workouts.length > 0;
+
   return (
     <div className="history-page">
       <main className="history-main">
@@ -171,281 +290,83 @@ function WorkoutHistory() {
           </p>
         </div>
 
-        <div className="history-controls">
-          <input
-            className="history-search"
-            type="text"
-            placeholder="Search by exercise..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <HistoryFilterBar
+          filters={filters}
+          muscleOptions={muscleOptions}
+          onChange={updateFilter}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
 
-          <select
-            className="history-select"
-            value={muscle}
-            onChange={(e) => setMuscle(e.target.value)}
-          >
-            {muscleOptions.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-
-          <select
-            className="history-select"
-            value={sessionType}
-            onChange={(e) => setSessionType(e.target.value)}
-          >
-            {SESSION_TYPE_FILTER_OPTIONS.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-
-          <select
-            className="history-select"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-          >
-            {DATE_RANGE_OPTIONS.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          {isCustomRange && (
-            <div className="history-date-range-inputs">
-              <input
-                type="date"
-                className="history-date-input"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                aria-label="Start date"
-              />
-              <span className="history-date-range-sep">to</span>
-              <input
-                type="date"
-                className="history-date-input"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                aria-label="End date"
-              />
-            </div>
-          )}
-
-          <select
-            className="history-select"
-            value={order}
-            onChange={(e) => setOrder(e.target.value)}
-          >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-          </select>
-        </div>
+        <SessionSummaryBar summary={summary} />
 
         {loading ? (
-          <div className="history-placeholder">
-            <p>Loading workouts...</p>
-          </div>
+          <HistorySkeleton />
+        ) : !hasAnyWorkouts ? (
+          <EmptyState
+            icon={Dumbbell}
+            title="No workouts logged yet"
+            message="Start your first workout to begin building your training history."
+            action={
+              <button
+                type="button"
+                className="history-empty-btn"
+                onClick={() => navigate("/dashboard")}
+              >
+                Go to Dashboard
+              </button>
+            }
+          />
+        ) : visibleSessions.length === 0 && filters.onlyPR ? (
+          <EmptyState
+            icon={Trophy}
+            title="No PR workouts yet"
+            message="Keep training — your next personal record will show up here automatically."
+          />
         ) : visibleSessions.length === 0 ? (
-          <div className="history-placeholder">
-            <h1>No sessions found</h1>
-            <p>Try adjusting your search or filters.</p>
-          </div>
+          <EmptyState
+            icon={FilterX}
+            title="No workouts match your filters"
+            message="Try adjusting your search or filters."
+            action={
+              hasActiveFilters ? (
+                <button type="button" className="history-empty-btn" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null
+            }
+          />
         ) : (
           <div className="history-list">
-            {visibleSessions.map((session) => {
-              const isExpanded = expandedKeys.has(session.key);
-              const { exerciseCount, cardioCount, setCount, volume, muscles } =
-                session.stats;
-              const visibleMuscles = muscles.slice(0, MAX_VISIBLE_MUSCLE_CHIPS);
-              const hiddenMuscleCount = muscles.length - visibleMuscles.length;
-              const hasDuration =
-                session.sessionDuration != null && session.sessionDuration > 0;
-              // A cardio-only session has no meaningful Sets/Volume to
-              // show — those would render as "0 Sets" / "0 kg Volume",
-              // which is the same placeholder problem this phase is
-              // fixing for individual entries.
-              const hasStrengthEntries = exerciseCount > 0;
-              const typeLabel = getSessionTypeLabel(session);
-              const typeColor = getSessionTypeColor(session.sessionType);
-              const isDeletingSession = deletingSessionKey === session.key;
-
-              return (
-                <div className="session-card" key={session.key}>
-                  <button
-                    type="button"
-                    className="session-card__head"
-                    onClick={() => toggleExpanded(session.key)}
-                    aria-expanded={isExpanded}
-                  >
-                    <div className="session-card__top">
-                      <div className="session-card__heading">
-                        <span
-                          className="session-card__type-badge"
-                          style={{ background: typeColor.bg, color: typeColor.text }}
-                        >
-                          {typeLabel}
-                        </span>
-                        <span className="session-card__date">
-                          {formatSessionDate(session.date)}
-                        </span>
-                      </div>
-                      <ChevronDown
-                        size={18}
-                        strokeWidth={2}
-                        className={`session-card__chevron ${
-                          isExpanded ? "session-card__chevron--open" : ""
-                        }`}
-                      />
-                    </div>
-
-                    <div className="session-card__stats">
-                      {hasDuration && (
-                        <span className="session-stat">
-                          <Clock size={13} strokeWidth={1.8} />
-                          {session.sessionDuration} min
-                        </span>
-                      )}
-                      <span className="session-stat">
-                        <Dumbbell size={13} strokeWidth={1.8} />
-                        {formatSessionEntryCountLabel({ exerciseCount, cardioCount })}
-                      </span>
-                      {hasStrengthEntries && (
-                        <span className="session-stat">
-                          <Layers size={13} strokeWidth={1.8} />
-                          {setCount} Set{setCount !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      {hasStrengthEntries && (
-                        <span className="session-stat">
-                          <Flame size={13} strokeWidth={1.8} />
-                          {volume.toLocaleString()} kg Volume
-                        </span>
-                      )}
-                    </div>
-
-                    {visibleMuscles.length > 0 && (
-                      <div className="session-card__chips">
-                        {visibleMuscles.map((m) => (
-                          <span className="muscle-chip" key={m}>{m}</span>
-                        ))}
-                        {hiddenMuscleCount > 0 && (
-                          <span className="muscle-chip muscle-chip--more">
-                            +{hiddenMuscleCount}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
-
-                  <div
-                    className={`session-body ${
-                      isExpanded ? "session-body--expanded" : ""
-                    }`}
-                  >
-                    <div className="session-body__inner">
-                      <div className="session-body__header">
-                        <span className="session-body__header-label">
-                          Session Details
-                        </span>
-                        <button
-                          type="button"
-                          className="history-delete-session-btn"
-                          onClick={() => handleDeleteSession(session)}
-                          disabled={isDeletingSession}
-                        >
-                          {isDeletingSession ? (
-                            <Loader2
-                              size={14}
-                              strokeWidth={2}
-                              className="delete-btn__spinner"
-                            />
-                          ) : (
-                            <>
-                              <Trash2 size={14} strokeWidth={1.8} />
-                              Delete Session
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      <div className="session-exercises">
-                        {session.workouts.map((w) => {
-                          const isDeleting = deletingId === w._id;
-                          const isCardio = isCardioEntry(w);
-
-                          return (
-                            <div className="session-exercise" key={w._id}>
-                              <div className="session-exercise__main">
-                                <span className="session-exercise__name">
-                                  {isCardio ? (
-                                    <span
-                                      style={{
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: 6,
-                                      }}
-                                    >
-                                      <Activity size={14} strokeWidth={1.8} />
-                                      {getCardioActivityName(w)}
-                                    </span>
-                                  ) : (
-                                    w.exercise?.name || "Unknown exercise"
-                                  )}
-                                </span>
-                                {!isCardio && (
-                                  <span className="history-muscle-tag">
-                                    {w.exercise?.muscleGroup}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="session-exercise__sets">
-                                {isCardio
-                                  ? formatCardioSummary(w)
-                                      .map((m) => m.text)
-                                      .join(", ")
-                                  : formatSetBreakdown(w)}
-                              </div>
-
-                              {!isCardio && (
-                                <div className="session-exercise__meta">
-                                  <span>{getSetCount(w)} sets</span>
-                                  <span>
-                                    {getWorkoutVolume(w).toLocaleString()} kg volume
-                                  </span>
-                                </div>
-                              )}
-
-                              <button
-                                type="button"
-                                className="history-delete-btn"
-                                onClick={() => handleDelete(w)}
-                                disabled={isDeleting || isDeletingSession}
-                              >
-                                {isDeleting ? (
-                                  <Loader2
-                                    size={14}
-                                    strokeWidth={2}
-                                    className="delete-btn__spinner"
-                                  />
-                                ) : (
-                                  <>
-                                    <Trash2 size={14} strokeWidth={1.8} />
-                                    Delete
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {visibleSessions.map((session) => (
+              <div key={session.key} ref={(el) => { sessionRefs.current[session.key] = el; }}>
+                <SessionCard
+                  session={session}
+                  isExpanded={expandedKeys.has(session.key)}
+                  onToggleExpand={() => toggleExpanded(session.key)}
+                  isFavorite={isFavorite(session.key)}
+                  onToggleFavorite={() => toggleFavorite(session.key)}
+                  isHighestVolume={highestVolumeKeys.has(session.key)}
+                  isLongestSession={longestDurationKeys.has(session.key)}
+                  milestones={milestonesByKey.get(session.key)}
+                  isDeletingSession={deletingSessionKey === session.key}
+                  onDeleteSession={() => handleDeleteSession(session)}
+                  deletingWorkoutId={deletingId}
+                  onDeleteWorkout={handleDelete}
+                  onEditTiming={() => setEditingTimingSession(session)}
+                />
+              </div>
+            ))}
           </div>
         )}
       </main>
+
+      <EditWorkoutTimingModal
+        open={!!editingTimingSession}
+        session={editingTimingSession}
+        onClose={() => setEditingTimingSession(null)}
+        onSaved={handleTimingSaved}
+      />
     </div>
   );
 }

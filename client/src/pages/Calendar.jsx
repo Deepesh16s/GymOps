@@ -1,5 +1,6 @@
 import "./calendar.css";
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../services/api";
 import {
   ChevronLeft,
@@ -15,20 +16,46 @@ import {
   Loader2,
   Star,
   MapPin,
+  Plus,
+  Play,
+  CalendarClock,
+  Copy,
+  CheckCircle2,
+  Ban,
+  Repeat,
+  Bell,
 } from "lucide-react";
 import { getSessionTypeColor } from "../constants/sessionTypes";
 import { prHistory } from "../utils/strengthUtils";
+import { formatDurationLong, formatClockTime } from "../utils/timeFormat";
 import {
   buildSessionSummaries,
   getWorkoutVolume,
   getSetCount,
   formatSetBreakdown,
   isCardioEntry,
-  getCardioActivityName,
+  getCardioActivityLabel,
   formatCardioSummary,
   formatSessionEntryCountLabel,
   getSessionTypeLabel,
 } from "../utils/workoutUtils";
+import {
+  getPlannedWorkouts,
+  reschedulePlannedWorkout,
+  markPlannedWorkoutComplete,
+  duplicatePlannedWorkout,
+  cancelPlannedWorkout,
+  deletePlannedWorkout,
+} from "../services/plannedWorkoutService";
+import {
+  PLANNED_STATUS,
+  BUILT_IN_TEMPLATES,
+  STATUS_BADGE_CLASS,
+} from "../constants/plannedWorkoutTypes";
+import PlannedWorkoutModal from "../components/PlannedWorkoutModal";
+import { getPlannerAnalytics } from "../utils/plannedWorkoutAnalytics";
+import { generateWorkoutReminders } from "../reminders/workoutReminders";
+import { generatePlannerReminders } from "../reminders/plannerReminders";
 
 // Relative to the single heaviest day ever logged (not a fixed kg
 // threshold) — so "Heavy" means the same thing whether a user's typical
@@ -55,6 +82,8 @@ const getLocalDateKey = (date) => {
 };
 
 function CalendarPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -66,10 +95,28 @@ function CalendarPage() {
   const hasAutoSelected = useRef(false);
   const gridWrapRef = useRef(null);
 
+  // Phase 13B — Workout Planner state. plannedWorkouts is fetched
+  // alongside completed workouts (same "fetch everything for this user,
+  // bucket by day client-side" shape dashboard/calendar-workouts already
+  // established — see plannedByDateKey below).
+  const [plannedWorkouts, setPlannedWorkouts] = useState([]);
+  const [plannerModal, setPlannerModal] = useState(null); // { mode: "create"|"edit", initialDateKey, editingPlan }
+  const [actionBusyId, setActionBusyId] = useState(null);
+  const hasAppliedDeepLink = useRef(false);
+
   const today = new Date();
 
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
+
+  const fetchPlannedWorkouts = async () => {
+    try {
+      const res = await getPlannedWorkouts();
+      setPlannedWorkouts(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   useEffect(() => {
     const fetchWorkouts = async () => {
@@ -84,7 +131,25 @@ function CalendarPage() {
     };
 
     fetchWorkouts();
+    fetchPlannedWorkouts();
   }, []);
+
+  // Deep linking (section 12): Notifications -> Calendar -> planned
+  // workout. Applied once — after that, the user's own clicks own
+  // selectedDate/viewMonth/viewYear, same "runs exactly once" contract
+  // the existing auto-select effect below already follows.
+  useEffect(() => {
+    if (hasAppliedDeepLink.current) return;
+    const dateParam = searchParams.get("date");
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
+    hasAppliedDeepLink.current = true;
+    hasAutoSelected.current = true; // pre-empt the "auto-select today" effect below
+
+    const [y, m] = dateParam.split("-").map(Number);
+    setViewYear(y);
+    setViewMonth(m - 1);
+    setSelectedDate(dateParam);
+  }, [searchParams]);
 
   // Same grouping used by Workout History — one card = one session,
   // legacy workouts (no sessionId) become their own standalone session.
@@ -146,6 +211,43 @@ function CalendarPage() {
     return counts;
   }, [allSessions]);
 
+  // Phase 13B — every planned workout bucketed by its scheduled day,
+  // same shape sessionsByDateKey above already uses for completed
+  // sessions. Includes every status (Planned/Completed/Missed/
+  // Cancelled) — callers filter by status as needed rather than this
+  // memo pre-deciding what's relevant.
+  const plannedByDateKey = useMemo(() => {
+    const map = new Map();
+    plannedWorkouts.forEach((p) => {
+      const key = getLocalDateKey(p.scheduledDate);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    });
+    return map;
+  }, [plannedWorkouts]);
+
+  // Phase 13C, section 14 — "Calendar highlights reminder-related
+  // planned workouts": reuses the exact same generators the Notification
+  // Center reads from (reminders/workoutReminders.js,
+  // reminders/plannerReminders.js) rather than re-deriving "is this plan
+  // worth flagging" here. Any plan referenced by ANY generated reminder
+  // (today/starting soon/overdue/missed/reschedule warning/overlap)
+  // gets the badge — the badge doesn't distinguish which reminder,
+  // matching PlannedWorkoutCard's existing status badge for the "what"
+  // and leaving the "why" to the Notification Center itself.
+  const reminderPlanIds = useMemo(() => {
+    const reminders = [
+      ...generateWorkoutReminders(plannedWorkouts),
+      ...generatePlannerReminders(plannedWorkouts),
+    ];
+    const ids = new Set();
+    reminders.forEach((r) => {
+      if (r.metadata?.plannedWorkoutId) ids.add(r.metadata.plannedWorkoutId);
+      if (r.metadata?.plannedWorkoutIds) r.metadata.plannedWorkoutIds.forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, [plannedWorkouts]);
+
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
@@ -168,6 +270,12 @@ function CalendarPage() {
   const selectedSessions = selectedDate
     ? allSessions.filter((s) => getLocalDateKey(s.date) === selectedDate)
     : [];
+
+  const selectedPlans = selectedDate ? plannedByDateKey.get(selectedDate) || [] : [];
+  // String comparison is safe here — both sides are "YYYY-MM-DD" keys,
+  // which sort identically to their underlying dates.
+  const isSelectedDateInPast = selectedDate ? selectedDate < todayKey : false;
+  const isSelectedDateToday = selectedDate === todayKey;
 
   // Auto-select today (or the most recently logged workout) once the
   // data has loaded, so the details panel never opens on an unnecessary
@@ -204,8 +312,42 @@ function CalendarPage() {
       });
     });
     const prCount = recordEvents.filter((ev) => getLocalDateKey(ev.date).startsWith(monthPrefix)).length;
-    return { sessionCount, exerciseCount, prCount, hours: Math.round((minutes / 60) * 10) / 10 };
-  }, [sessionsByDateKey, recordEvents, viewMonth, viewYear]);
+
+    // Cardio has no "volume" (kg) equivalent, so it gets its own rollup
+    // pair (distance/duration) rather than being folded into `hours`,
+    // which is sessionDuration-derived and already spans both entry
+    // types. Summed straight off the raw cardio entries for this month
+    // rather than session.stats (which only ever tracked strength
+    // volume/setCount/muscles — see getSessionStats), so no existing
+    // stat shape needs touching.
+    let cardioDistance = 0;
+    let cardioMinutes = 0;
+    workouts.forEach((w) => {
+      if (!isCardioEntry(w)) return;
+      if (!getLocalDateKey(w.date || w.createdAt).startsWith(monthPrefix)) return;
+      const distance = Number(w.cardio?.data?.distance);
+      const duration = Number(w.cardio?.data?.duration);
+      if (Number.isFinite(distance)) cardioDistance += distance;
+      if (Number.isFinite(duration)) cardioMinutes += duration;
+    });
+
+    return {
+      sessionCount,
+      exerciseCount,
+      prCount,
+      hours: Math.round((minutes / 60) * 10) / 10,
+      cardioDistance: Math.round(cardioDistance * 100) / 100,
+      cardioMinutes: Math.round(cardioMinutes),
+    };
+  }, [sessionsByDateKey, recordEvents, workouts, viewMonth, viewYear]);
+
+  // Phase 13B — Planner Analytics: stats about the planning process
+  // itself (Planned this week / Completed / Missed / Rescheduled /
+  // Completion rate / Current planning streak), computed purely from
+  // plannedWorkouts via utils/plannedWorkoutAnalytics.js. Deliberately
+  // separate from monthSummary above (workout analytics) — see that
+  // module's header comment for why the two are never mixed.
+  const plannerAnalytics = useMemo(() => getPlannerAnalytics(plannedWorkouts), [plannedWorkouts]);
 
   const goToPrevMonth = () => {
     setNavDirection("prev");
@@ -240,12 +382,23 @@ function CalendarPage() {
     setSelectedDate(todayKey);
   };
 
+  // Half of the preview's own CSS max-width (200px) — clamping the
+  // anchor point keeps the centered tooltip from overflowing past the
+  // grid's left/right edge on cells in the Sun/Sat columns, where a long
+  // combined session-type title would otherwise get clipped or covered.
+  const HOVER_PREVIEW_HALF_WIDTH = 100;
+
   const handleCellHover = (dateKey, e) => {
     const wrapBox = gridWrapRef.current?.getBoundingClientRect();
     const cellBox = e.currentTarget.getBoundingClientRect();
     if (!wrapBox) return;
+    const rawX = cellBox.left - wrapBox.left + cellBox.width / 2;
+    const clampedX = Math.min(
+      Math.max(rawX, HOVER_PREVIEW_HALF_WIDTH),
+      wrapBox.width - HOVER_PREVIEW_HALF_WIDTH
+    );
     setHoverPos({
-      x: cellBox.left - wrapBox.left + cellBox.width / 2,
+      x: clampedX,
       y: cellBox.top - wrapBox.top,
     });
     setHoveredDateKey(dateKey);
@@ -293,6 +446,113 @@ function CalendarPage() {
       console.log(error);
     } finally {
       setDeletingSessionKey(null);
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Phase 13B — Planner actions. Every handler refetches the full
+  // planned-workouts list on success rather than hand-patching local
+  // state: reschedule/cancel/duplicate can all touch more than one
+  // sibling document (an editScope="series" cancel, for instance), so a
+  // single source of truth (a refetch) is simpler and safer than trying
+  // to replicate the server's scoped-update logic client-side.
+  // ------------------------------------------------------------------
+
+  const handleOpenCreatePlan = (dateKey, templatePrefill) => {
+    setPlannerModal({ mode: "create", initialDateKey: dateKey, templatePrefill });
+  };
+
+  const handleOpenEditPlan = (plan) => {
+    setPlannerModal({ mode: "edit", editingPlan: plan });
+  };
+
+  const handleClosePlannerModal = () => setPlannerModal(null);
+
+  const handlePlannerSaved = () => {
+    setPlannerModal(null);
+    fetchPlannedWorkouts();
+  };
+
+  const handleStartPlannedWorkout = (plan) => {
+    navigate(`/dashboard?startPlannedWorkoutId=${plan._id}`);
+  };
+
+  const handleReschedulePlan = async (plan) => {
+    const input = window.prompt(
+      `Reschedule "${plan.title}" to (YYYY-MM-DD):`,
+      getLocalDateKey(plan.scheduledDate)
+    );
+    if (!input) return;
+    setActionBusyId(plan._id);
+    try {
+      await reschedulePlannedWorkout(plan._id, { scheduledDate: input });
+      await fetchPlannedWorkouts();
+    } catch (error) {
+      console.log(error);
+      alert(error.response?.data?.message || "Failed to reschedule.");
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleMarkPlanComplete = async (plan) => {
+    setActionBusyId(plan._id);
+    try {
+      await markPlannedWorkoutComplete(plan._id);
+      await fetchPlannedWorkouts();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleDuplicatePlan = async (plan) => {
+    const input = window.prompt(
+      `Duplicate "${plan.title}" to (YYYY-MM-DD):`,
+      getLocalDateKey(plan.scheduledDate)
+    );
+    if (!input) return;
+    setActionBusyId(plan._id);
+    try {
+      await duplicatePlannedWorkout(plan._id, { scheduledDate: input });
+      await fetchPlannedWorkouts();
+    } catch (error) {
+      console.log(error);
+      alert(error.response?.data?.message || "Failed to duplicate.");
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleCancelPlan = async (plan) => {
+    const editScope =
+      plan.recurrenceGroupId &&
+      window.confirm("This is part of a recurring series. Cancel the ENTIRE series?\n\nOK = entire series, Cancel = just this one")
+        ? "series"
+        : "only";
+    if (!window.confirm(`Cancel "${plan.title}"?`)) return;
+    setActionBusyId(plan._id);
+    try {
+      await cancelPlannedWorkout(plan._id, editScope);
+      await fetchPlannedWorkouts();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleDeletePlan = async (plan) => {
+    if (!window.confirm(`Permanently delete "${plan.title}"? This cannot be undone.`)) return;
+    setActionBusyId(plan._id);
+    try {
+      await deletePlannedWorkout(plan._id, "only");
+      await fetchPlannedWorkouts();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setActionBusyId(null);
     }
   };
 
@@ -367,6 +627,61 @@ function CalendarPage() {
                   <span className="calendar-month-summary__label">Trained</span>
                 </div>
               )}
+              {monthSummary.cardioDistance > 0 && (
+                <div className="calendar-month-summary__chip">
+                  <span className="calendar-month-summary__value">{monthSummary.cardioDistance} km</span>
+                  <span className="calendar-month-summary__label">Cardio</span>
+                </div>
+              )}
+              {monthSummary.cardioMinutes > 0 && (
+                <div className="calendar-month-summary__chip">
+                  <span className="calendar-month-summary__value">{monthSummary.cardioMinutes}m</span>
+                  <span className="calendar-month-summary__label">Cardio Time</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!loading && plannedWorkouts.length > 0 && (
+            <div className="planner-analytics">
+              <span className="planner-analytics__label">Planner Analytics</span>
+              <div className="planner-analytics__chips">
+                <div className="planner-analytics__chip">
+                  <CalendarClock size={13} strokeWidth={2} />
+                  <span className="planner-analytics__value">{plannerAnalytics.plannedThisWeek}</span>
+                  <span className="planner-analytics__key">This Week</span>
+                </div>
+                <div className="planner-analytics__chip">
+                  <CheckCircle2 size={13} strokeWidth={2} />
+                  <span className="planner-analytics__value">{plannerAnalytics.completed}</span>
+                  <span className="planner-analytics__key">Completed</span>
+                </div>
+                <div className="planner-analytics__chip planner-analytics__chip--warning">
+                  <Ban size={13} strokeWidth={2} />
+                  <span className="planner-analytics__value">{plannerAnalytics.missed}</span>
+                  <span className="planner-analytics__key">Missed</span>
+                </div>
+                <div className="planner-analytics__chip">
+                  <Repeat size={13} strokeWidth={2} />
+                  <span className="planner-analytics__value">{plannerAnalytics.rescheduled}</span>
+                  <span className="planner-analytics__key">Rescheduled</span>
+                </div>
+                {plannerAnalytics.completionRate != null && (
+                  <div className="planner-analytics__chip">
+                    <span className="planner-analytics__value">{plannerAnalytics.completionRate}%</span>
+                    <span className="planner-analytics__key">Completion Rate</span>
+                  </div>
+                )}
+                {plannerAnalytics.currentStreak > 0 && (
+                  <div className="planner-analytics__chip planner-analytics__chip--streak">
+                    <Flame size={13} strokeWidth={2} />
+                    <span className="planner-analytics__value">{plannerAnalytics.currentStreak}</span>
+                    <span className="planner-analytics__key">
+                      Week{plannerAnalytics.currentStreak !== 1 ? "s" : ""} Streak
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -411,7 +726,42 @@ function CalendarPage() {
                   const connectPrev = hasWorkout && prevKey && sessionCountsByDate.has(prevKey);
                   const connectNext = hasWorkout && nextKey && sessionCountsByDate.has(nextKey);
 
-                  const sessionTypes = [...new Set(daySessions.map((s) => s.sessionType).filter(Boolean))];
+                  // One accent bar per day, split into equal segments when
+                  // more than one distinct session type occurred that day
+                  // (e.g. a Push session + a separate Cardio session) —
+                  // previously this silently showed only daySessions[0]'s
+                  // color, so a mixed day looked identical to a single-type
+                  // day. Full per-type detail still lives in the hover
+                  // preview; this is just "how many kinds of day was it".
+                  const dayAccentColors = hasWorkout
+                    ? [...new Set(daySessions.map((s) => s.sessionType || "default"))].map(
+                        (t) => getSessionTypeColor(t).text
+                      )
+                    : [];
+                  const accentBackground =
+                    dayAccentColors.length > 1
+                      ? `linear-gradient(90deg, ${dayAccentColors
+                          .map((c, i) => {
+                            const step = 100 / dayAccentColors.length;
+                            return `${c} ${(i * step).toFixed(2)}%, ${c} ${((i + 1) * step).toFixed(2)}%`;
+                          })
+                          .join(", ")})`
+                      : dayAccentColors[0] || null;
+
+                  // Phase 13B — planned-workout indicator, visually
+                  // distinct from the completed-session dot/accent above
+                  // (section 7: outlined for Planned, warning-outline for
+                  // Missed — Cancelled/Completed plans don't need their
+                  // own cell marker; a completed one already shows via
+                  // the real logged session, and a cancelled one simply
+                  // has nothing to flag on the grid).
+                  const dayPlans = (plannedByDateKey.get(dateKey) || []).filter(
+                    (p) => p.status !== PLANNED_STATUS.CANCELLED
+                  );
+                  const hasMissedPlan = dayPlans.some((p) => p.status === PLANNED_STATUS.MISSED);
+                  const hasActivePlan = dayPlans.some((p) => p.status === PLANNED_STATUS.PLANNED);
+                  const planIndicator = hasMissedPlan ? "missed" : hasActivePlan ? "planned" : null;
+                  const hasHoverContent = hasWorkout || dayPlans.length > 0;
 
                   return (
                     <button
@@ -424,19 +774,24 @@ function CalendarPage() {
                         isWeekend ? "is-weekend" : "",
                         isToday ? "is-today" : "",
                         isSelected ? "is-selected" : "",
+                        isPrDay ? "is-pr-day" : "",
                         connectPrev ? "connect-prev" : "",
                         connectNext ? "connect-next" : "",
                       ].join(" ").trim()}
                       onClick={() => setSelectedDate(dateKey)}
-                      onMouseEnter={(e) => hasWorkout && handleCellHover(dateKey, e)}
+                      onMouseEnter={(e) => hasHoverContent && handleCellHover(dateKey, e)}
                       onMouseLeave={() => setHoveredDateKey(null)}
+                      aria-label={`${day}${hasWorkout ? ", workout logged" : ""}${
+                        planIndicator === "missed"
+                          ? ", workout missed"
+                          : planIndicator === "planned"
+                          ? ", workout planned"
+                          : ""
+                      }`}
                     >
                       {connectPrev && <span className="calendar-cell__connector calendar-cell__connector--prev" />}
                       {connectNext && <span className="calendar-cell__connector calendar-cell__connector--next" />}
                       <span className="calendar-cell-day">{day}</span>
-                      {isPrDay && (
-                        <Star size={11} strokeWidth={2} className="calendar-cell__pr-star" fill="currentColor" />
-                      )}
                       {hasWorkout && sessionCount === 1 && (
                         <div className="calendar-dot" />
                       )}
@@ -445,30 +800,35 @@ function CalendarPage() {
                           {sessionCount}
                         </span>
                       )}
-                      {sessionTypes.length > 0 && (
-                        <span className="calendar-cell__type-chips">
-                          {sessionTypes.slice(0, 3).map((t) => (
-                            <span
-                              key={t}
-                              className="calendar-cell__type-dot"
-                              style={{ background: getSessionTypeColor(t).text }}
-                              title={t}
-                            />
-                          ))}
-                        </span>
+                      {planIndicator && (
+                        <span
+                          className={`calendar-plan-indicator calendar-plan-indicator--${planIndicator}`}
+                          title={planIndicator === "missed" ? "Missed workout" : "Workout planned"}
+                        />
+                      )}
+                      {accentBackground && (
+                        <span
+                          className="calendar-cell__accent"
+                          style={{ background: accentBackground }}
+                        />
                       )}
                     </button>
                   );
                 })}
               </div>
 
-              {hoveredDateKey && (sessionsByDateKey.get(hoveredDateKey) || []).length > 0 && (
-                <CalendarHoverPreview
-                  sessions={sessionsByDateKey.get(hoveredDateKey)}
-                  isPrDay={prDateKeys.has(hoveredDateKey)}
-                  pos={hoverPos}
-                />
-              )}
+              {hoveredDateKey &&
+                ((sessionsByDateKey.get(hoveredDateKey) || []).length > 0 ||
+                  (plannedByDateKey.get(hoveredDateKey) || []).length > 0) && (
+                  <CalendarHoverPreview
+                    sessions={sessionsByDateKey.get(hoveredDateKey)}
+                    plans={(plannedByDateKey.get(hoveredDateKey) || []).filter(
+                      (p) => p.status !== PLANNED_STATUS.CANCELLED
+                    )}
+                    isPrDay={prDateKeys.has(hoveredDateKey)}
+                    pos={hoverPos}
+                  />
+                )}
             </div>
           )}
         </div>
@@ -479,6 +839,16 @@ function CalendarPage() {
             <h2 className="calendar-details-header__title">
               {selectedDate ? formatLongDate(selectedDate) : "Pick a day"}
             </h2>
+            {selectedDate && !isSelectedDateInPast && (
+              <button
+                type="button"
+                className="calendar-details-header__plan-btn"
+                onClick={() => handleOpenCreatePlan(selectedDate, null)}
+              >
+                <Plus size={13} strokeWidth={2.2} />
+                Plan workout
+              </button>
+            )}
           </div>
 
           {/* Reachable only when there's truly no workout history at all —
@@ -498,14 +868,71 @@ function CalendarPage() {
             </div>
           )}
 
-          {selectedDate && selectedSessions.length === 0 && (
-            <div className="go-empty">
-              <div className="go-empty-icon">
-                <Flame size={20} strokeWidth={1.8} />
-              </div>
-              <p className="go-empty-title">Rest day</p>
-              <p className="go-empty-sub">No workouts logged on this day.</p>
+          {/* Phase 13B — planned workouts for this day render first,
+              above any completed sessions: a day can have both (a plan
+              that's now Completed alongside its real logged session, or
+              a Missed plan sitting next to an unrelated session). */}
+          {selectedDate && selectedPlans.length > 0 && (
+            <div className="planned-workout-list">
+              {selectedPlans.map((plan) => (
+                <PlannedWorkoutCard
+                  key={plan._id}
+                  plan={plan}
+                  isToday={isSelectedDateToday}
+                  busy={actionBusyId === plan._id}
+                  hasReminder={reminderPlanIds.has(plan._id)}
+                  onStart={handleStartPlannedWorkout}
+                  onEdit={handleOpenEditPlan}
+                  onReschedule={handleReschedulePlan}
+                  onMarkComplete={handleMarkPlanComplete}
+                  onDuplicate={handleDuplicatePlan}
+                  onCancel={handleCancelPlan}
+                  onDelete={handleDeletePlan}
+                />
+              ))}
             </div>
+          )}
+
+          {selectedDate && selectedSessions.length === 0 && selectedPlans.length === 0 && (
+            isSelectedDateInPast ? (
+              <div className="go-empty">
+                <div className="go-empty-icon">
+                  <Flame size={20} strokeWidth={1.8} />
+                </div>
+                <p className="go-empty-title">Rest day</p>
+                <p className="go-empty-sub">No workouts logged on this day.</p>
+              </div>
+            ) : (
+              <div className="calendar-plan-prompt">
+                <div className="go-empty-icon">
+                  <Plus size={20} strokeWidth={1.8} />
+                </div>
+                <p className="go-empty-title">
+                  {isSelectedDateToday ? "Nothing planned for today" : "Plan a workout"}
+                </p>
+                <p className="go-empty-sub">Quick templates, or build a custom plan.</p>
+                <div className="calendar-plan-prompt__templates">
+                  {BUILT_IN_TEMPLATES.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      className="calendar-plan-prompt__template-btn"
+                      onClick={() => handleOpenCreatePlan(selectedDate, t)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="calendar-plan-prompt__custom-btn"
+                  onClick={() => handleOpenCreatePlan(selectedDate, null)}
+                >
+                  <Plus size={14} strokeWidth={2} />
+                  Custom plan
+                </button>
+              </div>
+            )
           )}
 
           <div className="calendar-session-list calendar-timeline">
@@ -524,10 +951,7 @@ function CalendarPage() {
               const typeLabel = getSessionTypeLabel(session);
               const typeColor = getSessionTypeColor(session.sessionType);
               const isDeletingSession = deletingSessionKey === session.key;
-              const sessionTime = new Date(session.date).toLocaleTimeString(undefined, {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              const sessionTime = formatClockTime(session.date);
               const isLastSession = sessionIndex === selectedSessions.length - 1;
 
               return (
@@ -565,7 +989,7 @@ function CalendarPage() {
                       {hasDuration && (
                         <span className="calendar-session-stat">
                           <Clock size={12} strokeWidth={1.8} />
-                          {session.sessionDuration} min
+                          {formatDurationLong(session.sessionDuration)}
                         </span>
                       )}
                       <span className="calendar-session-stat">
@@ -648,7 +1072,7 @@ function CalendarPage() {
                                       }}
                                     >
                                       <Activity size={14} strokeWidth={1.8} />
-                                      {getCardioActivityName(w)}
+                                      {getCardioActivityLabel(w)}
                                     </span>
                                   ) : (
                                     w.exercise?.name || "Unknown exercise"
@@ -718,6 +1142,17 @@ function CalendarPage() {
           )}
         </div>
       </main>
+
+      {plannerModal && (
+        <PlannedWorkoutModal
+          mode={plannerModal.mode}
+          initialDateKey={plannerModal.initialDateKey}
+          templatePrefill={plannerModal.templatePrefill}
+          editingPlan={plannerModal.editingPlan}
+          onClose={handleClosePlannerModal}
+          onSaved={handlePlannerSaved}
+        />
+      )}
     </div>
   );
 }
@@ -732,36 +1167,190 @@ function formatLongDate(dateKey) {
   });
 }
 
+// Phase 13B — one planned workout, rendered in the day-details panel.
+// Action set changes by status (section 9: Missed gets Reschedule/Mark
+// Complete/Delete/Duplicate; an active Planned instance for TODAY gets
+// the prominent "Start Planned Workout" action from section 8; any
+// other Planned instance gets Edit/Reschedule/Cancel; Completed/
+// Cancelled are read-only references).
+function PlannedWorkoutCard({
+  plan,
+  isToday,
+  busy,
+  hasReminder,
+  onStart,
+  onEdit,
+  onReschedule,
+  onMarkComplete,
+  onDuplicate,
+  onCancel,
+  onDelete,
+}) {
+  const isMissed = plan.status === PLANNED_STATUS.MISSED;
+  const isCancelled = plan.status === PLANNED_STATUS.CANCELLED;
+  const isCompleted = plan.status === PLANNED_STATUS.COMPLETED;
+  const isActivePlan = plan.status === PLANNED_STATUS.PLANNED;
+
+  return (
+    <div
+      className={`planned-workout-card planned-workout-card--${plan.status.toLowerCase()} ${
+        busy ? "planned-workout-card--busy" : ""
+      }`}
+    >
+      <div className="planned-workout-card__top">
+        <span className={`planned-badge ${STATUS_BADGE_CLASS[plan.status]}`}>
+          {plan.status}
+        </span>
+        {/* Phase 13C, section 14 — flags a plan the reminder engine has
+            an active reminder for (workout today/starting soon/overdue,
+            reschedule warning, overlap). See Calendar's reminderPlanIds
+            memo for the shared generator call this reads from. */}
+        {hasReminder && (
+          <span
+            className="planned-workout-card__reminder-tag"
+            role="img"
+            aria-label="Has an active reminder"
+            title="Has an active reminder"
+          >
+            <Bell size={11} strokeWidth={2} />
+          </span>
+        )}
+        {plan.recurrenceGroupId && (
+          <span
+            className="planned-workout-card__recurring-tag"
+            role="img"
+            aria-label="Part of a recurring series"
+            title="Part of a recurring series"
+          >
+            <Repeat size={11} strokeWidth={2} />
+          </span>
+        )}
+        {plan.priority === "High" && (
+          <span className="planned-workout-card__priority planned-workout-card__priority--high">High</span>
+        )}
+      </div>
+
+      <p className="planned-workout-card__title">{plan.title}</p>
+      <p className="planned-workout-card__meta">
+        {plan.scheduledTime ? `${plan.scheduledTime} · ` : ""}
+        {plan.workoutType}
+        {plan.cardioActivityType ? ` (${plan.cardioActivityType})` : ""}
+        {plan.estimatedDuration ? ` · ${plan.estimatedDuration} min` : ""}
+        {plan.exercises?.length ? ` · ${plan.exercises.length} exercises` : ""}
+      </p>
+      {plan.notes && <p className="planned-workout-card__notes">{plan.notes}</p>}
+
+      <div className="planned-workout-card__actions">
+        {isActivePlan && isToday && (
+          <button type="button" className="planned-workout-card__btn planned-workout-card__btn--primary" onClick={() => onStart(plan)}>
+            <Play size={13} strokeWidth={2.2} />
+            Start Planned Workout
+          </button>
+        )}
+        {isActivePlan && (
+          <>
+            <button type="button" className="planned-workout-card__btn" onClick={() => onEdit(plan)} disabled={busy}>
+              Edit
+            </button>
+            <button type="button" className="planned-workout-card__btn" onClick={() => onReschedule(plan)} disabled={busy}>
+              <CalendarClock size={12} strokeWidth={2} />
+              Reschedule
+            </button>
+            <button type="button" className="planned-workout-card__btn planned-workout-card__btn--danger" onClick={() => onCancel(plan)} disabled={busy}>
+              <Ban size={12} strokeWidth={2} />
+              Cancel
+            </button>
+          </>
+        )}
+        {isMissed && (
+          <>
+            <button type="button" className="planned-workout-card__btn" onClick={() => onReschedule(plan)} disabled={busy}>
+              <CalendarClock size={12} strokeWidth={2} />
+              Reschedule
+            </button>
+            <button type="button" className="planned-workout-card__btn" onClick={() => onMarkComplete(plan)} disabled={busy}>
+              <CheckCircle2 size={12} strokeWidth={2} />
+              Mark Complete
+            </button>
+            <button type="button" className="planned-workout-card__btn" onClick={() => onDuplicate(plan)} disabled={busy}>
+              <Copy size={12} strokeWidth={2} />
+              Duplicate
+            </button>
+            <button type="button" className="planned-workout-card__btn planned-workout-card__btn--danger" onClick={() => onDelete(plan)} disabled={busy}>
+              <Trash2 size={12} strokeWidth={2} />
+              Delete
+            </button>
+          </>
+        )}
+        {(isCompleted || isCancelled) && (
+          <button type="button" className="planned-workout-card__btn" onClick={() => onDuplicate(plan)} disabled={busy}>
+            <Copy size={12} strokeWidth={2} />
+            Duplicate
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Hover-only quick glance at a day's sessions — no click required. Shown
 // beside whichever cell is currently hovered, positioned via the same
 // wrap-relative x/y technique MuscleBodyMap uses for its own tooltip.
-function CalendarHoverPreview({ sessions, isPrDay, pos }) {
+function CalendarHoverPreview({ sessions = [], plans = [], isPrDay, pos }) {
   const totalExercises = sessions.reduce(
     (sum, s) => sum + s.stats.exerciseCount + s.stats.cardioCount,
     0
   );
   const totalVolume = sessions.reduce((sum, s) => sum + (s.stats.volume || 0), 0);
   const types = [...new Set(sessions.map((s) => getSessionTypeLabel(s)))];
+  const hasCompleted = sessions.length > 0;
 
   return (
     <div className="calendar-hover-preview" style={{ left: pos.x, top: pos.y }}>
-      <span className="calendar-hover-preview__title">{types.join(" + ")}</span>
-      <span className="calendar-hover-preview__row">
-        <Dumbbell size={11} strokeWidth={2} />
-        {totalExercises} exercise{totalExercises !== 1 ? "s" : ""}
-      </span>
-      {totalVolume > 0 && (
-        <span className="calendar-hover-preview__row">
-          <Flame size={11} strokeWidth={2} />
-          {totalVolume.toLocaleString()} kg
-        </span>
+      {hasCompleted && (
+        <>
+          <span className="calendar-hover-preview__title">{types.join(" + ")}</span>
+          <span className="calendar-hover-preview__row">
+            <Dumbbell size={11} strokeWidth={2} />
+            {totalExercises} exercise{totalExercises !== 1 ? "s" : ""}
+          </span>
+          {totalVolume > 0 && (
+            <span className="calendar-hover-preview__row">
+              <Flame size={11} strokeWidth={2} />
+              {totalVolume.toLocaleString()} kg
+            </span>
+          )}
+          {isPrDay && (
+            <span className="calendar-hover-preview__row calendar-hover-preview__row--pr">
+              <Star size={11} strokeWidth={2} fill="currentColor" />
+              New PR
+            </span>
+          )}
+        </>
       )}
-      {isPrDay && (
-        <span className="calendar-hover-preview__row calendar-hover-preview__row--pr">
-          <Star size={11} strokeWidth={2} fill="currentColor" />
-          New PR
-        </span>
-      )}
+      {/* Phase 13B — section 7: hover preview shows scheduled time,
+          workout type, estimated duration, and priority for a planned
+          day. Rendered below any completed-session info, one line per
+          plan (usually just one). */}
+      {plans.map((p) => (
+        <div className="calendar-hover-preview__plan" key={p._id}>
+          <span className="calendar-hover-preview__title calendar-hover-preview__title--plan">
+            <CalendarClock size={11} strokeWidth={2} />
+            {p.title}
+            {p.status === PLANNED_STATUS.MISSED && (
+              <span className="calendar-hover-preview__missed-tag">Missed</span>
+            )}
+          </span>
+          <span className="calendar-hover-preview__row">
+            {p.scheduledTime ? `${p.scheduledTime} · ` : ""}
+            {p.workoutType}
+            {p.estimatedDuration ? ` · ${p.estimatedDuration} min` : ""}
+          </span>
+          {p.priority && p.priority !== "Medium" && (
+            <span className="calendar-hover-preview__row">{p.priority} priority</span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

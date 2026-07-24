@@ -9,6 +9,7 @@ import {
   TrendingDown,
   Minus,
   Trophy,
+  Bell,
 } from "lucide-react";
 import { usesHealthBadge } from "../utils/goalAnalytics";
 
@@ -71,7 +72,7 @@ const formatAmount = (n) => {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 };
 
-function GoalCard({ goal, analytics, onEdit, onDelete }) {
+function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
 
   // Phase 8C: the single decision point for "does this goal type show
@@ -89,7 +90,12 @@ function GoalCard({ goal, analytics, onEdit, onDelete }) {
   const HealthIcon = displayStatus ? HEALTH_ICONS[displayStatus] : null;
 
   return (
-    <div className={`go-card goal-card ${expanded ? "goal-card--expanded" : ""}`}>
+    <div
+      ref={cardRef}
+      className={`go-card goal-card ${expanded ? "goal-card--expanded" : ""} ${
+        isHighlighted ? "goal-card--highlighted" : ""
+      }`}
+    >
       <div className="goal-card__head" onClick={() => setExpanded((v) => !v)} role="button" tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -99,7 +105,23 @@ function GoalCard({ goal, analytics, onEdit, onDelete }) {
         }}
       >
         <div>
-          <p className="goal-card__title">{goal.title}</p>
+          <p className="goal-card__title">
+            {goal.title}
+            {/* Phase 13C, section 14 — flags a goal the reminder engine
+                has actively surfaced (see reminders/goalReminders.js),
+                reusing that exact generator rather than a second
+                progress check here. */}
+            {hasReminder && (
+              <span
+                className="goal-card__reminder-badge"
+                role="img"
+                aria-label="Active reminder for this goal"
+                title="Active reminder for this goal"
+              >
+                <Bell size={11} strokeWidth={2.2} />
+              </span>
+            )}
+          </p>
           <span className="goal-type-badge">
             {goal.type}
             {goal.type === "Strength PR" && goal.exercise?.name ? ` · ${goal.exercise.name}` : ""}

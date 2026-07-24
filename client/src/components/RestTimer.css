@@ -1,0 +1,112 @@
+.rest-timer {
+  position: sticky;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--go-surface-raised, var(--go-surface));
+  border: 1px solid var(--go-border-strong);
+  border-radius: var(--go-radius-pill);
+  padding: 10px 16px;
+  box-shadow: var(--go-shadow-lg, var(--go-shadow-md));
+  z-index: 5;
+}
+
+.rest-timer--done {
+  border-color: color-mix(in srgb, var(--go-success) 45%, var(--go-border-strong));
+  box-shadow: var(--go-shadow-glow, var(--go-shadow-lg));
+}
+
+.rest-timer__readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 130px;
+}
+
+.rest-timer__time {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.rest-timer__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint, var(--go-text-muted));
+}
+
+.rest-timer--done .rest-timer__label {
+  color: var(--go-success-dark, var(--go-success));
+}
+
+.rest-timer__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rest-timer__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rest-timer__btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--go-text-muted) 12%, var(--go-surface));
+}
+
+.rest-timer__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.rest-timer__presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.rest-timer__preset-btn {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: var(--go-radius-pill);
+  padding: 5px 10px;
+  cursor: pointer;
+  border: 1px solid var(--go-border-soft);
+  background: transparent;
+  color: var(--go-text-muted);
+  transition: background 0.2s ease;
+}
+
+.rest-timer__preset-btn:hover {
+  background: var(--go-surface-sunken);
+}
+
+@media (max-width: 560px) {
+  .rest-timer {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .rest-timer__presets {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}

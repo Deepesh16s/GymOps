@@ -23,7 +23,7 @@ export const PROGRESSION_METRICS = [
   },
   {
     key: "workingWeight",
-    label: "Working Weight",
+    label: "Average Weight",
     shortLabel: "Avg Weight",
     format: (v) => (v == null ? "—" : `${Math.round(v * 10) / 10} kg`),
   },
@@ -34,6 +34,48 @@ export const PROGRESSION_METRICS = [
     format: (v) => (v == null || v === 0 ? "—" : `${Math.round(v)} kg`),
   },
 ];
+
+// Exercise-view-only metrics — both come from buildExerciseSessionSeries
+// (one point per session), not buildProgressionSeries' week/month
+// buckets, so they're deliberately excluded from Overall/Muscle's metric
+// dropdown (those series have no bestSetWeight/totalReps field and
+// would just render a blank chart if selected there).
+export const EXERCISE_ONLY_METRICS = [
+  {
+    key: "bestSetWeight",
+    label: "Best Set",
+    shortLabel: "Best Set",
+    format: (v) => (v == null ? "—" : `${v} kg`),
+  },
+  {
+    key: "totalReps",
+    label: "Total Reps",
+    shortLabel: "Total Reps",
+    format: (v) => (v == null ? "—" : `${v}`),
+  },
+];
+
+export const EXERCISE_DEFAULT_METRIC = "bestSetWeight";
+
+// Muscle-view-only metric — a muscle is trained by several different
+// exercises, so "volume per period" alone rewards training it more
+// often rather than harder (2 sessions x 500kg and 4 sessions x 500kg
+// both read as real progress on a raw volume trend, even though neither
+// session got heavier). Dividing by how many sessions actually trained
+// it (buildProgressionSeries' avgVolumePerSession) answers "am I giving
+// this muscle more stimulus per session", which is the more honest
+// per-muscle question — a single "PR" doesn't mean anything across
+// several different exercises.
+export const MUSCLE_ONLY_METRICS = [
+  {
+    key: "avgVolumePerSession",
+    label: "Average Volume / Session",
+    shortLabel: "Avg Vol/Session",
+    format: (v) => (v == null ? "—" : `${Math.round(v).toLocaleString()} kg`),
+  },
+];
+
+export const MUSCLE_DEFAULT_METRIC = "avgVolumePerSession";
 
 // Deliberately NOT a selectable line-chart metric: unlike volume/sets/
 // frequency/working weight/estimated 1RM (which have a real value every
@@ -59,6 +101,8 @@ export const SESSION_DURATION_METRIC = {
 export function getMetricDef(key) {
   return (
     PROGRESSION_METRICS.find((m) => m.key === key) ||
+    EXERCISE_ONLY_METRICS.find((m) => m.key === key) ||
+    MUSCLE_ONLY_METRICS.find((m) => m.key === key) ||
     (key === SESSION_DURATION_METRIC.key ? SESSION_DURATION_METRIC : null)
   );
 }

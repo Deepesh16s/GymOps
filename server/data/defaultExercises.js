@@ -39,6 +39,16 @@ const defaultExercises = [
   { name: "Cable Face Pull", muscleGroup: "Shoulders" },
   { name: "Upright Row", muscleGroup: "Shoulders" },
 
+  // Traps
+  { name: "Barbell Shrug", muscleGroup: "Traps" },
+  { name: "Dumbbell Shrug", muscleGroup: "Traps" },
+  { name: "Smith Machine Shrug", muscleGroup: "Traps" },
+  { name: "Cable Shrug", muscleGroup: "Traps" },
+  { name: "Behind-the-Back Barbell Shrug", muscleGroup: "Traps" },
+  { name: "Trap Bar Shrug", muscleGroup: "Traps" },
+  { name: "High Pull", muscleGroup: "Traps" },
+  { name: "Power Shrug", muscleGroup: "Traps" },
+
   // Biceps
   { name: "Bicep Curl", muscleGroup: "Biceps" },
   { name: "Incline DB Curl", muscleGroup: "Biceps" },

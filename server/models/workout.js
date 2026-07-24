@@ -34,6 +34,7 @@ const cardioDataSchema = new mongoose.Schema(
     cadence: { type: Number, default: null },
     resistance: { type: Number, default: null },
     heartRate: { type: Number, default: null },
+    steps: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -41,6 +42,15 @@ const cardioDataSchema = new mongoose.Schema(
 const cardioSchema = new mongoose.Schema(
   {
     activityType: {
+      type: String,
+      default: null,
+    },
+    // Phase 12 — optional refinement of activityType (e.g. "Treadmill
+    // Run" under "Running"), never a replacement for it. Every existing
+    // goal/progression/PR calculation matches on activityType alone, so
+    // they all keep aggregating at the parent level whether or not this
+    // is set — a sibling field, not a schema redesign.
+    variant: {
       type: String,
       default: null,
     },
@@ -128,6 +138,35 @@ const workoutSchema = new mongoose.Schema(
       min: [0, "Session duration cannot be negative"],
     },
 
+    // Workout Session Editing & Time Tracking. Additive fields, not a
+    // rename of sessionDuration — sessionDuration already means "duration
+    // in minutes" everywhere it's read (Calendar, Analytics, Workout
+    // History), so it stays the single source of truth for duration
+    // regardless of timingMode. startedAt/endedAt are the actual
+    // clock-time bookends, present once a session's timing has been
+    // set/edited (see updateWorkoutSessionTiming); both null for every
+    // pre-this-phase document and for any session whose timing was never
+    // explicitly set.
+    startedAt: {
+      type: Date,
+      default: null,
+    },
+
+    endedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // "AUTO": sessionDuration is derived from endedAt - startedAt.
+    // "MANUAL": sessionDuration was entered directly and is authoritative
+    // even if it doesn't match endedAt - startedAt exactly (e.g. a
+    // session logged with only a duration, no real start/end).
+    timingMode: {
+      type: String,
+      enum: ["AUTO", "MANUAL"],
+      default: "AUTO",
+    },
+
     // Session Type metadata (Phase 8). Session-level metadata, identical
     // across every workout document belonging to the same sessionId —
     // mirrors how sessionId/sessionDuration are broadcast to the whole
@@ -143,6 +182,24 @@ const workoutSchema = new mongoose.Schema(
     // controller/validation level, not here, so this field stays
     // optional at the schema level like sessionType above.
     customSessionType: {
+      type: String,
+      default: null,
+    },
+
+    // Live Workout Mode (Phase 11). Per-entry note ("Shoulder slightly
+    // sore today") — belongs to this one Workout document, not broadcast
+    // to the rest of the session.
+    note: {
+      type: String,
+      default: null,
+    },
+
+    // Whole-session note ("Felt strong today"), broadcast to every
+    // Workout document sharing a sessionId — same denormalization
+    // pattern sessionType/sessionDuration already use, so any one
+    // document in a session can answer "what did the session note say"
+    // without a join back to a parent record (there isn't one).
+    sessionNote: {
       type: String,
       default: null,
     },

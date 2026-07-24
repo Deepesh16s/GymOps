@@ -1,4 +1,4 @@
-import { Activity, Dumbbell, LayoutGrid } from "lucide-react";
+import { Activity, Dumbbell, LayoutGrid, HeartPulse } from "lucide-react";
 import { TIME_RANGE_OPTIONS } from "../../progression";
 import "./progression-charts.css";
 
@@ -6,6 +6,7 @@ const PRIMARY_VIEWS = [
   { key: "overall", label: "Overall", icon: LayoutGrid },
   { key: "muscle", label: "Muscle", icon: Activity },
   { key: "exercise", label: "Exercise", icon: Dumbbell },
+  { key: "cardio", label: "Cardio", icon: HeartPulse },
 ];
 
 // The primary filter row for the whole Progression page — scope
@@ -25,6 +26,9 @@ function FilterBar({
   exercise,
   onExerciseChange,
   availableExercises = [],
+  cardioActivity,
+  onCardioActivityChange,
+  availableCardioActivities = [],
   timeRange,
   onTimeRangeChange,
 }) {
@@ -78,6 +82,24 @@ function FilterBar({
             {availableExercises.map((ex) => (
               <option key={ex} value={ex}>
                 {ex}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {viewMode === "cardio" && (
+          <select
+            className="progression-filterbar__select"
+            value={cardioActivity || ""}
+            onChange={(e) => onCardioActivityChange(e.target.value)}
+            aria-label="Select cardio activity"
+          >
+            <option value="" disabled>
+              Select an activity
+            </option>
+            {availableCardioActivities.map((a) => (
+              <option key={a} value={a}>
+                {a}
               </option>
             ))}
           </select>

@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import Select from "react-select";
 import "./AddWorkoutModal.css";
 import api from "../services/api";
-function AddWorkoutModal({ closeModal, onAddExercise }) {
+import { MUSCLES, LEGACY_MUSCLES } from "../constants/muscles";
+// mode: "add" (default) collects an exercise + first set, same as
+// always. "replace" (Live Workout Mode's "Replace Exercise" action) only
+// needs the exercise itself — the entry it's replacing already has its
+// own set-logging table, so no weight/reps are collected here.
+function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
   const [muscleGroup, setMuscleGroup] = useState("");
   const [exercises, setExercises] = useState([]);
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -15,15 +20,18 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
   const [reps, setReps] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
 
-  const isWorkoutValid =
-    selectedExercise !== "" &&
-    weight !== "" &&
-    reps !== "" &&
-    !isNaN(Number(weight)) &&
-    !isNaN(Number(reps)) &&
-    Number(weight) >= 0 &&
-    Number(reps) >= 1 &&
-    Number.isInteger(Number(reps));
+  const isReplaceMode = mode === "replace";
+
+  const isWorkoutValid = isReplaceMode
+    ? selectedExercise !== ""
+    : selectedExercise !== "" &&
+      weight !== "" &&
+      reps !== "" &&
+      !isNaN(Number(weight)) &&
+      !isNaN(Number(reps)) &&
+      Number(weight) >= 0 &&
+      Number(reps) >= 1 &&
+      Number.isInteger(Number(reps));
 
   useEffect(() => {
     fetchExercises();
@@ -83,44 +91,52 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
       return;
     }
 
-    if (weight === "" || reps === "") {
-      setValidationMessage("Please fill in weight and reps");
-      return;
-    }
+    if (!isReplaceMode) {
+      if (weight === "" || reps === "") {
+        setValidationMessage("Please fill in weight and reps");
+        return;
+      }
 
-    if (isNaN(Number(weight)) || Number(weight) < 0) {
-      setValidationMessage("Weight cannot be negative");
-      return;
-    }
+      if (isNaN(Number(weight)) || Number(weight) < 0) {
+        setValidationMessage("Weight cannot be negative");
+        return;
+      }
 
-    if (
-      isNaN(Number(reps)) ||
-      Number(reps) < 1 ||
-      !Number.isInteger(Number(reps))
-    ) {
-      setValidationMessage("Reps must be a whole number of at least 1");
-      return;
+      if (
+        isNaN(Number(reps)) ||
+        Number(reps) < 1 ||
+        !Number.isInteger(Number(reps))
+      ) {
+        setValidationMessage("Reps must be a whole number of at least 1");
+        return;
+      }
     }
 
     const exerciseObj = uniqueExercises.find(
       (ex) => ex._id === selectedExercise
     );
 
+    const exercise = exerciseObj
+      ? {
+          _id: exerciseObj._id,
+          name: exerciseObj.name,
+          muscleGroup: exerciseObj.muscleGroup,
+        }
+      : { _id: selectedExercise };
+
     // Return data only. No branching on session state, no API call here —
     // that decision belongs to whoever opened this modal.
-    onAddExercise({
-      exercise: exerciseObj
-        ? {
-            _id: exerciseObj._id,
-            name: exerciseObj.name,
-            muscleGroup: exerciseObj.muscleGroup,
+    onAddExercise(
+      isReplaceMode
+        ? { exercise }
+        : {
+            exercise,
+            firstSet: {
+              weight: Number(weight),
+              reps: Number(reps),
+            },
           }
-        : { _id: selectedExercise },
-      firstSet: {
-        weight: Number(weight),
-        reps: Number(reps),
-      },
-    });
+    );
   };
 
   // react-select theme: only non-color tokens go here (radius/spacing).
@@ -149,7 +165,7 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
           ✕
         </button>
 
-        <h2>Add Exercise</h2>
+        <h2>{isReplaceMode ? "Replace Exercise" : "Add Exercise"}</h2>
 
         <form onSubmit={handleSubmit}>
           <label>Muscle Group</label>
@@ -159,22 +175,20 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
             onChange={(e) => setMuscleGroup(e.target.value)}
           >
             <option value="">All Muscles</option>
-            <option value="Chest">Chest</option>
-            <option value="Back">Back</option>
-            <option value="Shoulders">Shoulders</option>
-            <option value="Biceps">Biceps</option>
-            <option value="Triceps">Triceps</option>
-            <option value="Forearms">Forearms</option>
-            {/* "Legs" kept here (filter-only) so exercises already
-                tagged with it before Quads/Glutes/Calves existed are
-                still findable — new exercises use the finer-grained
-                groups below instead (see the create-exercise dropdown). */}
-            <option value="Legs">Legs (legacy)</option>
-            <option value="Quads">Quads</option>
-            <option value="Glutes">Glutes</option>
-            <option value="Calves">Calves</option>
-            <option value="Hamstrings">Hamstrings</option>
-            <option value="Abs">Abs</option>
+            {MUSCLES.map((muscle) => (
+              <option key={muscle} value={muscle}>
+                {muscle}
+              </option>
+            ))}
+            {/* Legacy values kept here (filter-only) so exercises already
+                tagged with them before the current taxonomy existed are
+                still findable — new exercises use MUSCLES above instead
+                (see the create-exercise dropdown). */}
+            {LEGACY_MUSCLES.map((muscle) => (
+              <option key={muscle} value={muscle}>
+                {muscle} (legacy)
+              </option>
+            ))}
           </select>
 
           <label>Exercise</label>
@@ -227,17 +241,11 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
                 onChange={handleCustomChange}
               >
                 <option value="">Select Muscle</option>
-                <option value="Chest">Chest</option>
-                <option value="Back">Back</option>
-                <option value="Shoulders">Shoulders</option>
-                <option value="Biceps">Biceps</option>
-                <option value="Triceps">Triceps</option>
-                <option value="Forearms">Forearms</option>
-                <option value="Quads">Quads</option>
-                <option value="Glutes">Glutes</option>
-                <option value="Calves">Calves</option>
-                <option value="Hamstrings">Hamstrings</option>
-                <option value="Abs">Abs</option>
+                {MUSCLES.map((muscle) => (
+                  <option key={muscle} value={muscle}>
+                    {muscle}
+                  </option>
+                ))}
               </select>
 
               <button
@@ -250,36 +258,40 @@ function AddWorkoutModal({ closeModal, onAddExercise }) {
             </div>
           )}
 
-          <label>First Set</label>
+          {!isReplaceMode && (
+            <>
+              <label>First Set</label>
 
-          <div className="single-set-row">
-            <input
-              type="number"
-              placeholder="Weight (kg)"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              min="0"
-              step="0.5"
-              required
-            />
+              <div className="single-set-row">
+                <input
+                  type="number"
+                  placeholder="Weight (kg)"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  min="0"
+                  step="0.5"
+                  required
+                />
 
-            <input
-              type="number"
-              placeholder="Reps"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              min="1"
-              step="1"
-              required
-            />
-          </div>
+                <input
+                  type="number"
+                  placeholder="Reps"
+                  value={reps}
+                  onChange={(e) => setReps(e.target.value)}
+                  min="1"
+                  step="1"
+                  required
+                />
+              </div>
+            </>
+          )}
 
           {validationMessage && (
             <p className="form-error">{validationMessage}</p>
           )}
 
           <button className="save-btn" type="submit" disabled={!isWorkoutValid}>
-            Add Exercise
+            {isReplaceMode ? "Replace Exercise" : "Add Exercise"}
           </button>
         </form>
       </div>

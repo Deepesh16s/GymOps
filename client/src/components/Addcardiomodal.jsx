@@ -3,6 +3,7 @@ import {
   CARDIO_ACTIVITY_TYPES,
   CARDIO_METRICS,
   getActivityMetrics,
+  getActivityVariants,
 } from "../constants/cardioMetadata";
 import "./AddWorkoutModal.css";
 
@@ -11,14 +12,17 @@ import "./AddWorkoutModal.css";
 // data only, and leaves all session-state decisions to the caller.
 function AddCardioModal({ closeModal, onAddCardio }) {
   const [activityType, setActivityType] = useState(CARDIO_ACTIVITY_TYPES[0]);
+  const [variant, setVariant] = useState("");
   const [metricValues, setMetricValues] = useState({});
   const [validationMessage, setValidationMessage] = useState("");
 
   const { requiredMetrics, optionalMetrics } = getActivityMetrics(activityType);
   const visibleMetrics = [...requiredMetrics, ...optionalMetrics];
+  const availableVariants = getActivityVariants(activityType);
 
   const handleActivityChange = (e) => {
     setActivityType(e.target.value);
+    setVariant("");
     setMetricValues({});
     setValidationMessage("");
   };
@@ -69,6 +73,7 @@ function AddCardioModal({ closeModal, onAddCardio }) {
     onAddCardio({
       cardio: {
         activityType,
+        variant: variant || null,
         data,
       },
     });
@@ -93,6 +98,24 @@ function AddCardioModal({ closeModal, onAddCardio }) {
               </option>
             ))}
           </select>
+
+          {/* Phase 12 — optional refinement, only shown when this
+              activity actually has variants defined (e.g. Elliptical
+              has none, so no select renders at all — nothing to pick,
+              nothing to omit). */}
+          {availableVariants.length > 0 && (
+            <>
+              <label>Variant (optional)</label>
+              <select value={variant} onChange={(e) => setVariant(e.target.value)}>
+                <option value="">None</option>
+                {availableVariants.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
           {visibleMetrics.map((key) => {
             const metric = CARDIO_METRICS[key];

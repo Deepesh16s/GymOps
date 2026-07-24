@@ -1,0 +1,641 @@
+@import "../styles/design-tokens.css";
+
+.notif-center {
+  position: relative;
+}
+
+/* ---- Bell ---- */
+
+.notif-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  border-radius: var(--go-radius-pill);
+  color: var(--go-text-muted);
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast), transform var(--go-fast);
+}
+
+.notif-bell:hover {
+  background: var(--go-primary-50);
+  color: var(--go-text);
+}
+
+.notif-bell:hover svg {
+  transform: rotate(-8deg);
+}
+
+.notif-bell svg {
+  transition: transform var(--go-fast);
+}
+
+.notif-bell:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.notif-bell--bump {
+  animation: notif-bell-bump 0.4s ease;
+}
+
+@keyframes notif-bell-bump {
+  0% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  50% { transform: rotate(10deg); }
+  75% { transform: rotate(-6deg); }
+  100% { transform: rotate(0); }
+}
+
+.notif-bell__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-danger-dark);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--go-surface);
+}
+
+.notif-bell__badge--pop {
+  animation: notif-badge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes notif-badge-pop {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* ---- Panel ---- */
+
+.notif-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 430px;
+  max-width: calc(100vw - 28px);
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-lg);
+  overflow: hidden;
+  z-index: 60;
+
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  pointer-events: none;
+  transform-origin: top right;
+  transition: opacity var(--go-base), transform var(--go-base);
+}
+
+.notif-panel--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.notif-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--go-border-soft);
+}
+
+.notif-panel__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 20px;
+}
+
+.notif-panel__header-row h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--go-text);
+  margin: 0;
+}
+
+.notif-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notif-panel__action--icon {
+  padding: 4px;
+}
+
+/* Phase 13C, section 13 — preferences panel, toggled from the header's
+   gear icon. Collapsible rather than a separate page: 7 checkboxes is
+   small enough to live inline without needing its own navigation. */
+.notif-panel__preferences {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+}
+
+.notif-panel__preferences-label {
+  margin: 0 0 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--go-text-faint);
+}
+
+.notif-panel__preference-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--go-text);
+  padding: 5px 0;
+  cursor: pointer;
+}
+
+.notif-panel__preference-row input {
+  accent-color: var(--go-primary);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.notif-panel__unread-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50);
+  border-radius: var(--go-radius-pill);
+  padding: 2px 8px;
+}
+
+.notif-panel__action {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-text-faint);
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.notif-panel__action--primary {
+  color: var(--go-primary-dark);
+  font-weight: 700;
+}
+
+.notif-panel__action:hover:not(:disabled) {
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50);
+}
+
+.notif-panel__action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Wraps onto a second row instead of ever scrolling horizontally — a
+   notification panel should never show a horizontal scrollbar. */
+.notif-panel__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--go-border-soft);
+}
+
+.notif-filter-tab {
+  all: unset;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  padding: 4px 9px;
+  border-radius: var(--go-radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notif-filter-tab:hover {
+  background: var(--go-primary-50);
+}
+
+.notif-filter-tab--active {
+  background: var(--go-primary);
+  color: #fff;
+  padding: 5px 11px;
+  font-weight: 700;
+}
+
+/* Phase 13D, Part A.2 — Reminder Timeline toggle, pinned to the end of
+   the filter row (margin-left: auto) rather than its own separate row —
+   it's a view preference, not another filter dimension. */
+.notif-panel__view-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  background: var(--go-surface-sunken);
+  border-radius: var(--go-radius-pill);
+  padding: 2px;
+}
+
+.notif-view-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--go-radius-pill);
+  color: var(--go-text-faint);
+  cursor: pointer;
+}
+
+.notif-view-btn:hover {
+  color: var(--go-text);
+}
+
+.notif-view-btn--active {
+  background: var(--go-primary);
+  color: #fff;
+}
+
+.notif-panel__list-wrap {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.notif-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Phase 13D, Part A.2 — Reminder Timeline groups. Each group reuses the
+   exact same .notif-panel__list/NotificationItem rendering as the flat
+   List view — only the section label + grouping is new. */
+.notif-timeline {
+  padding: 6px 6px 2px;
+}
+
+.notif-timeline__group + .notif-timeline__group {
+  margin-top: 10px;
+}
+
+.notif-timeline__label {
+  margin: 0 0 2px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--go-text-faint);
+}
+
+.notif-timeline .notif-panel__list {
+  padding: 2px 0;
+}
+
+.notif-panel__loading {
+  padding: 12px;
+}
+
+/* ---- Item ---- */
+
+.notif-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 14px;
+  border-radius: var(--go-radius-sm);
+  border-left: 3px solid transparent;
+  transition: background var(--go-fast), box-shadow var(--go-fast), transform var(--go-fast);
+}
+
+.notif-item--clickable {
+  cursor: pointer;
+}
+
+.notif-item--unread {
+  background: var(--go-surface-sunken);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.notif-item--read {
+  opacity: 0.68;
+}
+
+.notif-item--clickable:hover,
+.notif-item--clickable:focus-visible {
+  transform: translateX(2px);
+  background: var(--go-primary-50);
+  box-shadow: var(--go-shadow-sm);
+}
+
+.notif-item--clickable:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: -2px;
+}
+
+/* Slide-in for a genuinely new (this-tab, this-moment) notification —
+   see NotificationCenter.jsx's recentlyAddedIds, populated only by the
+   instant "notifications-created" event, not by a routine poll refresh. */
+.notif-item--enter {
+  animation: notif-item-enter 0.35s ease;
+}
+
+@keyframes notif-item-enter {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Type-specific accent tints (subtle, 5–8%) — one step more specific
+   than category, so "progress" doesn't read as one monotonous green
+   block. See constants/notificationTypes.js's getNotificationTone. */
+.notif-item--achievement { border-left-color: var(--go-success); }
+.notif-item--recovery { border-left-color: #14b8a6; }
+.notif-item--goal { border-left-color: #06b6d4; }
+.notif-item--cardio { border-left-color: #3b82f6; }
+.notif-item--insight { border-left-color: #8b5cf6; }
+.notif-item--reminder { border-left-color: var(--go-warning); }
+
+.notif-item__dot {
+  position: absolute;
+  top: 12px;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--go-primary);
+}
+
+.notif-item__icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+}
+
+.notif-item--achievement .notif-item__icon { background: var(--go-success-50); color: var(--go-success-dark); }
+.notif-item--recovery .notif-item__icon { background: color-mix(in srgb, #14b8a6 8%, transparent); color: #0d9488; }
+.notif-item--goal .notif-item__icon { background: color-mix(in srgb, #06b6d4 8%, transparent); color: #0891b2; }
+.notif-item--cardio .notif-item__icon { background: color-mix(in srgb, #3b82f6 8%, transparent); color: #3b82f6; }
+.notif-item--insight .notif-item__icon { background: color-mix(in srgb, #8b5cf6 8%, transparent); color: #8b5cf6; }
+.notif-item--reminder .notif-item__icon { background: var(--go-warning-50); color: var(--go-warning); }
+
+.notif-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Hierarchy (Item 3): title dominates, subtitle is clearly lighter,
+   timestamp is much quieter than either — previously all three read at
+   nearly the same visual weight. */
+.notif-item__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--go-text);
+  line-height: 1.3;
+}
+
+.notif-item__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--go-text-muted);
+  line-height: 1.35;
+}
+
+.notif-item__time {
+  display: block;
+  margin-top: 5px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--go-text-faint);
+  opacity: 0.85;
+}
+
+/* Phase 13D, Part A.4 — Reminder Explanation. Inline text button (not a
+   full action-row button) since it lives inside the timestamp line —
+   underline-on-hover is enough affordance without competing visually
+   with the actual action buttons on the right. */
+.notif-item__why-btn {
+  all: unset;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--go-primary-dark);
+  cursor: pointer;
+}
+
+.notif-item__why-btn:hover,
+.notif-item__why-btn:focus-visible {
+  text-decoration: underline;
+}
+
+.notif-item__why-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  list-style: disc;
+  font-size: 11.5px;
+  color: var(--go-text-muted);
+  line-height: 1.5;
+}
+
+/* Phase 13C, section 9 — a subtle emphasis for critical-priority items
+   only (high/medium/low stay exactly as before) — a slightly bolder
+   left border plus a small inline tag, not a full re-color of the card
+   (that would compete with the type-tint accent colors above). */
+.notif-item--priority-critical {
+  border-left-width: 4px;
+  border-left-color: var(--go-danger-dark);
+}
+
+.notif-item__priority-tag {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--go-danger-dark);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Phase 13C, section 11 — snooze/mark-complete/dismiss action row,
+   replacing the single dismiss button. Same reveal-on-hover/focus
+   pattern as the old dismiss button had. */
+.notif-item__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+
+.notif-item__action-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--go-text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--go-fast), background var(--go-fast), color var(--go-fast);
+}
+
+.notif-item:hover .notif-item__action-btn,
+.notif-item:focus-within .notif-item__action-btn,
+.notif-item__snooze-wrap:has(.notif-item__snooze-menu) .notif-item__action-btn {
+  opacity: 1;
+}
+
+.notif-item__action-btn:hover {
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+}
+
+.notif-item__actions > .notif-item__action-btn:last-child:hover {
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+}
+
+.notif-item__snooze-wrap {
+  position: relative;
+}
+
+.notif-item__snooze-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-sm);
+  box-shadow: var(--go-shadow-md);
+  padding: 4px;
+}
+
+.notif-item__snooze-menu button {
+  all: unset;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--go-text);
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notif-item__snooze-menu button:hover,
+.notif-item__snooze-menu button:focus-visible {
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+}
+
+/* ---- Empty state ---- */
+
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.notif-empty__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--go-primary-50);
+  color: var(--go-primary);
+  margin-bottom: 12px;
+}
+
+.notif-empty__title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.notif-empty__sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--go-text-muted);
+}
+
+/* Section 11 — Visible focus. `all: unset` above (a plain reset for
+   these text-button elements) also strips the browser's default focus
+   ring, so each one needs its own explicit :focus-visible replacement —
+   otherwise keyboard-only navigation through the panel would have no
+   visible indicator at all. */
+.notif-panel__action:focus-visible,
+.notif-filter-tab:focus-visible,
+.notif-item__action-btn:focus-visible,
+.notif-view-btn:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.notif-panel:focus-visible {
+  outline: none;
+}
+
+@media (max-width: 480px) {
+  .notif-panel {
+    width: min(400px, calc(100vw - 20px));
+    right: -8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-panel,
+  .notif-bell svg,
+  .notif-item,
+  .notif-item__dismiss {
+    transition: none;
+  }
+  .notif-bell--bump,
+  .notif-bell__badge--pop,
+  .notif-item--enter {
+    animation: none;
+  }
+}

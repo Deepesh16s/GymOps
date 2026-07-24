@@ -1,11 +1,28 @@
 const Goal = require("../models/Goal");
 const Workout = require("../models/workout");
+const DailySteps = require("../models/DailySteps");
 const {
   GOAL_TYPES,
   GLOBAL_AUTO_GOAL_TYPES,
   isAutoCardioGoal,
 } = require("../constants/goalTypes");
 const metrics = require("./goalMetrics");
+const {
+  detectGoalNotificationPayloads,
+  detectStreakMilestonePayload,
+} = require("./notificationTriggers");
+const { createNotificationsIfNew } = require("./notificationService");
+
+// Only Daily Steps goals (metric === "steps") need the daily-steps log —
+// fetched lazily (one extra query, only when at least one such goal
+// exists) rather than unconditionally alongside every recalculation, so
+// users with no steps-based goal never pay for a query with nothing to
+// use it for.
+const fetchDailyStepsIfNeeded = async (userId, cardioGoals, options = {}) => {
+  const needsSteps = (cardioGoals || []).some((g) => g.metric === "steps");
+  if (!needsSteps) return [];
+  return DailySteps.find({ user: userId }).session(options.session).select("date steps -_id").lean();
+};
 
 // Phase 8B: entryType + cardio added so every consumer of this fetch
 // (recalculateGlobalAutoGoals, getLatestSessionWorkouts,
@@ -48,9 +65,14 @@ const buildWeightsByExercise = (exercises) => {
 //
 // `options.session` threads a Mongo ClientSession through, for the
 // transactional session-batch path — a no-op when omitted.
+// Returns the notification payloads (Phase 13A) for any Strength PR
+// goal that just crossed a completion/progress threshold — callers
+// decide whether/how to persist them (see updateGoalsForWorkout/
+// updateGoalsForSession below), keeping this function's own job
+// (recompute + bulkWrite) unchanged.
 const applyStrengthPrUpdates = async (userId, weightsByExercise, options = {}) => {
   const exerciseIds = [...weightsByExercise.keys()];
-  if (!exerciseIds.length) return;
+  if (!exerciseIds.length) return [];
 
   const prGoals = await Goal.find({
     user: userId,
@@ -58,18 +80,22 @@ const applyStrengthPrUpdates = async (userId, weightsByExercise, options = {}) =
     exercise: { $in: exerciseIds },
   }).session(options.session);
 
-  if (!prGoals.length) return;
+  if (!prGoals.length) return [];
 
   const ops = [];
+  const notificationPayloads = [];
   prGoals.forEach((goal) => {
     const maxWeight = weightsByExercise.get(String(goal.exercise));
     if (maxWeight === undefined || maxWeight <= goal.current) return;
     ops.push(buildBulkStatusOp(goal._id, maxWeight, goal.target));
+    notificationPayloads.push(...detectGoalNotificationPayloads(goal, maxWeight, goal.target));
   });
 
   if (ops.length) {
     await Goal.bulkWrite(ops, { session: options.session });
   }
+
+  return notificationPayloads;
 };
 
 // ONE Workout.find() + ONE Goal.find(); every metric below is derived in
@@ -85,7 +111,16 @@ const recalculateGlobalAutoGoals = async (userId, options = {}) => {
     Goal.find({ user: userId, type: { $in: GLOBAL_AUTO_GOAL_TYPES } }).session(options.session),
   ]);
 
-  if (!autoGoals.length) return;
+  // Streak-milestone detection runs regardless of whether the user has
+  // any goals configured at all — a 7/14/30/60/100-day streak is a
+  // real-world achievement independent of any Goal document, so it
+  // can't live behind the `!autoGoals.length` early return below.
+  const streak = metrics.computeCurrentStreak(allWorkouts);
+  const notificationPayloads = [];
+  const streakPayload = detectStreakMilestonePayload(streak);
+  if (streakPayload) notificationPayloads.push(streakPayload);
+
+  if (!autoGoals.length) return notificationPayloads;
 
   const goalsByType = autoGoals.reduce((acc, g) => {
     (acc[g.type] = acc[g.type] || []).push(g);
@@ -97,7 +132,6 @@ const recalculateGlobalAutoGoals = async (userId, options = {}) => {
   const weekWorkouts = metrics.filterSince(allWorkouts, metrics.startOfWeek());
   const monthWorkouts = metrics.filterSince(allWorkouts, metrics.startOfMonth());
   const sessionMetrics = metrics.getLatestSessionMetrics(allWorkouts);
-  const streak = metrics.computeCurrentStreak(allWorkouts);
 
   const valueByType = {
     [GOAL_TYPES.WEEKLY_WORKOUT_SESSIONS]: metrics.countDistinctSessions(weekWorkouts),
@@ -109,6 +143,14 @@ const recalculateGlobalAutoGoals = async (userId, options = {}) => {
     [GOAL_TYPES.SESSION_DURATION]: sessionMetrics.duration,
     [GOAL_TYPES.CURRENT_STREAK]: streak,
   };
+
+  // Fetched once (lazily — see fetchDailyStepsIfNeeded) and reused across
+  // every Daily Steps goal below, rather than one query per goal.
+  const dailyStepsRecords = await fetchDailyStepsIfNeeded(
+    userId,
+    goalsByType[GOAL_TYPES.CARDIO],
+    options
+  );
 
   const ops = [];
 
@@ -130,20 +172,29 @@ const recalculateGlobalAutoGoals = async (userId, options = {}) => {
           activityType: goal.activityType,
           metric: goal.metric,
           period: goal.period,
+          dailyTarget: goal.dailyTarget,
+          createdAt: goal.createdAt,
+          dailyStepsRecords,
         });
         ops.push(buildBulkStatusOp(goal._id, value, goal.target));
+        notificationPayloads.push(...detectGoalNotificationPayloads(goal, value, goal.target));
       });
       return;
     }
 
     const value = valueByType[type];
     if (value === undefined) return;
-    goals.forEach((goal) => ops.push(buildBulkStatusOp(goal._id, value, goal.target)));
+    goals.forEach((goal) => {
+      ops.push(buildBulkStatusOp(goal._id, value, goal.target));
+      notificationPayloads.push(...detectGoalNotificationPayloads(goal, value, goal.target));
+    });
   });
 
   if (ops.length) {
     await Goal.bulkWrite(ops, { session: options.session });
   }
+
+  return notificationPayloads;
 };
 
 // Single-workout path — used by createWorkout (legacy single POST) and
@@ -151,11 +202,20 @@ const recalculateGlobalAutoGoals = async (userId, options = {}) => {
 // logged but never fails the workout save.
 const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
   try {
+    let notificationPayloads = [];
     if (Array.isArray(workoutSets) && workoutSets.length && exerciseId) {
       const maxWeight = Math.max(...workoutSets.map((s) => s.weight));
-      await applyStrengthPrUpdates(userId, new Map([[String(exerciseId), maxWeight]]));
+      notificationPayloads = notificationPayloads.concat(
+        await applyStrengthPrUpdates(userId, new Map([[String(exerciseId), maxWeight]]))
+      );
     }
-    await recalculateGlobalAutoGoals(userId);
+    notificationPayloads = notificationPayloads.concat(
+      await recalculateGlobalAutoGoals(userId)
+    );
+
+    if (notificationPayloads.length) {
+      await createNotificationsIfNew(userId, notificationPayloads);
+    }
   } catch (error) {
     console.log(error);
   }
@@ -164,11 +224,17 @@ const updateGoalsForWorkout = async (userId, exerciseId, workoutSets) => {
 // Session-batch path — used by createWorkoutSession, always inside a Mongo
 // transaction. Unlike updateGoalsForWorkout, this does NOT swallow errors:
 // a failure here must propagate so the transaction rolls back and no
-// workouts are left partially saved.
+// workouts are left partially saved. Returns the combined notification
+// payloads (Phase 13A) rather than persisting them itself — the caller
+// (workoutController.js) persists them together with its own
+// workout-level candidates (PR/highest-volume/...), in its own
+// non-transactional try/catch, after this function's writes are known
+// to have succeeded.
 const updateGoalsForSession = async (userId, exercises, options = {}) => {
   const weightsByExercise = buildWeightsByExercise(exercises);
-  await applyStrengthPrUpdates(userId, weightsByExercise, options);
-  await recalculateGlobalAutoGoals(userId, options);
+  const prNotifications = await applyStrengthPrUpdates(userId, weightsByExercise, options);
+  const autoGoalNotifications = await recalculateGlobalAutoGoals(userId, options);
+  return [...prNotifications, ...autoGoalNotifications];
 };
 
 const getLatestSessionWorkouts = async (userId) => {
@@ -185,14 +251,27 @@ const getLatestSessionWorkouts = async (userId) => {
 // and no separate cardio update pipeline.
 const computeCardioGoalCurrent = async (
   userId,
-  { activityType, metric, period },
+  { activityType, metric, period, dailyTarget = null, createdAt = null },
   options = {}
 ) => {
   const workouts = await Workout.find({ user: userId })
     .select(WORKOUT_FIELDS)
     .session(options.session);
 
-  return metrics.computeCardioGoalMetric(workouts, { activityType, metric, period });
+  const dailyStepsRecords = await fetchDailyStepsIfNeeded(userId, [{ metric }], options);
+
+  return metrics.computeCardioGoalMetric(workouts, {
+    activityType,
+    metric,
+    period,
+    dailyTarget,
+    // NEXT_SESSION with no createdAt (a brand-new goal, not yet saved)
+    // must count nothing as "next" — defaulting to "now" means no
+    // pre-existing workout can ever match, which is exactly the correct
+    // starting `current` (0) for a goal that was just created.
+    createdAt: createdAt || new Date(),
+    dailyStepsRecords,
+  });
 };
 
 module.exports = {

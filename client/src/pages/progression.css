@@ -154,6 +154,28 @@
   margin-bottom: 18px;
 }
 
+/* Sits the metric selector (+ Moving average toggle for Overall/Muscle)
+   beside the hero's title instead of a whole separate controls row. */
+.progression-panel__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.progression-panel__label-row .progression-panel__label {
+  margin-bottom: 0;
+}
+
+.progression-panel__label-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .progression-timeline-hero__stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -174,64 +196,6 @@
   font-weight: 600;
   color: var(--go-text-muted);
   margin-bottom: 10px;
-}
-
-/* ---------------------------------------------------------------- */
-/* Advanced Analytics — collapsible                                   */
-/* ---------------------------------------------------------------- */
-
-.progression-advanced {
-  padding: 0;
-  overflow: hidden;
-}
-
-.progression-advanced__toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 18px 22px;
-  border: none;
-  background: transparent;
-  color: var(--go-text);
-  font-size: 0.92rem;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.18s ease;
-}
-
-.progression-advanced__toggle:hover {
-  background: var(--go-primary-50);
-}
-
-.progression-advanced__toggle:focus-visible {
-  outline: 2px solid var(--go-primary);
-  outline-offset: -2px;
-}
-
-.progression-advanced__chevron {
-  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  color: var(--go-text-faint);
-  flex-shrink: 0;
-}
-
-.progression-advanced__chevron--open {
-  transform: rotate(90deg);
-}
-
-.progression-advanced__body {
-  padding: 0 22px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.progression-advanced__controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 /* ---------------------------------------------------------------- */
@@ -346,9 +310,5 @@
 @media (prefers-reduced-motion: reduce) {
   .progression-main {
     animation: none;
-  }
-
-  .progression-advanced__chevron {
-    transition: none;
   }
 }

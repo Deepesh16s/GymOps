@@ -6,6 +6,8 @@
 // services/workoutService.getWorkouts) and memoize as needed.
 import {
   buildSessionSummaries,
+  groupWorkoutsIntoSessions,
+  getSessionStats,
   getSetCount,
   getWorkoutVolume,
   isCardioEntry,
@@ -184,6 +186,7 @@ export function buildProgressionSeries(workouts, { granularity } = {}) {
         prWeight: null,
         recordWeight: null,
         sessionDuration: null,
+        avgVolumePerSession: null,
       };
     }
     if (b.prWeight != null) runningBest = runningBest == null ? b.prWeight : Math.max(runningBest, b.prWeight);
@@ -204,6 +207,12 @@ export function buildProgressionSeries(workouts, { granularity } = {}) {
       sessionDuration: b.durations.length
         ? Math.round(b.durations.reduce((s, d) => s + d, 0) / b.durations.length)
         : null,
+      // Total volume that period divided by how many sessions actually
+      // trained it — fixes the "more workouts = bigger number even at
+      // the same effort per session" distortion a raw volume trend has
+      // (2 sessions x 500kg reads identically to 4 sessions x 500kg
+      // here, where plain volume would show the second as "double").
+      avgVolumePerSession: b.sessionIds.size > 0 ? Math.round(b.volume / b.sessionIds.size) : null,
     };
   });
 }
@@ -261,6 +270,55 @@ export function buildRecordTimeline(workouts) {
   });
 
   return [...gapPoints, ...eventPoints].sort((a, b) => a.sortDate - b.sortDate);
+}
+
+// One point PER SESSION for a single exercise's Timeline chart — never
+// per-set (see buildExerciseSetTimeline's retirement: with hundreds of
+// sets over years the chart becomes unreadable and, worse, several
+// consecutive points sharing the same day label made recharts'
+// hover-matching resolve to the wrong point). Every metric a session
+// contributed is precomputed here so the chart can switch what it
+// plots without recomputing sessions. `workouts` is expected to already
+// be scoped to one exercise (Progression.jsx does this via
+// filterWorkoutsByExercise before calling in). isPR reuses the same ">"
+// comparison prHistory itself uses, walked per-session so "record"
+// means the same thing here as everywhere else in the app. Reuses
+// groupWorkoutsIntoSessions (not a re-derivation of "what counts as a
+// session") and bestSet/estimate1RM/calculateWorkingWeightAverage (not a
+// re-derivation of those either).
+export function buildExerciseSessionSeries(workouts) {
+  const strengthWorkouts = workouts.filter((w) => !isCardioEntry(w));
+  if (!strengthWorkouts.length) return [];
+
+  const sessions = groupWorkoutsIntoSessions(strengthWorkouts)
+    .map((s) => ({ ...s, stats: getSessionStats(s) }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let runningBest = 0;
+
+  return sessions.map((session) => {
+    const sessionSets = session.workouts.flatMap((w) => w.workoutSets || []);
+    const best = bestSet(sessionSets);
+    const isPR = !!best && best.weight > runningBest;
+    if (best && best.weight > runningBest) runningBest = best.weight;
+
+    return {
+      key: session.key,
+      sortDate: new Date(session.date),
+      label: new Date(session.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      hasData: true,
+      volume: Math.round(session.stats.volume),
+      sets: session.stats.setCount,
+      totalReps: sessionSets.reduce((sum, s) => sum + s.reps, 0),
+      workingWeight: calculateWorkingWeightAverage(sessionSets),
+      estOneRM: best ? estimate1RM(best.weight, best.reps) : null,
+      bestSetWeight: best ? best.weight : null,
+      bestSet: best,
+      sessionDuration: session.sessionDuration,
+      isPR,
+      session,
+    };
+  });
 }
 
 // Compares the first half of a series' average for `key` against the
@@ -439,6 +497,7 @@ export function getMuscleProgression(workouts, muscle, { rangeKey = "lifetime" }
       volume: describeTrend(series, "volume"),
       sets: describeTrend(series, "sets"),
       frequency: describeTrend(series, "frequency"),
+      avgVolumePerSession: describeTrend(series, "avgVolumePerSession"),
     },
     exerciseDistribution,
     prTimeline,

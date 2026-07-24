@@ -5,6 +5,9 @@ const {
   GOAL_TYPES,
   MANUAL_GOAL_TYPES,
   GOAL_PERIODS,
+  DAILY_PERIODS,
+  getAutoDailyTargetDays,
+  CARDIO_SESSION_METRIC,
   CARDIO_GOAL_METRICS,
 } = require("../constants/goalTypes");
 const { CARDIO_ACTIVITY_TYPES } = require("../constants/cardioMetadata");
@@ -13,6 +16,8 @@ const {
   getLatestSessionWorkouts,
   computeCardioGoalCurrent,
 } = require("../utils/updateGoals");
+const { detectGoalNotificationPayloads } = require("../utils/notificationTriggers");
+const { createNotificationsIfNew } = require("../utils/notificationService");
 
 // Phase 8B: validates a Cardio Goal's activityType/metric/period. Shared
 // by createGoal and updateGoal so the validation rule lives in exactly
@@ -20,7 +25,7 @@ const {
 // automatic (i.e. at least one of the three fields was supplied) —
 // omitting all three is legitimate (legacy manual behavior) and never
 // reaches this function.
-const validateCardioGoalConfig = ({ activityType, metric, period }) => {
+const validateCardioGoalConfig = ({ activityType, metric, period, dailyTarget }) => {
   // Reject a partial configuration up front with one clear message,
   // rather than letting whichever field happens to be missing surface
   // its own field-specific error first — an automatic Cardio Goal is
@@ -57,7 +62,40 @@ const validateCardioGoalConfig = ({ activityType, metric, period }) => {
     err.status = 400;
     throw err;
   }
+
+  // A "next session" challenge is scoped to one logged workout — the
+  // "sessions" pseudo-metric (count of distinct sessions) is meaningless
+  // there, since a single session always trivially counts as 1.
+  if (period === GOAL_PERIODS.NEXT_SESSION && metric === CARDIO_SESSION_METRIC) {
+    const err = new Error(
+      "Next Session goals need a real metric (distance, duration, etc.), not Sessions."
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  if (DAILY_PERIODS.includes(period)) {
+    if (
+      dailyTarget === undefined ||
+      dailyTarget === null ||
+      dailyTarget === "" ||
+      isNaN(Number(dailyTarget)) ||
+      Number(dailyTarget) <= 0
+    ) {
+      const err = new Error("Daily goals need a dailyTarget greater than 0.");
+      err.status = 400;
+      throw err;
+    }
+  }
 };
+
+// DAILY_WEEKLY/DAILY_MONTHLY/DAILY_LIFETIME all represent a day-count or
+// streak-length, never the metric's own unit — "days" regardless of
+// whether the underlying metric is distance/duration/steps. Enforced
+// server-side (overriding whatever the client sends) so this can't drift
+// out of sync with what current/target actually mean for these periods.
+const resolveCardioGoalUnit = (period, requestedUnit) =>
+  DAILY_PERIODS.includes(period) ? "days" : requestedUnit;
 
 // Shared by createGoal and updateGoal so "current >= target ? Completed
 // : In Progress" exists in exactly one place instead of twice.
@@ -79,6 +117,7 @@ const ALLOWED_GOAL_UPDATE_FIELDS = [
   "activityType",
   "metric",
   "period",
+  "dailyTarget",
   "current",
 ];
 
@@ -94,6 +133,7 @@ exports.createGoal = async (req, res) => {
       activityType,
       metric,
       period,
+      dailyTarget,
     } = req.body;
 
     if (!title || !type || target === undefined || target === null || !unit) {
@@ -116,6 +156,11 @@ exports.createGoal = async (req, res) => {
     let goalActivityType = null;
     let goalMetric = null;
     let goalPeriod = null;
+    let goalDailyTarget = null;
+    // Overridable target/unit for Cardio Goal only — stays `target`/`unit`
+    // from req.body for every other type, unchanged from before.
+    let resolvedTarget = target;
+    let resolvedUnit = unit;
 
     if (type === GOAL_TYPES.STRENGTH_PR && exerciseDoc) {
       const workouts = await Workout.find({ user: req.user._id, exercise: exerciseDoc._id }).select("workoutSets");
@@ -179,14 +224,21 @@ exports.createGoal = async (req, res) => {
         activityType !== undefined || metric !== undefined || period !== undefined;
 
       if (hasAnyCardioConfig) {
-        validateCardioGoalConfig({ activityType, metric, period });
+        validateCardioGoalConfig({ activityType, metric, period, dailyTarget });
         goalActivityType = activityType;
         goalMetric = metric;
         goalPeriod = period;
+        goalDailyTarget = DAILY_PERIODS.includes(period) ? Number(dailyTarget) : null;
+
+        const autoDays = getAutoDailyTargetDays(period);
+        if (autoDays !== null) resolvedTarget = autoDays;
+        resolvedUnit = resolveCardioGoalUnit(period, unit);
+
         current = await computeCardioGoalCurrent(req.user._id, {
           activityType,
           metric,
           period,
+          dailyTarget: goalDailyTarget,
         });
       } else {
         current =
@@ -204,19 +256,20 @@ exports.createGoal = async (req, res) => {
           : 0;
     }
 
-    const status = buildGoalStatus(current, target);
+    const status = buildGoalStatus(current, resolvedTarget);
 
     const goal = await Goal.create({
       user: req.user._id,
       title: title.trim(),
       type,
-      target: Number(target),
+      target: Number(resolvedTarget),
       current,
-      unit: unit.trim(),
+      unit: String(resolvedUnit).trim(),
       exercise: type === GOAL_TYPES.STRENGTH_PR ? exerciseDoc._id : null,
       activityType: goalActivityType,
       metric: goalMetric,
       period: goalPeriod,
+      dailyTarget: goalDailyTarget,
       deadline: deadline || null,
       status,
     });
@@ -290,6 +343,8 @@ exports.updateGoal = async (req, res) => {
         updates.metric !== undefined ? updates.metric : goal.metric;
       const mergedPeriod =
         updates.period !== undefined ? updates.period : goal.period;
+      const mergedDailyTarget =
+        updates.dailyTarget !== undefined ? updates.dailyTarget : goal.dailyTarget;
 
       const hasAnyCardioConfig =
         mergedActivityType !== null || mergedMetric !== null || mergedPeriod !== null;
@@ -299,11 +354,21 @@ exports.updateGoal = async (req, res) => {
           activityType: mergedActivityType,
           metric: mergedMetric,
           period: mergedPeriod,
+          dailyTarget: mergedDailyTarget,
         });
 
         updates.activityType = mergedActivityType;
         updates.metric = mergedMetric;
         updates.period = mergedPeriod;
+        updates.dailyTarget = DAILY_PERIODS.includes(mergedPeriod)
+          ? Number(mergedDailyTarget)
+          : null;
+
+        const autoDays = getAutoDailyTargetDays(mergedPeriod);
+        if (autoDays !== null) updates.target = autoDays;
+        if (updates.unit !== undefined || DAILY_PERIODS.includes(mergedPeriod)) {
+          updates.unit = resolveCardioGoalUnit(mergedPeriod, updates.unit ?? goal.unit);
+        }
 
         // Recompute immediately whenever the configuration actually
         // changed (or a previously-unconfigured manual Cardio Goal just
@@ -313,13 +378,16 @@ exports.updateGoal = async (req, res) => {
         const configChanged =
           mergedActivityType !== goal.activityType ||
           mergedMetric !== goal.metric ||
-          mergedPeriod !== goal.period;
+          mergedPeriod !== goal.period ||
+          Number(mergedDailyTarget) !== Number(goal.dailyTarget);
 
         if (configChanged) {
           updates.current = await computeCardioGoalCurrent(req.user._id, {
             activityType: mergedActivityType,
             metric: mergedMetric,
             period: mergedPeriod,
+            dailyTarget: updates.dailyTarget,
+            createdAt: goal.createdAt,
           });
         }
       }
@@ -340,6 +408,17 @@ exports.updateGoal = async (req, res) => {
       new: true,
       runValidators: true,
     }).populate("exercise", "name muscleGroup");
+
+    // Phase 13A — a manual edit (Weight Goal, or a Cardio Goal's
+    // auto-recompute above) can also cross completion/80%/90% right
+    // here, not just during the automatic recalculation pipeline. Best-
+    // effort: never blocks the goal update response.
+    try {
+      const payloads = detectGoalNotificationPayloads(goal, mergedCurrent, mergedTarget);
+      if (payloads.length) await createNotificationsIfNew(req.user._id, payloads);
+    } catch (notificationError) {
+      console.error("Notification generation failed:", notificationError);
+    }
 
     res.status(200).json(updatedGoal);
   } catch (error) {

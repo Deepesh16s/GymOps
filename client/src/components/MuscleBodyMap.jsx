@@ -9,34 +9,17 @@ import {
   Calendar,
 } from "lucide-react";
 import { startOfWeek, startOfMonth } from "../utils/dateUtils";
-import { computeMuscleBreakdown, MUSCLE_SPLIT_CATEGORY } from "../utils/workoutUtils";
+import { computeMuscleBreakdown } from "../utils/workoutUtils";
+import { MUSCLE_SPLIT_CATEGORY, MUSCLE_TO_REGIONS } from "../constants/muscles";
 import "./MuscleBodyMap.css";
 
-// "Legs" stays mapped (quads+calves combined) as a legacy fallback for
-// exercises already seeded/created with that muscleGroup — no backend
-// data migration has been run to reclassify them, so removing "Legs"
-// entirely would make that existing data invisible on the map. Quads/
-// Glutes/Calves/Forearms are new, more granular groups going forward:
-// any exercise created with one of these muscleGroup values (the
-// AddWorkoutModal dropdown now offers them) lights up its own region
-// and its own line in the breakdown, without touching existing data.
-// Forearms and the glutes region reuse shapes that already existed in
-// the SVG as non-interactive "body-static" fills — not new anatomy.
-const MUSCLE_TO_REGIONS = {
-  Chest: ["chest"],
-  Back: ["upperBack", "lowerBack"],
-  Shoulders: ["shoulderL", "shoulderR"],
-  Biceps: ["bicepL", "bicepR"],
-  Triceps: ["tricepL", "tricepR"],
-  Forearms: ["forearmL", "forearmR"],
-  Legs: ["quadL", "quadR", "calfL", "calfR"],
-  Quads: ["quadL", "quadR"],
-  Glutes: ["glutes"],
-  Calves: ["calfL", "calfR"],
-  Hamstrings: ["hamstringL", "hamstringR"],
-  Abs: ["abs"],
-};
-
+// MUSCLE_TO_REGIONS (muscle -> Muscle Body Map SVG region id(s)) is
+// defined once in constants/muscles.js, alongside every other per-muscle
+// fact (split, color, ordering) — not maintained as a parallel map here.
+// "Legs" stays mapped there (quads+calves combined) as a legacy fallback
+// for exercises already seeded/created with that muscleGroup — no
+// backend data migration has been run to reclassify them, so removing
+// "Legs" entirely would make that existing data invisible on the map.
 const KNOWN_MUSCLES = Object.keys(MUSCLE_TO_REGIONS);
 
 // Named intensity tiers instead of a flat 6-step color array — each maps
@@ -519,9 +502,14 @@ function MuscleBodyMap({
                   <div className="muscle-map__figure">
                   <svg viewBox="0 0 160 340" className="body-svg">
                     <ellipse cx="80" cy="19" rx="12.5" ry="15.5" className="body-static" />
+                    {/* Neck/upper-traps saddle — the front view keeps this
+                        as a plain static fill (traps aren't a visually
+                        distinct front-facing muscle), but from the back
+                        it's the anatomically correct spot for an
+                        interactive Traps region. */}
                     <path
                       d="M74,30 C72,34 71,39 72,44 C72,45 74,46 76,46 L84,46 C86,46 88,45 88,44 C89,39 88,34 86,30 C84,33 76,33 74,30 Z"
-                      className="body-static"
+                      {...regionProps("traps", "back")}
                     />
 
                     <path

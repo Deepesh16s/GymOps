@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ALL_ACCEPTED_MUSCLES } = require("../constants/muscles");
 
 const exerciseSchema = new mongoose.Schema(
   {
@@ -16,6 +17,7 @@ const exerciseSchema = new mongoose.Schema(
     muscleGroup: {
       type: String,
       required: true,
+      enum: ALL_ACCEPTED_MUSCLES,
     },
 
     isDefault: {

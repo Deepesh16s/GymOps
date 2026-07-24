@@ -3,6 +3,12 @@ import api from "../services/api";
 
 const STORAGE_KEY = "gymops_active_workout_session";
 const SUCCESS_MESSAGE_DURATION = 4500;
+// Workout Session Editing & Time Tracking discovery moment #1: for the
+// first few workouts saved after this feature shipped, the success
+// message also mentions where to fix the timing if it's wrong — after
+// that it stops appearing, so it doesn't become permanent banner clutter.
+const TIMING_TIP_SHOWN_COUNT_KEY = "gymops_timing_tip_shown_count";
+const TIMING_TIP_MAX_SHOWS = 3;
 
 const generateId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -15,6 +21,12 @@ const getDefaultSession = () => ({
   entries: [],
   sessionType: null,
   customSessionType: null,
+  sessionNote: null,
+  // Phase 13B — set only when this session was started via "Start
+  // Planned Workout" rather than "New Workout"; threaded through to
+  // POST /workouts/session so the server can link the plan to the real
+  // session it produced (see workoutController.js).
+  plannedWorkoutId: null,
 });
 
 const loadSession = () => {
@@ -44,6 +56,8 @@ const loadSession = () => {
       entries,
       sessionType: parsed.sessionType ?? null,
       customSessionType: parsed.customSessionType ?? null,
+      sessionNote: parsed.sessionNote ?? null,
+      plannedWorkoutId: parsed.plannedWorkoutId ?? null,
     };
   } catch (error) {
     console.log(error);
@@ -75,6 +89,14 @@ function useWorkoutSession() {
   const isSavingRef = useRef(false);
   const successTimeoutRef = useRef(null);
 
+  // Transient, never persisted: true only for a session started in THIS
+  // tab (startSession sets it), false when a session was instead
+  // hydrated from localStorage on mount — i.e. it survived a refresh or
+  // the browser being closed. Dashboard uses this to decide whether to
+  // silently show the live session card (justStarted) or ask "Resume
+  // Workout?" first (an active session that wasn't just started here).
+  const [justStarted, setJustStarted] = useState(false);
+
   useEffect(() => {
     saveSession(session);
   }, [session]);
@@ -104,10 +126,83 @@ function useWorkoutSession() {
       entries: [],
       sessionType: sessionType ?? null,
       customSessionType: customSessionType ?? null,
+      sessionNote: null,
+      plannedWorkoutId: null,
     });
+    setJustStarted(true);
     setSaveError("");
     clearSaveSuccess();
   }, [clearSaveSuccess]);
+
+  // Phase 13B — "Start Planned Workout": auto-populates type, notes, and
+  // (when the plan itemized any) exercises with no sets yet — the same
+  // "pending first set" shape ExerciseSessionCard already renders for
+  // any freshly-added exercise, so a plan's exercises show up ready to
+  // log real weight/reps, not with invented placeholder numbers.
+  // plannedWorkoutId rides along in session state so finishWorkout can
+  // tell the server which plan this session completes.
+  const startSessionFromPlan = useCallback(
+    (plannedWorkout) => {
+      const entries =
+        plannedWorkout.workoutType === "Cardio"
+          ? [
+              {
+                id: generateId(),
+                entryType: "cardio",
+                cardio: {
+                  activityType: plannedWorkout.cardioActivityType || "Other",
+                  data: {},
+                },
+              },
+            ]
+          : (plannedWorkout.exercises || [])
+              .filter((e) => e.exercise)
+              .map((e) => ({
+                id: generateId(),
+                entryType: "strength",
+                exercise: {
+                  _id: e.exercise._id,
+                  name: e.exercise.name,
+                  muscleGroup: e.exercise.muscleGroup,
+                },
+                sets: [],
+              }));
+
+      setSession({
+        active: true,
+        startTime: Date.now(),
+        entries,
+        sessionType: plannedWorkout.workoutType ?? null,
+        customSessionType: null,
+        sessionNote: plannedWorkout.notes || null,
+        plannedWorkoutId: plannedWorkout._id,
+      });
+      setJustStarted(true);
+      setSaveError("");
+      clearSaveSuccess();
+    },
+    [clearSaveSuccess]
+  );
+
+  // Called when the user explicitly chooses "Resume" on the Resume
+  // Workout prompt — just clears the prompt condition, no session data
+  // changes.
+  const confirmResume = useCallback(() => {
+    setJustStarted(true);
+  }, []);
+
+  const setSessionNote = useCallback((note) => {
+    setSession((prev) => ({ ...prev, sessionNote: note }));
+  }, []);
+
+  const updateEntryNote = useCallback((entryId, note) => {
+    setSession((prev) => ({
+      ...prev,
+      entries: prev.entries.map((entry) =>
+        entry.id === entryId ? { ...entry, note } : entry
+      ),
+    }));
+  }, []);
 
   const addExercise = useCallback(({ exercise, firstSet }) => {
     const entry = {
@@ -230,9 +325,79 @@ function useWorkoutSession() {
     });
   }, []);
 
+  // Swaps an entry with its immediate neighbor in the exercise list.
+  // direction: "up" | "down". A no-op at either end of the list.
+  const reorderEntry = useCallback((id, direction) => {
+    setSession((prev) => {
+      const index = prev.entries.findIndex((entry) => entry.id === id);
+      if (index === -1) return prev;
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.entries.length) return prev;
+
+      const entries = [...prev.entries];
+      [entries[index], entries[targetIndex]] = [
+        entries[targetIndex],
+        entries[index],
+      ];
+
+      return { ...prev, entries };
+    });
+  }, []);
+
+  // Inserts a copy of an entry (same exercise/cardio activity, no sets
+  // yet) directly after the original — for logging the same exercise
+  // again later in the workout (e.g. supersets, a repeated circuit).
+  const duplicateEntry = useCallback((id) => {
+    setSession((prev) => {
+      const index = prev.entries.findIndex((entry) => entry.id === id);
+      if (index === -1) return prev;
+
+      const original = prev.entries[index];
+      const copy =
+        original.entryType === "cardio"
+          ? { id: generateId(), entryType: "cardio", cardio: original.cardio }
+          : {
+              id: generateId(),
+              entryType: "strength",
+              exercise: original.exercise,
+              sets: [],
+            };
+
+      const entries = [...prev.entries];
+      entries.splice(index + 1, 0, copy);
+
+      return { ...prev, entries };
+    });
+  }, []);
+
+  // Swaps out the exercise a strength entry is logging against — e.g. the
+  // wrong one was picked from the exercise list. Sets logged so far are
+  // cleared rather than carried over, since they were performed against
+  // the old exercise and would misattribute volume/PRs to the new one.
+  const replaceEntryExercise = useCallback((id, exercise) => {
+    setSession((prev) => ({
+      ...prev,
+      entries: prev.entries.map((entry) =>
+        entry.id === id && entry.entryType !== "cardio"
+          ? {
+              ...entry,
+              exercise: {
+                _id: exercise._id,
+                name: exercise.name,
+                muscleGroup: exercise.muscleGroup,
+              },
+              sets: [],
+            }
+          : entry
+      ),
+    }));
+  }, []);
+
   const discardSession = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setSession(getDefaultSession());
+    setJustStarted(false);
     setSaveError("");
     clearSaveSuccess();
   }, [clearSaveSuccess]);
@@ -262,7 +427,10 @@ function useWorkoutSession() {
     // session — discardSession never calls this function.
     const sessionId = generateId();
 
-    const elapsedMs = session.startTime ? Date.now() - session.startTime : 0;
+    // Captured once so the elapsed-time math and the startedAt/endedAt
+    // sent to the backend agree exactly with each other.
+    const finishTime = Date.now();
+    const elapsedMs = session.startTime ? finishTime - session.startTime : 0;
     const sessionDurationMinutes = Math.max(0, Math.round(elapsedMs / 60000));
     const durationLabel = session.startTime
       ? formatMinutesLabel(elapsedMs)
@@ -281,11 +449,22 @@ function useWorkoutSession() {
         sessionDuration: sessionDurationMinutes,
         sessionType: session.sessionType,
         customSessionType: session.customSessionType,
+        // Real timing captured by the live workout timer, so the session
+        // shows an accurate start/end time by default (Workout Session
+        // Editing & Time Tracking) — no manual edit required unless it's
+        // wrong (e.g. phone died mid-workout).
+        startedAt: session.startTime
+          ? new Date(session.startTime).toISOString()
+          : null,
+        endedAt: session.startTime ? new Date(finishTime).toISOString() : null,
+        sessionNote: session.sessionNote,
+        plannedWorkoutId: session.plannedWorkoutId || undefined,
         exercises: session.entries.map((entry) =>
           entry.entryType === "cardio"
             ? {
                 entryType: "cardio",
                 cardio: entry.cardio,
+                note: entry.note ?? null,
               }
             : {
                 entryType: "strength",
@@ -294,14 +473,31 @@ function useWorkoutSession() {
                   weight: s.weight,
                   reps: s.reps,
                 })),
+                note: entry.note ?? null,
               }
         ),
       };
 
-      await api.post("/workouts/session", payload);
+      const res = await api.post("/workouts/session", payload);
+
+      // Phase 13A — instant notification feedback: the session-save
+      // response already carries whatever PR/milestone/goal-completion
+      // notifications the server generated for this save, so the bell
+      // can show them immediately instead of waiting for its next poll.
+      // Same custom-event pattern ProfileDropdown already uses
+      // (gymops:user-updated) for cross-component updates without a
+      // shared store.
+      if (res.data?.notifications?.length) {
+        window.dispatchEvent(
+          new CustomEvent("gymops:notifications-created", {
+            detail: res.data.notifications,
+          })
+        );
+      }
 
       localStorage.removeItem(STORAGE_KEY);
       setSession(getDefaultSession());
+      setJustStarted(false);
 
       // Message generalizes to describe whichever mix of strength/cardio
       // entries was actually saved, rather than assuming strength-only.
@@ -326,9 +522,21 @@ function useWorkoutSession() {
         );
       }
 
-      const message = `Workout saved! ${messageParts.join(", ")}${
+      let message = `Workout saved! ${messageParts.join(", ")}${
         durationLabel ? `, ${durationLabel}` : ""
       } added to your history.`;
+
+      const timingTipShownCount = Number(
+        localStorage.getItem(TIMING_TIP_SHOWN_COUNT_KEY) || 0
+      );
+      if (timingTipShownCount < TIMING_TIP_MAX_SHOWS) {
+        message += " Need to adjust the recorded time? Edit it anytime from Workouts.";
+        localStorage.setItem(
+          TIMING_TIP_SHOWN_COUNT_KEY,
+          String(timingTipShownCount + 1)
+        );
+      }
+
       setSaveSuccess(message);
       successTimeoutRef.current = setTimeout(() => {
         setSaveSuccess("");
@@ -354,17 +562,27 @@ function useWorkoutSession() {
     entries: session.entries,
     sessionType: session.sessionType,
     customSessionType: session.customSessionType,
+    sessionNote: session.sessionNote,
+    plannedWorkoutId: session.plannedWorkoutId,
+    justStarted,
     isSaving,
     saveError,
     saveSuccess,
     clearSaveSuccess,
     startSession,
+    startSessionFromPlan,
+    confirmResume,
     addExercise,
     addCardioEntry,
     addSet,
     deleteSet,
     updateSet,
     removeEntry,
+    reorderEntry,
+    duplicateEntry,
+    replaceEntryExercise,
+    setSessionNote,
+    updateEntryNote,
     discardSession,
     finishWorkout,
   };

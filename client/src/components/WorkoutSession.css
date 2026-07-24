@@ -159,6 +159,24 @@
   font-weight: 600;
 }
 
+.session-note-field {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--go-text);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.session-note-field:focus {
+  border-color: var(--go-primary);
+}
+
 .finish-confirm-overlay {
   position: fixed;
   inset: 0;

@@ -9,6 +9,10 @@ import {
   Layers,
   TrendingUp,
   ChevronRight,
+  HeartPulse,
+  MapPin,
+  Timer,
+  Zap,
 } from "lucide-react";
 import "./progression.css";
 
@@ -19,15 +23,19 @@ import FilterBar from "../components/progression/FilterBar";
 import ProgressSummary from "../components/progression/ProgressSummary";
 import TrendChart from "../components/progression/TrendChart";
 import MuscleTrendChart from "../components/progression/MuscleTrendChart";
-import ExerciseTrendChart from "../components/progression/ExerciseTrendChart";
-import TimelineChart from "../components/progression/TimelineChart";
+import ExerciseSessionChart from "../components/progression/ExerciseSessionChart";
+import CardioSessionChart from "../components/progression/CardioSessionChart";
 import MetricCard from "../components/progression/MetricCard";
 import WorkoutLogTable from "../components/progression/WorkoutLogTable";
 import DistributionRow from "../components/progression/DistributionRow";
 import {
   DEFAULT_TIME_RANGE,
   DEFAULT_METRIC,
+  EXERCISE_DEFAULT_METRIC,
+  MUSCLE_DEFAULT_METRIC,
   PROGRESSION_METRICS,
+  EXERCISE_ONLY_METRICS,
+  MUSCLE_ONLY_METRICS,
   SESSION_DURATION_METRIC,
   getMetricDef,
   getAvailableMuscles,
@@ -35,10 +43,16 @@ import {
   getOverallProgression,
   getMuscleProgression,
   getExerciseProgression,
-  buildRecordTimeline,
+  buildExerciseSessionSeries,
   filterWorkoutsByMuscle,
   filterWorkoutsByExercise,
   filterWorkoutsByTimeRange,
+  getAvailableCardioActivities,
+  getCardioActivityProgression,
+  filterWorkoutsByCardioActivity,
+  CARDIO_METRICS_REGISTRY,
+  CARDIO_DEFAULT_METRIC,
+  getCardioMetricDef,
 } from "../progression";
 
 function formatLastTrained(date) {
@@ -60,17 +74,15 @@ function Progression() {
   const [viewMode, setViewMode] = useState(() => {
     if (searchParams.get("exercise")) return "exercise";
     if (searchParams.get("muscle")) return "muscle";
+    if (searchParams.get("activity")) return "cardio";
     return "overall";
   });
   const [muscle, setMuscle] = useState(() => searchParams.get("muscle") || "");
   const [exercise, setExercise] = useState(() => searchParams.get("exercise") || "");
+  const [cardioActivity, setCardioActivity] = useState(() => searchParams.get("activity") || "");
   const [timeRange, setTimeRange] = useState(DEFAULT_TIME_RANGE);
   const [metric, setMetric] = useState(DEFAULT_METRIC);
   const [showMovingAverage, setShowMovingAverage] = useState(false);
-  // Advanced Analytics (the line-chart metric explorer) is secondary to
-  // the Timeline hero — collapsed by default so the default experience
-  // stays focused on "how did I improve", not a wall of charts.
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,15 +112,17 @@ function Progression() {
     const next = {};
     if (viewMode === "muscle" && muscle) next.muscle = muscle;
     if (viewMode === "exercise" && exercise) next.exercise = exercise;
+    if (viewMode === "cardio" && cardioActivity) next.activity = cardioActivity;
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, muscle, exercise]);
+  }, [viewMode, muscle, exercise, cardioActivity]);
 
   const availableMuscles = useMemo(() => getAvailableMuscles(workouts), [workouts]);
   const availableExercises = useMemo(
     () => getAvailableExercises(workouts, viewMode === "muscle" ? muscle : null),
     [workouts, viewMode, muscle]
   );
+  const availableCardioActivities = useMemo(() => getAvailableCardioActivities(workouts), [workouts]);
 
   useEffect(() => {
     if (viewMode === "muscle" && !muscle && availableMuscles.length) {
@@ -117,8 +131,11 @@ function Progression() {
     if (viewMode === "exercise" && !exercise && availableExercises.length) {
       setExercise(availableExercises[0]);
     }
+    if (viewMode === "cardio" && !cardioActivity && availableCardioActivities.length) {
+      setCardioActivity(availableCardioActivities[0]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, availableMuscles, availableExercises]);
+  }, [viewMode, availableMuscles, availableExercises, availableCardioActivities]);
 
   const overall = useMemo(
     () => getOverallProgression(workouts, { rangeKey: timeRange }),
@@ -131,6 +148,13 @@ function Progression() {
   const exerciseProgression = useMemo(
     () => (exercise ? getExerciseProgression(workouts, exercise, { rangeKey: timeRange }) : null),
     [workouts, exercise, timeRange]
+  );
+  const cardioProgression = useMemo(
+    () =>
+      cardioActivity
+        ? getCardioActivityProgression(workouts, cardioActivity, { rangeKey: timeRange })
+        : null,
+    [workouts, cardioActivity, timeRange]
   );
   const activeSeries =
     viewMode === "muscle"
@@ -146,22 +170,61 @@ function Progression() {
       ? !!exerciseProgression?.hasSessionDuration
       : overall.hasSessionDuration;
 
-  const metricOptions = useMemo(
-    () => (hasSessionDuration ? [...PROGRESSION_METRICS, SESSION_DURATION_METRIC] : PROGRESSION_METRICS),
-    [hasSessionDuration]
-  );
+  const metricOptions = useMemo(() => {
+    // Cardio has its own, entirely separate metric vocabulary (distance/
+    // duration/pace/speed/calories) — no session-duration extra, no
+    // strength registry involved at all, same "parallel not retrofit"
+    // rule the rest of the cardio engine follows.
+    if (viewMode === "cardio") return CARDIO_METRICS_REGISTRY;
+
+    const base = hasSessionDuration ? [...PROGRESSION_METRICS, SESSION_DURATION_METRIC] : PROGRESSION_METRICS;
+    // Best Set/Total Reps (per-session) and Average Volume/Session
+    // (per-muscle) each come from a series shape the OTHER view modes
+    // don't have — Overall/Muscle's week/month buckets have no
+    // bestSetWeight/totalReps field, and only Muscle's bucket carries a
+    // meaningful avgVolumePerSession (a single exercise's own volume
+    // trend doesn't have the "trained more often, not harder" problem a
+    // multi-exercise muscle does).
+    if (viewMode === "exercise") return [...EXERCISE_ONLY_METRICS, ...base];
+    if (viewMode === "muscle") return [...MUSCLE_ONLY_METRICS, ...base];
+    return base;
+  }, [hasSessionDuration, viewMode]);
 
   useEffect(() => {
     if (!metricOptions.find((m) => m.key === metric)) setMetric(DEFAULT_METRIC);
   }, [metricOptions, metric]);
 
-  const metricDef = getMetricDef(metric) || PROGRESSION_METRICS[0];
+  // Each tab defaults to the metric that answers its own natural
+  // question — Overall: "how's my training going overall" (Volume,
+  // unchanged); Muscle: "how much work is this muscle getting"
+  // (Average Volume/Session — a muscle has no single "best set" the
+  // way one exercise does); Exercise: "how strong am I getting on this
+  // lift" (Best Set); Cardio: "how far am I going" (Distance). Fires on
+  // every viewMode transition so switching tabs always lands on the
+  // sensible default instead of carrying over whatever metric happened
+  // to be active before.
+  useEffect(() => {
+    setMetric(
+      viewMode === "exercise"
+        ? EXERCISE_DEFAULT_METRIC
+        : viewMode === "muscle"
+        ? MUSCLE_DEFAULT_METRIC
+        : viewMode === "cardio"
+        ? CARDIO_DEFAULT_METRIC
+        : DEFAULT_METRIC
+    );
+  }, [viewMode]);
+
+  const metricDef =
+    viewMode === "cardio" ? getCardioMetricDef(metric) : getMetricDef(metric) || PROGRESSION_METRICS[0];
 
   const activeTrend =
     viewMode === "muscle"
       ? muscleProgression?.trend?.[metric] || muscleProgression?.trend?.volume
       : viewMode === "exercise"
       ? exerciseProgression?.trend?.[metric] || exerciseProgression?.trend?.estOneRM
+      : viewMode === "cardio"
+      ? cardioProgression?.trend?.[metric] || cardioProgression?.trend?.distance
       : overall.trend?.[metric] || overall.trend?.volume;
 
   // Raw backing data for whatever the chart above is currently scoped to
@@ -177,10 +240,29 @@ function Progression() {
       .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
   }, [workouts, timeRange, viewMode, muscle, exercise]);
 
-  // The Timeline is built from the exact same scoped workouts as the
-  // Workout Log right below it, so every record shown always traces
-  // back to a row a reader can find in that table.
-  const recordTimelineSeries = useMemo(() => buildRecordTimeline(scopedWorkouts), [scopedWorkouts]);
+  // Exercise view's Timeline: one point per workout SESSION (never per
+  // set — see buildExerciseSessionSeries), since "my Bench Press
+  // history" is naturally "what did I lift each time I trained it".
+  // Overall/Muscle reuse the existing bucketed `activeSeries` above
+  // (the same data Advanced Analytics already computed) instead of a
+  // separate PR-only reel — a single "record" doesn't mean anything
+  // for a muscle trained by several different exercises, or as the
+  // primary "how's my training going" story for Overall either.
+  const exerciseSessionSeries = useMemo(
+    () => (viewMode === "exercise" ? buildExerciseSessionSeries(scopedWorkouts) : []),
+    [viewMode, scopedWorkouts]
+  );
+
+  // Cardio's own scoped log — kept entirely separate from scopedWorkouts
+  // above (which stays untouched, still strength-only) rather than
+  // teaching that memo a cardio branch, so Overall/Muscle/Exercise's
+  // Workout Log output can never change for a history that has no
+  // cardio data.
+  const cardioScopedWorkouts = useMemo(() => {
+    let scoped = filterWorkoutsByTimeRange(workouts, timeRange);
+    scoped = cardioActivity ? filterWorkoutsByCardioActivity(scoped, cardioActivity) : scoped.filter(isCardioEntry);
+    return scoped.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+  }, [workouts, timeRange, cardioActivity]);
 
   const handleSelectExerciseFromDistribution = (name) => {
     setViewMode("exercise");
@@ -188,8 +270,29 @@ function Progression() {
   };
 
   const hasAnyStrengthData = workouts.some((w) => w.entryType !== "cardio");
+  const hasAnyCardioData = workouts.some(isCardioEntry);
 
-  if (!loading && !hasAnyStrengthData) {
+  // A cardio-only user (no strength history at all) lands on the Cardio
+  // tab instead of an empty Overall chart — but only when they arrived
+  // with no explicit deep-link (muscle/exercise/activity query param),
+  // so an intentional link is never overridden. Strength-having users
+  // are entirely unaffected: hasAnyStrengthData is true for them, so
+  // this never fires.
+  useEffect(() => {
+    if (
+      !loading &&
+      !hasAnyStrengthData &&
+      hasAnyCardioData &&
+      !searchParams.get("muscle") &&
+      !searchParams.get("exercise") &&
+      !searchParams.get("activity")
+    ) {
+      setViewMode((prev) => (prev === "overall" ? "cardio" : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, hasAnyStrengthData, hasAnyCardioData]);
+
+  if (!loading && !hasAnyStrengthData && !hasAnyCardioData) {
     return (
       <div className="progression-page">
         <main className="progression-main">
@@ -198,7 +301,7 @@ function Progression() {
               <TrendingUp size={28} strokeWidth={1.6} />
             </div>
             <h1>Progression</h1>
-            <p>Log your first strength workout and your progression story starts here.</p>
+            <p>Log your first workout and your progression story starts here.</p>
           </div>
         </main>
       </div>
@@ -232,26 +335,100 @@ function Progression() {
           exercise={exercise}
           onExerciseChange={setExercise}
           availableExercises={availableExercises}
+          cardioActivity={cardioActivity}
+          onCardioActivityChange={setCardioActivity}
+          availableCardioActivities={availableCardioActivities}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
         />
 
-        {/* HERO: this is the page's centerpiece — a real record ("PR")
-            progression is the single most legible "am I improving" story
-            a lifter can see, so Timeline + Workout Log sit right after
-            the filters, ahead of Selected Statistics — the same figures
-            already shown in the hero summary/trend badges above, so it's
-            reference material rather than something that needs to be
-            seen first. */}
+        {/* HERO: this is the page's centerpiece — Timeline + Workout Log
+            sit right after the filters, ahead of Selected Statistics —
+            the same figures already shown in the hero summary/trend
+            badges above, so it's reference material rather than
+            something that needs to be seen first. Each tab's Timeline
+            answers that tab's own natural question instead of a single
+            shared "PR" reel: Overall/Muscle plot workload (Volume by
+            default, Muscle defaulting to Average Volume/Session since a
+            muscle has no single "best set" the way one exercise does),
+            Exercise plots lifting performance (Best Set by default). */}
         <section className="progression-panel progression-timeline-hero">
-          <p className="progression-panel__label">
-            {viewMode === "exercise"
-              ? `${exercise} Timeline`
-              : viewMode === "muscle"
-              ? `${muscle} PR Timeline`
-              : "Progression Timeline"}
-          </p>
-          <TimelineChart series={recordTimelineSeries} loading={loading} height={340} />
+          <div className="progression-panel__label-row">
+            <p className="progression-panel__label">
+              {viewMode === "exercise"
+                ? `${exercise} · ${metricDef.label} Progression`
+                : viewMode === "cardio"
+                ? `${cardioActivity || "Cardio"} · ${metricDef.label} Progression`
+                : "Timeline"}
+            </p>
+            <div className="progression-panel__label-row-controls">
+              <select
+                className="progression-filterbar__select"
+                value={metric}
+                onChange={(e) => setMetric(e.target.value)}
+                aria-label="Select metric"
+              >
+                {metricOptions.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {viewMode !== "exercise" && viewMode !== "cardio" && (
+                <label className="progression-filterbar__toggle">
+                  <input
+                    type="checkbox"
+                    checked={showMovingAverage}
+                    onChange={(e) => setShowMovingAverage(e.target.checked)}
+                  />
+                  Moving average
+                </label>
+              )}
+            </div>
+          </div>
+          {viewMode === "exercise" && (
+            <ExerciseSessionChart
+              series={exerciseSessionSeries}
+              metricKey={metric}
+              metricDef={metricDef}
+              loading={loading}
+              height={340}
+            />
+          )}
+          {viewMode === "cardio" && cardioActivity && (
+            <CardioSessionChart
+              series={cardioProgression?.series || []}
+              metricKey={metric}
+              metricDef={metricDef}
+              loading={loading}
+              height={340}
+            />
+          )}
+          {viewMode === "muscle" && muscle && (
+            <MuscleTrendChart
+              muscle={muscle}
+              metricDef={metricDef}
+              series={activeSeries}
+              trend={activeTrend}
+              showMovingAverage={showMovingAverage}
+              loading={loading}
+            />
+          )}
+          {viewMode === "overall" && (
+            <TrendChart
+              title="Overall Progression"
+              subtitle={metricDef.label}
+              series={activeSeries}
+              metricKey={metric}
+              metricDef={metricDef}
+              trend={activeTrend}
+              showMovingAverage={showMovingAverage}
+              loading={loading}
+              height={340}
+              emptyTitle="No training history yet"
+              emptyMessage="Log a few sessions to see your overall progression graph."
+            />
+          )}
 
           {viewMode === "exercise" && exerciseProgression && (
             <div className="progression-timeline-hero__stats">
@@ -282,6 +459,19 @@ function Progression() {
             </div>
           )}
 
+          {viewMode === "cardio" && cardioProgression && (
+            <div className="progression-timeline-hero__stats">
+              <MetricCard label="Total Distance" icon={MapPin} value={`${cardioProgression.stats.totalDistance} km`} />
+              <MetricCard label="Total Duration" icon={Timer} value={`${cardioProgression.stats.totalDuration} min`} />
+              <MetricCard label="Sessions" icon={HeartPulse} value={cardioProgression.stats.totalSessions} />
+              <MetricCard
+                label="Best Pace"
+                icon={Zap}
+                value={cardioProgression.stats.bestEver?.pace ? `${cardioProgression.stats.bestEver.pace} min/km` : "—"}
+              />
+            </div>
+          )}
+
           {viewMode === "muscle" && muscleProgression?.exerciseDistribution.length > 0 && (
             <div className="progression-timeline-hero__breakdown">
               <p className="progression-timeline-hero__breakdown-label">Exercise Breakdown</p>
@@ -302,7 +492,10 @@ function Progression() {
 
         <div className="progression-panel">
           <p className="progression-panel__label">Workout Log</p>
-          <WorkoutLogTable workouts={scopedWorkouts} loading={loading} />
+          <WorkoutLogTable
+            workouts={viewMode === "cardio" ? cardioScopedWorkouts : scopedWorkouts}
+            loading={loading}
+          />
         </div>
 
         <div className="progression-panel progression-panel--stats">
@@ -416,87 +609,44 @@ function Progression() {
               />
             </div>
           )}
-        </div>
 
-        {/* Secondary/power-user view — collapsed by default so the
-            default scroll stays: Timeline -> Workout Log -> Insights/PR,
-            not a wall of line charts before the reader ever reaches
-            those. */}
-        <div className="progression-panel progression-advanced">
-          <button
-            type="button"
-            className="progression-advanced__toggle"
-            onClick={() => setAnalyticsOpen((v) => !v)}
-            aria-expanded={analyticsOpen}
-          >
-            <ChevronRight
-              size={16}
-              strokeWidth={2.2}
-              className={`progression-advanced__chevron ${analyticsOpen ? "progression-advanced__chevron--open" : ""}`}
-            />
-            Advanced Analytics
-          </button>
-
-          {analyticsOpen && (
-            <div className="progression-advanced__body">
-              <div className="progression-advanced__controls">
-                <select
-                  className="progression-filterbar__select"
-                  value={metric}
-                  onChange={(e) => setMetric(e.target.value)}
-                  aria-label="Select metric"
-                >
-                  {metricOptions.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <label className="progression-filterbar__toggle">
-                  <input
-                    type="checkbox"
-                    checked={showMovingAverage}
-                    onChange={(e) => setShowMovingAverage(e.target.checked)}
-                  />
-                  Moving average
-                </label>
-              </div>
-
-              {viewMode === "overall" && (
-                <TrendChart
-                  title="Overall Progression"
-                  subtitle={metricDef.label}
-                  series={activeSeries}
-                  metricKey={metric}
-                  metricDef={metricDef}
-                  trend={activeTrend}
-                  showMovingAverage={showMovingAverage}
-                  loading={loading}
-                  height={300}
-                  emptyTitle="No training history yet"
-                  emptyMessage="Log a few sessions to see your overall progression graph."
-                />
-              )}
-              {viewMode === "muscle" && muscle && (
-                <MuscleTrendChart
-                  muscle={muscle}
-                  metricDef={metricDef}
-                  series={activeSeries}
-                  trend={activeTrend}
-                  showMovingAverage={showMovingAverage}
-                  loading={loading}
-                />
-              )}
-              {viewMode === "exercise" && exercise && (
-                <ExerciseTrendChart
-                  exercise={exercise}
-                  metricDef={metricDef}
-                  series={activeSeries}
-                  trend={activeTrend}
-                  showMovingAverage={showMovingAverage}
-                  loading={loading}
-                />
-              )}
+          {viewMode === "cardio" && cardioProgression && (
+            <div className="progression-stats-rail">
+              <MetricCard
+                label="Distance Trend"
+                icon={MapPin}
+                value={
+                  cardioProgression.trend.distance
+                    ? `${cardioProgression.trend.distance.changePct > 0 ? "+" : ""}${cardioProgression.trend.distance.changePct}%`
+                    : "—"
+                }
+                trend={cardioProgression.trend.distance}
+              />
+              <MetricCard
+                label="Pace Trend"
+                icon={Zap}
+                value={
+                  cardioProgression.trend.pace
+                    ? `${cardioProgression.trend.pace.changePct > 0 ? "+" : ""}${cardioProgression.trend.pace.changePct}%`
+                    : "—"
+                }
+                trend={cardioProgression.trend.pace}
+              />
+              <MetricCard label="Total Sessions" icon={HeartPulse} value={cardioProgression.stats.totalSessions} />
+              <MetricCard
+                label="First Logged"
+                icon={Calendar}
+                value={
+                  cardioProgression.stats.firstLoggedDate
+                    ? formatDate(cardioProgression.stats.firstLoggedDate)
+                    : "—"
+                }
+              />
+              <MetricCard
+                label="Best Distance"
+                icon={Trophy}
+                value={cardioProgression.stats.bestEver?.distance ? `${cardioProgression.stats.bestEver.distance} km` : "—"}
+              />
             </div>
           )}
         </div>

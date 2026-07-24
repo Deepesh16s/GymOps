@@ -1,15 +1,32 @@
 import { formatDate } from "../../utils/dateUtils";
-import { formatSetBreakdown, getWorkoutVolume, getSetCount } from "../../utils/workoutUtils";
+import {
+  formatSetBreakdown,
+  getWorkoutVolume,
+  getSetCount,
+  isCardioEntry,
+  getCardioActivityLabel,
+  formatCardioSummary,
+  getPrimaryCardioMetric,
+} from "../../utils/workoutUtils";
 import { ChartEmptyState } from "./ChartStates";
 import "./progression-charts.css";
 
 // Raw, unaggregated backing data for whatever the chart above is
-// currently scoped to (Overall/Muscle/Exercise × time range) — every row
-// is one real logged Workout document, nothing computed or estimated.
-// This is the Progression page's "table view" (every chart needs one for
-// accessibility/verification), and doubles as a fast way to double-check
-// a number the chart/stats show against the actual logged sets.
+// currently scoped to (Overall/Muscle/Exercise/Cardio × time range) —
+// every row is one real logged Workout document, nothing computed or
+// estimated. This is the Progression page's "table view" (every chart
+// needs one for accessibility/verification), and doubles as a fast way
+// to double-check a number the chart/stats show against the actual
+// logged entries.
+//
+// Phase 12: a single caller instance only ever receives one kind of
+// data (Progression scopes strength workouts and cardio workouts into
+// two separate arrays before passing either one in here — see
+// scopedWorkouts/cardioScopedWorkouts in Progression.jsx), so the
+// column headers can safely relabel for the whole table rather than
+// needing a per-row header switch.
 function WorkoutLogTable({ workouts = [], loading = false, limit = 50 }) {
+  const isCardioTable = workouts.length > 0 && workouts.every(isCardioEntry);
   if (loading) {
     return (
       <div className="workout-log__skeleton" aria-hidden="true">
@@ -37,18 +54,39 @@ function WorkoutLogTable({ workouts = [], loading = false, limit = 50 }) {
       <div className="workout-log__table-wrap">
         <table className="workout-log__table">
           <thead>
-            <tr>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Exercise</th>
-              <th>Muscle</th>
-              <th>Sets</th>
-              <th>Volume</th>
-            </tr>
+            {isCardioTable ? (
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Activity</th>
+                <th>Metrics</th>
+                <th>Primary</th>
+              </tr>
+            ) : (
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Exercise</th>
+                <th>Muscle</th>
+                <th>Sets</th>
+                <th>Volume</th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {rows.map((w) => {
               const date = new Date(w.date || w.createdAt);
+              if (isCardioTable) {
+                return (
+                  <tr key={w._id}>
+                    <td>{formatDate(date)}</td>
+                    <td>{date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                    <td className="workout-log__exercise">{getCardioActivityLabel(w)}</td>
+                    <td>{formatCardioSummary(w).map((m) => m.text).join(", ") || "—"}</td>
+                    <td>{getPrimaryCardioMetric(w) || "—"}</td>
+                  </tr>
+                );
+              }
               return (
                 <tr key={w._id}>
                   <td>{formatDate(date)}</td>

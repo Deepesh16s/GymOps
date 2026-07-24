@@ -1,0 +1,247 @@
+@import "../styles/design-tokens.css";
+
+.planner-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.planner-modal-card {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--go-surface);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-lg);
+  animation: planner-modal-in 0.22s var(--go-base, ease);
+}
+
+@keyframes planner-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.planner-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--go-border-soft);
+}
+
+.planner-modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.planner-modal-close {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--go-text-muted);
+  cursor: pointer;
+}
+
+.planner-modal-close:hover {
+  background: var(--go-primary-50);
+  color: var(--go-text);
+}
+
+.planner-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.planner-modal-body input,
+.planner-modal-body select,
+.planner-modal-body textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+  border-radius: var(--go-radius-sm);
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+}
+
+.planner-modal-body input:focus,
+.planner-modal-body select:focus,
+.planner-modal-body textarea:focus {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 1px;
+}
+
+.planner-modal-row {
+  display: flex;
+  gap: 10px;
+}
+
+.planner-modal-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-modal-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+}
+
+.planner-modal-exercises {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+}
+
+.planner-modal-exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-modal-exercise-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--go-text);
+}
+
+.planner-modal-exercise-sets {
+  width: 70px !important;
+  flex: none !important;
+}
+
+.planner-modal-exercise-row button {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--go-text-faint);
+  cursor: pointer;
+}
+
+.planner-modal-exercise-row button:hover {
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+}
+
+.planner-modal-add-exercise-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: center;
+  flex: none !important;
+  width: auto !important;
+  padding: 8px 14px !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--go-primary-dark);
+  background: var(--go-primary-50);
+  border-radius: var(--go-radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.planner-modal-add-exercise-btn:hover {
+  background: var(--go-primary-100);
+}
+
+.planner-modal-recurrence {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+}
+
+.planner-modal-weekdays {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.planner-modal-weekday-btn {
+  all: unset;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  padding: 6px 10px;
+  border-radius: var(--go-radius-pill);
+  border: 1px solid var(--go-border-soft);
+  cursor: pointer;
+}
+
+.planner-modal-weekday-btn--active {
+  background: var(--go-primary);
+  border-color: var(--go-primary);
+  color: #fff;
+}
+
+.planner-modal-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--go-danger-dark);
+}
+
+.planner-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.planner-modal-btn {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--go-radius-sm);
+  border: none;
+  cursor: pointer;
+}
+
+.planner-modal-btn--cancel {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+}
+
+.planner-modal-btn--submit {
+  background: var(--go-primary);
+  color: #fff;
+}
+
+.planner-modal-btn--submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-modal-card {
+    animation: none;
+  }
+}

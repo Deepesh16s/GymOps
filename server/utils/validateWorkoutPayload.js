@@ -1,5 +1,5 @@
 const { SESSION_TYPES, OTHER_SESSION_TYPE } = require("../constants/sessionTypes");
-const { CARDIO_ACTIVITIES, CARDIO_METRICS } = require("../constants/cardioMetadata");
+const { CARDIO_ACTIVITIES, CARDIO_METRICS, CARDIO_ACTIVITY_VARIANTS } = require("../constants/cardioMetadata");
 
 const validateWorkoutSets = (workoutSets) => {
   if (!Array.isArray(workoutSets) || workoutSets.length === 0) {
@@ -191,7 +191,175 @@ const validateCardioEntry = (cardio, index) => {
     cleanData[metricKey] = Number(value);
   });
 
-  return { activityType, data: cleanData };
+  // Phase 12 — optional variant (e.g. "Treadmill Run" under "Running").
+  // Omitting it is always valid, regardless of whether this activity
+  // has any variants defined at all — a variant is a refinement a
+  // caller may choose to add, never a requirement. When one IS sent, it
+  // must be a real option for this specific activityType; an activity
+  // with no variants defined (Elliptical, Stair Climber, Other) simply
+  // has no valid values to send, so any non-empty variant for those is
+  // rejected rather than silently stored as an arbitrary free-text value.
+  let variant = null;
+  if (cardio.variant !== undefined && cardio.variant !== null && cardio.variant !== "") {
+    const allowedVariants = CARDIO_ACTIVITY_VARIANTS[activityType] || [];
+    if (!allowedVariants.includes(cardio.variant)) {
+      const err = new Error(
+        allowedVariants.length
+          ? `Entry ${index + 1}: variant must be one of: ${allowedVariants.join(", ")}`
+          : `Entry ${index + 1}: ${activityType} does not support a variant`
+      );
+      err.status = 400;
+      throw err;
+    }
+    variant = cardio.variant;
+  }
+
+  return { activityType, data: cleanData, variant };
+};
+
+// Live Workout Mode (Phase 11) notes. Optional everywhere — omitting a
+// note is the overwhelmingly common case, so undefined/null/"" all
+// normalize to null rather than being treated as an error.
+const validateNote = (note, maxLength, label) => {
+  if (note === undefined || note === null || note === "") return null;
+
+  if (typeof note !== "string") {
+    const err = new Error(`${label} must be text`);
+    err.status = 400;
+    throw err;
+  }
+
+  const trimmed = note.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.length > maxLength) {
+    const err = new Error(`${label} must be ${maxLength} characters or fewer`);
+    err.status = 400;
+    throw err;
+  }
+
+  return trimmed;
+};
+
+const EIGHT_HOURS_IN_MINUTES = 8 * 60;
+
+// Workout Session Editing & Time Tracking. Two independent shapes:
+// AUTO (startedAt + endedAt given, duration derived) and MANUAL (a
+// duration given directly, startedAt/endedAt optional/best-effort).
+// Hard errors (End < Start, duration < 1 minute) throw; the "> 8 hours"
+// case is intentionally NOT thrown — the spec calls for a warning, not a
+// block, so it's returned on the result for the controller to pass back.
+const validateSessionTiming = ({ startedAt, endedAt, sessionDuration, timingMode }) => {
+  if (timingMode !== "AUTO" && timingMode !== "MANUAL") {
+    const err = new Error('timingMode must be "AUTO" or "MANUAL"');
+    err.status = 400;
+    throw err;
+  }
+
+  let parsedStart = null;
+  let parsedEnd = null;
+
+  if (startedAt !== undefined && startedAt !== null && startedAt !== "") {
+    parsedStart = new Date(startedAt);
+    if (Number.isNaN(parsedStart.getTime())) {
+      const err = new Error("startedAt is not a valid date/time");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (endedAt !== undefined && endedAt !== null && endedAt !== "") {
+    parsedEnd = new Date(endedAt);
+    if (Number.isNaN(parsedEnd.getTime())) {
+      const err = new Error("endedAt is not a valid date/time");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (parsedStart && parsedEnd && parsedEnd <= parsedStart) {
+    const err = new Error("End time must be after start time");
+    err.status = 400;
+    throw err;
+  }
+
+  let durationMinutes;
+
+  if (timingMode === "AUTO") {
+    if (!parsedStart || !parsedEnd) {
+      const err = new Error("startedAt and endedAt are both required in Automatic mode");
+      err.status = 400;
+      throw err;
+    }
+    durationMinutes = Math.round((parsedEnd - parsedStart) / 60000);
+  } else {
+    if (
+      sessionDuration === undefined ||
+      sessionDuration === null ||
+      sessionDuration === "" ||
+      isNaN(Number(sessionDuration))
+    ) {
+      const err = new Error("A duration is required in Manual mode");
+      err.status = 400;
+      throw err;
+    }
+    durationMinutes = Math.round(Number(sessionDuration));
+  }
+
+  if (durationMinutes < 1) {
+    const err = new Error("Duration must be at least 1 minute");
+    err.status = 400;
+    throw err;
+  }
+
+  return {
+    startedAt: parsedStart,
+    endedAt: parsedEnd,
+    sessionDuration: durationMinutes,
+    timingMode,
+    warning:
+      durationMinutes > EIGHT_HOURS_IN_MINUTES
+        ? "This workout is logged as longer than 8 hours — double-check the times if that wasn't intentional."
+        : null,
+  };
+};
+
+// Session creation sends startedAt/endedAt captured directly from the live
+// workout timer (not user-typed), so unlike validateSessionTiming this is
+// just a sanity check on what's already trustworthy data — no duration
+// recomputation, no AUTO/MANUAL branching. Both fields are optional (older
+// clients, or a session somehow finished without a startTime) so the
+// resulting workout simply has no timing until edited via "Edit Workout
+// Timing", same as before this feature existed.
+const validateOptionalSessionTimestamps = (startedAt, endedAt) => {
+  let parsedStart = null;
+  let parsedEnd = null;
+
+  if (startedAt !== undefined && startedAt !== null && startedAt !== "") {
+    parsedStart = new Date(startedAt);
+    if (Number.isNaN(parsedStart.getTime())) {
+      const err = new Error("startedAt is not a valid date/time");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (endedAt !== undefined && endedAt !== null && endedAt !== "") {
+    parsedEnd = new Date(endedAt);
+    if (Number.isNaN(parsedEnd.getTime())) {
+      const err = new Error("endedAt is not a valid date/time");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (parsedStart && parsedEnd && parsedEnd <= parsedStart) {
+    const err = new Error("End time must be after start time");
+    err.status = 400;
+    throw err;
+  }
+
+  return { startedAt: parsedStart, endedAt: parsedEnd };
 };
 
 module.exports = {
@@ -201,4 +369,7 @@ module.exports = {
   validateSessionType,
   normalizeCustomSessionType,
   validateCardioEntry,
+  validateSessionTiming,
+  validateOptionalSessionTimestamps,
+  validateNote,
 };

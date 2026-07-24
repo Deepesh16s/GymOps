@@ -121,7 +121,10 @@
   padding: 40px 48px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  /* flex-start (not center) — Today's Brief (Phase 12.5) can add a fair
+     amount of vertical content under the greeting now, so the button on
+     the right should anchor to the top rather than float mid-column. */
+  align-items: flex-start;
   gap: 32px;
   box-shadow:
     var(--go-shadow-xs),
@@ -189,17 +192,141 @@
   flex-shrink: 0;
 }
 
-.hero-streak {
-  display: inline-flex;
+/* Phase 12.5 — Today's Brief. This IS the hero's content now (replacing
+   the old pill row entirely): a plain checklist directly under the
+   greeting, one line per rule-engine output (workout recommendation,
+   goal/steps proximity, streak protection — see
+   utils/dashboardInsights.js's getTodaysBrief). Kept as a quiet text
+   list rather than another row of boxed cards, so "Good Evening" and
+   the brief read as one cohesive block instead of two competing
+   surfaces stacked on top of each other. */
+.hero-brief-label {
+  margin-top: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--go-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hero-brief-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 0;
+  list-style: none;
+  max-width: 520px;
+}
+
+.hero-brief-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--go-text-muted);
+  line-height: 1.4;
+}
+
+.hero-brief-item__icon {
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
-  gap: 7px;
-  background: var(--go-success-50);
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+.hero-brief-item__text strong {
+  color: var(--go-text);
+  font-weight: 700;
+}
+
+/* Phase 13D, Part A.4 — Reminder Explanation, collapsed by default. */
+.hero-brief-item__why-btn {
+  all: unset;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--go-primary);
+  cursor: pointer;
+}
+
+.hero-brief-item__why-btn:hover,
+.hero-brief-item__why-btn:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.hero-brief-item__why-list {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  list-style: disc;
+  font-size: 12px;
+  color: var(--go-text-muted);
+  line-height: 1.5;
+}
+
+.hero-brief-item--recommend .hero-brief-item__icon {
+  background: color-mix(in srgb, var(--go-primary) 16%, transparent);
+  color: var(--go-primary);
+}
+
+.hero-brief-item--goal .hero-brief-item__icon {
+  background: color-mix(in srgb, var(--go-primary) 16%, transparent);
+  color: var(--go-primary);
+}
+
+.hero-brief-item--steps .hero-brief-item__icon {
+  background: color-mix(in srgb, var(--go-success) 16%, transparent);
   color: var(--go-success-dark);
-  border: 1px solid color-mix(in srgb, var(--go-success) 20%, transparent);
-  border-radius: 100px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
+}
+
+.hero-brief-item--streak .hero-brief-item__icon {
+  background: color-mix(in srgb, #f97316 16%, transparent);
+  color: #c2410c;
+}
+
+/* Phase 13B — the plannedWorkout brief item is the one clickable entry
+   in this list (every other item is informational), so it gets a
+   pointer cursor, a hover affordance, and a small "Start" chip that
+   makes the click target obvious without turning the whole list into a
+   button grid. */
+.hero-brief-item--actionable {
+  cursor: pointer;
+  border-radius: 10px;
+  margin: -4px -8px;
+  padding: 4px 8px;
+  transition: background-color 0.15s ease;
+}
+
+.hero-brief-item--actionable:hover,
+.hero-brief-item--actionable:focus-visible {
+  background: color-mix(in srgb, var(--go-primary) 8%, transparent);
+}
+
+.hero-brief-item--actionable:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 1px;
+}
+
+.hero-brief-item__action {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--go-primary);
+  background: color-mix(in srgb, var(--go-primary) 14%, transparent);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-brief-item--actionable {
+    transition: none;
+  }
 }
 
 .cta-btn {
@@ -222,7 +349,11 @@
 .cta-btn:hover {
   background: var(--go-primary-dark);
   transform: translateY(-3px);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent);
+  /* Lift shadow (unchanged) plus a soft outer glow ring — subtle, not a
+     neon effect, matching the hero card's own quiet pulse-dot language. */
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--go-primary) 16%, transparent);
 }
 
 .cta-btn:active {
@@ -301,6 +432,15 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.28s var(--dash-ease);
+}
+
+/* Tiny polish: the stat icon tilts a few degrees on hover instead of
+   staying perfectly static — same rotate treatment applied to every
+   other icon-bearing card below (.secondary-card, .insight-card,
+   .today-steps-card, .goals-widget doesn't have one). */
+.primary-card:hover .primary-card__icon {
+  transform: rotate(-6deg) scale(1.05);
 }
 
 .primary-card__body {
@@ -485,6 +625,12 @@ section.charts-row {
 
 .secondary-card__icon {
   color: var(--go-primary);
+  display: inline-flex;
+  transition: transform 0.28s var(--dash-ease);
+}
+
+.secondary-card:hover .secondary-card__icon {
+  transform: rotate(-6deg) scale(1.05);
 }
 
 .secondary-card__label {
@@ -510,6 +656,332 @@ section.charts-row {
   margin-top: 5px;
   font-size: 11.5px;
   color: var(--go-text-faint);
+}
+
+/* Today's Steps (Priority 3) — "one of the most interactive cards":
+   a wide, prominent card (not squeezed into the generic secondary-card
+   grid) with a big circular icon badge, a large tap-to-edit number, and
+   a thicker animated bar. Users check this many times a day, so it gets
+   its own visual treatment rather than reusing .secondary-card's
+   compact/uniform sizing. */
+.today-steps-section__grid {
+  grid-template-columns: minmax(280px, 420px);
+}
+
+.today-steps-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: color-mix(in srgb, var(--go-surface) 76%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 20px;
+  padding: 22px 24px;
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease), border-color 0.28s var(--dash-ease);
+  box-shadow:
+    var(--go-shadow-xs),
+    0 4px 16px color-mix(in srgb, var(--go-primary) 4%, transparent);
+}
+
+.today-steps-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--go-primary) 16%, var(--go-border-soft));
+  box-shadow:
+    var(--go-shadow-sm),
+    0 12px 32px color-mix(in srgb, var(--go-primary) 10%, transparent);
+}
+
+.today-steps-card--complete {
+  border-color: color-mix(in srgb, var(--go-success) 30%, var(--go-border-soft));
+}
+
+.today-steps-card__icon-badge {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--go-primary) 14%, transparent);
+  color: var(--go-primary);
+  transition: transform 0.28s var(--dash-ease);
+}
+
+.today-steps-card:hover .today-steps-card__icon-badge {
+  transform: rotate(-6deg) scale(1.05);
+}
+
+.today-steps-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.today-steps-card__value-btn {
+  all: unset;
+  cursor: pointer;
+  display: block;
+}
+
+.today-steps-card__value {
+  display: block;
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: var(--go-text);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  transition: color 0.2s ease;
+}
+
+.today-steps-card__value-btn:hover .today-steps-card__value {
+  color: var(--go-primary);
+}
+
+.today-steps-card__value-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--go-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.today-steps-card__bar {
+  margin-top: 14px;
+  height: 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--go-primary) 12%, var(--go-surface-sunken));
+  overflow: hidden;
+}
+
+.today-steps-card__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--go-primary), color-mix(in srgb, var(--go-primary) 70%, var(--go-success)));
+  transition: width 0.5s var(--dash-ease);
+}
+
+/* Alive, not static — a gentle pulse once the day's count is close
+   (90%+) but not yet at the goal, so hitting it feels like an event. */
+.today-steps-card__bar--pulse .today-steps-card__bar-fill {
+  animation: steps-bar-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes steps-bar-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.25); }
+}
+
+.today-steps-card__stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--go-text-faint);
+}
+
+.today-steps-card__stats strong {
+  color: var(--go-text);
+  font-weight: 700;
+  margin-right: 3px;
+}
+
+.today-steps-card__goal-met {
+  color: var(--go-success-dark) !important;
+}
+
+.today-steps-card__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.today-steps-card__edit input {
+  font-size: 1.6rem;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface);
+  color: var(--go-text);
+  width: 100%;
+}
+
+.today-steps-card__edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.today-steps-card__edit-actions button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  cursor: pointer;
+}
+
+.today-steps-card__edit-actions button:first-child {
+  background: var(--go-primary);
+  border-color: var(--go-primary);
+  color: white;
+}
+
+/* Priority 4 — Insights. Each card is one entry from
+   utils/dashboardInsights.js, colored by `tone` (success/streak/warning/
+   goal) so the row reads at a glance without requiring the copy to be
+   parsed first. */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: color-mix(in srgb, var(--go-surface) 76%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 16px;
+  padding: 16px 18px;
+  transition: transform 0.28s var(--dash-ease), box-shadow 0.28s var(--dash-ease);
+}
+
+.insight-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--go-shadow-sm);
+}
+
+.insight-card__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  transition: transform 0.28s var(--dash-ease);
+}
+
+.insight-card:hover .insight-card__icon {
+  transform: rotate(-6deg) scale(1.05);
+}
+
+.insight-card--success .insight-card__icon {
+  background: color-mix(in srgb, var(--go-success) 16%, transparent);
+  color: var(--go-success-dark);
+}
+
+.insight-card--streak .insight-card__icon {
+  background: color-mix(in srgb, #f97316 16%, transparent);
+  color: #c2410c;
+}
+
+.insight-card--warning .insight-card__icon {
+  background: color-mix(in srgb, var(--go-warning, #f59e0b) 18%, transparent);
+  color: color-mix(in srgb, var(--go-warning, #f59e0b) 70%, black);
+}
+
+.insight-card--goal .insight-card__icon {
+  background: color-mix(in srgb, var(--go-primary) 14%, transparent);
+  color: var(--go-primary);
+}
+
+.insight-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.insight-card__title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.insight-card__detail {
+  font-size: 12.5px;
+  color: var(--go-text-muted);
+}
+
+/* Priority 8 — Goals widget: up to 3 nearest-to-complete active goals,
+   each a title/percent row + a mini bar, so progress is visible without
+   opening /goals at all. */
+.goals-widget-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.goals-widget-link {
+  all: unset;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--go-primary);
+}
+
+.goals-widget-link:hover {
+  text-decoration: underline;
+}
+
+.goals-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: color-mix(in srgb, var(--go-surface) 76%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--go-border-soft);
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: var(--go-shadow-xs);
+}
+
+.goals-widget__row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.goals-widget__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--go-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.goals-widget__value {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--go-primary);
+  flex-shrink: 0;
+}
+
+.goals-widget__bar {
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--go-primary) 12%, var(--go-surface-sunken));
+  overflow: hidden;
+}
+
+.goals-widget__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--go-primary);
+  transition: width 0.5s var(--dash-ease);
 }
 
 .activity-row {
@@ -555,6 +1027,12 @@ section.charts-row {
   font-size: 0.975rem;
   font-weight: 600;
   color: var(--go-text);
+}
+
+.activity-card__timing-hint {
+  font-size: 11.5px;
+  color: var(--go-text-faint);
+  margin: -12px 0 16px;
 }
 
 .activity-card__link {
@@ -1213,6 +1691,41 @@ section.charts-row {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--go-text-muted);
+}
+
+.last-session-card__duration-sep {
+  margin: 0 5px;
+  opacity: 0.55;
+}
+
+/* Workout Session Editing & Time Tracking — deliberately quiet (small,
+   faint, no icon/background) so it reads as a footnote under the
+   duration, not a permanent call-to-action competing with the actual
+   session stats below it. */
+.last-session-card__timing-note {
+  font-size: 11.5px;
+  color: var(--go-text-faint);
+  margin-top: 6px;
+}
+
+.last-session-card__timing-note-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--go-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.last-session-card__timing-note-link:hover {
+  color: var(--go-primary-dark);
+}
+
+[data-theme="dark"] .last-session-card__timing-note-link:hover {
+  color: var(--go-primary-light);
 }
 
 /* Full per-exercise/per-set breakdown (replaces the old name-only chip

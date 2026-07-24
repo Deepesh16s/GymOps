@@ -7,7 +7,7 @@ import "./ExerciseSessionCard.css";
 // that record and offer a delete action.
 function CardioEntryCard({ entry, disabled = false, onDelete }) {
   const { cardio } = entry;
-  const { activityType, data } = cardio || {};
+  const { activityType, variant, data } = cardio || {};
 
   const metricEntries = Object.entries(data || {}).filter(
     ([, value]) => value !== undefined && value !== null && value !== ""
@@ -18,7 +18,7 @@ function CardioEntryCard({ entry, disabled = false, onDelete }) {
       <div className="ex-session-card__head">
         <div>
           <p className="ex-session-card__name">{activityType}</p>
-          <span className="ex-session-card__muscle">Cardio</span>
+          <span className="ex-session-card__muscle">{variant ? `Cardio · ${variant}` : "Cardio"}</span>
         </div>
       </div>
 
