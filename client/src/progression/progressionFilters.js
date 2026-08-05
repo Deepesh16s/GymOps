@@ -10,7 +10,7 @@ export const TIME_RANGE_OPTIONS = [
   { key: "30d", label: "Last 30 Days", shortLabel: "30D", days: 30 },
   { key: "90d", label: "Last 90 Days", shortLabel: "90D", days: 90 },
   { key: "6m", label: "Last 6 Months", shortLabel: "6M", days: 182 },
-  { key: "1y", label: "Last Year", shortLabel: "1Y", days: 365 },
+  { key: "1y", label: "Last 365 Days", shortLabel: "365D", days: 365 },
   { key: "lifetime", label: "Lifetime", shortLabel: "All", days: null },
 ];
 

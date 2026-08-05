@@ -914,6 +914,7 @@ export function computeMuscleBreakdown(workouts, sinceDate) {
         sets: 0,
         volume: 0,
         lastTrained: null,
+        firstTrained: null,
         sessionIds: new Set(),
         exerciseSets: new Map(),
       });
@@ -926,6 +927,13 @@ export function computeMuscleBreakdown(workouts, sinceDate) {
     const workoutDate = new Date(w.date || w.createdAt);
     if (!entry.lastTrained || workoutDate > entry.lastTrained) {
       entry.lastTrained = workoutDate;
+    }
+    // Phase 14B.1 follow-up — tracked alongside lastTrained (same per-
+    // muscle walk, no second pass over workouts) so callers wanting "how
+    // many weeks of history" for a muscle (recoveryEngine's confidence
+    // reason) don't need to re-scan workouts themselves.
+    if (!entry.firstTrained || workoutDate < entry.firstTrained) {
+      entry.firstTrained = workoutDate;
     }
 
     if (w.sessionId) entry.sessionIds.add(w.sessionId);
@@ -949,6 +957,7 @@ export function computeMuscleBreakdown(workouts, sinceDate) {
       sets: entry.sets,
       volume: entry.volume,
       lastTrained: entry.lastTrained,
+      firstTrained: entry.firstTrained,
       sessionCount: entry.sessionIds.size,
       // Most-logged-sets exercise for this muscle in the window.
       bestExercise: rankedExercises[0]?.[0] || null,

@@ -807,6 +807,13 @@
   margin-top: 2px;
 }
 
+.analytics-plateau-row__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 /* ---------------------------------------------------------------- */
 /* Projected Milestone spotlight (the "Projected PR Forecaster") —     */
 /* deliberately a little more celebratory than the rest of the page's  */

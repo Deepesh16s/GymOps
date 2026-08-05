@@ -27,6 +27,20 @@
 // generator having to hand-roll its own value-tracking.
 const Notification = require("../models/Notification");
 const { TYPE_CONFIDENCE } = require("../constants/notificationTypes");
+const { deliverPushIfEligible } = require("./pushDeliveryManager");
+
+// Phase 13D, Part B — fire-and-forget browser push, called right after a
+// notification is actually created or regenerated (never on the "still
+// active, no-op" path — see the two call sites below). A push failure
+// must never affect the notification-creation response, same discipline
+// every other side effect in this codebase already follows.
+async function deliverPushSafely(userId, doc) {
+  try {
+    await deliverPushIfEligible(userId, doc);
+  } catch (error) {
+    console.error("Push delivery failed:", error);
+  }
+}
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 const DEFAULT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -78,6 +92,7 @@ const createNotificationIfNew = async (userId, payload, options = {}) => {
   if (!existing) {
     try {
       const [doc] = await Notification.create([fields], { session: options.session });
+      await deliverPushSafely(userId, doc);
       return doc;
     } catch (error) {
       if (error.code === MONGO_DUPLICATE_KEY_ERROR) return null; // lost a create race — treat as already-exists
@@ -107,6 +122,7 @@ const createNotificationIfNew = async (userId, payload, options = {}) => {
     lastShownAt: new Date(),
   });
   await existing.save({ session: options.session });
+  await deliverPushSafely(userId, existing);
   return existing;
 };
 

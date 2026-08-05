@@ -1,0 +1,109 @@
+@import "../styles/design-tokens.css";
+
+/* Phase 14B, section 3 — Weekly Coach Report. A "premium" card: a
+   prominent grade badge up top, a compact stat grid below — same
+   surface/radius/shadow tokens every other card in this app already
+   uses, not a new visual language. */
+.coach-report {
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-md);
+  box-shadow: var(--go-shadow-sm);
+  padding: 20px 22px;
+}
+
+.coach-report__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.coach-report__period {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.coach-report__grade-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.coach-report__grade {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 6px 16px;
+  border-radius: var(--go-radius-pill);
+}
+
+.coach-report__grade--excellent {
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+}
+
+.coach-report__grade--good {
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+}
+
+.coach-report__grade--fair {
+  background: var(--go-warning-50);
+  color: var(--go-warning);
+}
+
+.coach-report__grade--poor {
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+}
+
+.coach-report__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 14px;
+}
+
+.coach-report__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.coach-report__stat--focus {
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  border-top: 1px dashed var(--go-border-soft);
+}
+
+.coach-report__stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint);
+}
+
+.coach-report__stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.coach-report__stat-value--up {
+  color: var(--go-success-dark);
+}
+
+.coach-report__stat-value--down {
+  color: var(--go-danger-dark);
+}
+
+@media (max-width: 480px) {
+  .coach-report__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

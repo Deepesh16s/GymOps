@@ -64,7 +64,6 @@
   justify-content: center;
   font-size: 1.6rem;
   font-weight: 700;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--go-primary) 30%, transparent);
 }
 
 .profile-name {

@@ -12,6 +12,7 @@ const goalRoutes = require("./routes/goalRoutes");
 const dailyStepsRoutes = require("./routes/dailyStepsRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const plannedWorkoutRoutes = require("./routes/plannedWorkoutRoutes");
+const pushRoutes = require("./routes/pushRoutes");
 
 const app = express();
 
@@ -31,16 +32,10 @@ app.use("/api/goals", goalRoutes);
 app.use("/api/daily-steps", dailyStepsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/planned-workouts", plannedWorkoutRoutes);
-
-// Fallback-only: only reached when no route above has already handled
-// the request. Cannot alter the behavior of any existing endpoint.
+app.use("/api/push", pushRoutes);
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
-
-// Fallback-only: only reached via next(err), which no existing
-// controller calls (each handles and responds to its own errors).
-// Exists solely as a safety net for a genuinely unhandled exception.
 app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err);

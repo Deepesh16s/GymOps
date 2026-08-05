@@ -481,8 +481,12 @@
   font-size: var(--go-text-body);
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--go-fast), color var(--go-fast);
+  transition: background 0.15s ease, color 0.15s ease;
   white-space: nowrap;
+}
+
+.progression-filterbar__tab svg {
+  flex-shrink: 0;
 }
 
 .progression-filterbar__tab:hover {
@@ -546,6 +550,126 @@
 .progression-filterbar__toggle input:focus-visible {
   outline: 2px solid var(--go-primary);
   outline-offset: 2px;
+}
+
+.training-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.training-heatmap__scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.training-heatmap__months {
+  position: relative;
+  height: 16px;
+  display: flex;
+}
+
+.training-heatmap__months-spacer {
+  flex-shrink: 0;
+  width: 28px;
+}
+
+.training-heatmap__month {
+  position: absolute;
+  top: 0;
+  font-size: 10.5px;
+  color: var(--go-text-faint);
+  white-space: nowrap;
+}
+
+.training-heatmap__body {
+  display: flex;
+  gap: 4px;
+}
+
+.training-heatmap__day-labels {
+  flex-shrink: 0;
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.training-heatmap__day-labels span {
+  height: 11px;
+  font-size: 10px;
+  line-height: 11px;
+  color: var(--go-text-faint);
+}
+
+.training-heatmap__grid {
+  display: flex;
+  gap: 3px;
+}
+
+.training-heatmap__col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.training-heatmap__cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
+}
+
+.training-heatmap__cell--t0 {
+  background: var(--go-surface-sunken);
+}
+
+.training-heatmap__cell--t1 {
+  background: color-mix(in srgb, var(--go-success) 25%, var(--go-surface-sunken));
+  border-color: transparent;
+}
+
+.training-heatmap__cell--t2 {
+  background: color-mix(in srgb, var(--go-success) 48%, var(--go-surface-sunken));
+  border-color: transparent;
+}
+
+.training-heatmap__cell--t3 {
+  background: color-mix(in srgb, var(--go-success) 72%, var(--go-surface-sunken));
+  border-color: transparent;
+}
+
+.training-heatmap__cell--t4 {
+  background: var(--go-success);
+  border-color: transparent;
+}
+
+.training-heatmap__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.training-heatmap__footer-hint {
+  font-size: var(--go-text-caption);
+  color: var(--go-text-muted);
+}
+
+.training-heatmap__legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--go-text-faint);
+}
+
+.training-heatmap__legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
 }
 
 /* ---------------------------------------------------------------- */

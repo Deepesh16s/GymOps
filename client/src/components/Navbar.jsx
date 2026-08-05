@@ -82,7 +82,6 @@ function Navbar() {
             >
               <Icon size={16} strokeWidth={1.8} />
               {label}
-              <span className="navbar-link-indicator" />
             </Link>
           );
         })}

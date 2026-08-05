@@ -56,6 +56,17 @@ const NOTIFICATION_TYPES = {
   PLANNER_OVERLAP: "plannerOverlap",
   PLANNER_SERIES_ENDING_SOON: "plannerSeriesEndingSoon",
   FIRST_WORKOUT_AFTER_BREAK: "firstWorkoutAfterBreak",
+
+  // Phase 14B, section 8 — Intelligence-driven reminders. Computed
+  // entirely client-side (client/src/reminders/intelligenceReminders.js)
+  // from Phase 14A's intelligence/ engines, same "no scheduler, freshest
+  // as of last page load" model as the other Phase 13C reminder types
+  // above — listed here too only to keep this file the single mirrored
+  // vocabulary of every `type` a Notification-shaped object may carry.
+  PLATEAU_DETECTED: "plateauDetected",
+  WEEKLY_GRADE_IMPROVED: "weeklyGradeImproved",
+  RECOVERY_SCORE_INCREASED: "recoveryScoreIncreased",
+  VOLUME_LANDMARK_ACHIEVED: "volumeLandmarkAchieved",
 };
 
 // Phase 13C, section 9 — the single source of truth every reminder's
@@ -103,6 +114,12 @@ const TYPE_PRIORITY = {
   [NOTIFICATION_TYPES.WORKOUT_RESCHEDULED]: "low",
   [NOTIFICATION_TYPES.RECURRING_SCHEDULE_CREATED]: "low",
   [NOTIFICATION_TYPES.WORKOUT_CANCELLED]: "low",
+
+  // Phase 14B, section 8.
+  [NOTIFICATION_TYPES.PLATEAU_DETECTED]: "medium",
+  [NOTIFICATION_TYPES.WEEKLY_GRADE_IMPROVED]: "low",
+  [NOTIFICATION_TYPES.RECOVERY_SCORE_INCREASED]: "low",
+  [NOTIFICATION_TYPES.VOLUME_LANDMARK_ACHIEVED]: "low",
 };
 
 // Phase 13D, Part A.1 — Reminder Confidence: how certain the rule that
@@ -151,6 +168,13 @@ const TYPE_CONFIDENCE = {
   [NOTIFICATION_TYPES.WORKOUT_RESCHEDULED]: "low",
   [NOTIFICATION_TYPES.RECURRING_SCHEDULE_CREATED]: "low",
   [NOTIFICATION_TYPES.WORKOUT_CANCELLED]: "low",
+
+  // Phase 14B, section 8 — mirrors the confidence each candidate already
+  // stamps on itself in client/src/reminders/intelligenceReminders.js.
+  [NOTIFICATION_TYPES.PLATEAU_DETECTED]: "medium",
+  [NOTIFICATION_TYPES.WEEKLY_GRADE_IMPROVED]: "high",
+  [NOTIFICATION_TYPES.RECOVERY_SCORE_INCREASED]: "medium",
+  [NOTIFICATION_TYPES.VOLUME_LANDMARK_ACHIEVED]: "medium",
 };
 
 // Streak lengths worth a one-time celebration. A day beyond 100 doesn't

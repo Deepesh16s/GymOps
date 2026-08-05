@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   ChevronDown,
   Clock,
@@ -10,6 +11,7 @@ import {
   Star,
   Trophy,
   Sparkles,
+  Activity,
 } from "lucide-react";
 import { getSessionTypeColor } from "../../constants/sessionTypes";
 import { formatDurationLong, formatClockTime } from "../../utils/timeFormat";
@@ -19,6 +21,7 @@ import {
   getSessionTypeLabel,
   formatCardioPrLabel,
 } from "../../utils/workoutUtils";
+import { generateSessionIntelligence } from "../../trainingIntelligence";
 import OverflowMenu from "./OverflowMenu";
 import SessionTimeline from "./SessionTimeline";
 
@@ -52,8 +55,18 @@ function SessionCard({
   deletingWorkoutId,
   onDeleteWorkout,
   onEditTiming,
+  workouts,
 }) {
   const { exerciseCount, cardioCount, setCount, volume, totalReps, muscles } = session.stats;
+
+  // Phase 14B, section 6 — Session Intelligence. Only computed once this
+  // card is actually expanded (the body is always mounted, just CSS-
+  // collapsed, so gating on isExpanded avoids running this for every
+  // session in a long, mostly-collapsed list).
+  const sessionIntelligence = useMemo(
+    () => (isExpanded ? generateSessionIntelligence(workouts, session) : null),
+    [isExpanded, workouts, session]
+  );
   const visibleMuscles = muscles.slice(0, MAX_VISIBLE_MUSCLE_CHIPS);
   const hiddenMuscleCount = muscles.length - visibleMuscles.length;
   const hasDuration = session.sessionDuration != null && session.sessionDuration > 0;
@@ -284,6 +297,46 @@ function SessionCard({
             deletingWorkoutId={deletingWorkoutId}
             onDeleteWorkout={onDeleteWorkout}
           />
+
+          {sessionIntelligence?.available && (
+            <div className="session-intelligence">
+              <span className="session-intelligence__label">
+                <Activity size={13} strokeWidth={2} />
+                Session Intelligence
+              </span>
+              <div className="session-intelligence__grid">
+                {sessionIntelligence.recoveryImpact && (
+                  <div className="session-intelligence__row">
+                    <span>Recovery Impact</span>
+                    <strong>
+                      {sessionIntelligence.recoveryImpact.muscle}: {sessionIntelligence.recoveryImpact.status}
+                    </strong>
+                  </div>
+                )}
+                {sessionIntelligence.highestFatigueContributor && (
+                  <div className="session-intelligence__row">
+                    <span>Highest Fatigue Contributor</span>
+                    <strong>
+                      {sessionIntelligence.highestFatigueContributor.muscle} (
+                      {sessionIntelligence.highestFatigueContributor.volume.toLocaleString()} kg)
+                    </strong>
+                  </div>
+                )}
+                {sessionIntelligence.weeklyVolumeContributionPct != null && (
+                  <div className="session-intelligence__row">
+                    <span>Weekly Volume Contribution</span>
+                    <strong>{sessionIntelligence.weeklyVolumeContributionPct}%</strong>
+                  </div>
+                )}
+                {sessionIntelligence.suggestedRecoveryHours != null && (
+                  <div className="session-intelligence__row">
+                    <span>Suggested Recovery Window</span>
+                    <strong>~{sessionIntelligence.suggestedRecoveryHours}h</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {(hasStrengthEntries || hasDuration) && (
           <div className="session-summary-footer">

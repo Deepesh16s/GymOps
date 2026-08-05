@@ -1081,6 +1081,57 @@
   animation: history-row-fade-in 380ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
 }
 
+/* Phase 14B, section 6 — Session Intelligence. Same "muted card with an
+   uppercase label" shape as session-pr-panel, tinted with the primary
+   token instead of warning since this is coaching info, not an alert. */
+.session-intelligence {
+  margin: 16px 24px 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  opacity: 0;
+  animation: history-row-fade-in 380ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  background: var(--go-primary-50);
+  border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
+}
+
+.session-intelligence__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--go-primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.session-intelligence__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.session-intelligence__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-intelligence__row span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--go-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.session-intelligence__row strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
 .session-summary-footer__label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -1266,7 +1317,8 @@
   }
 
   .session-timing,
-  .session-pr-panel {
+  .session-pr-panel,
+  .session-intelligence {
     margin-left: 18px;
     margin-right: 18px;
   }
@@ -1335,6 +1387,7 @@
   .session-pr-panel,
   .session-timing,
   .session-timing__item:hover,
+  .session-intelligence,
   .session-summary-footer,
   .session-timeline,
   .session-timeline__event,

@@ -1,0 +1,63 @@
+@import "./design-tokens.css";
+
+/* Phase 15A — canonical Primary CTA button. Previously defined
+   independently in both pages/dashboard.css and pages/goals.css with
+   real drift between them (different padding, and goals.css's hover
+   lacked dashboard.css's glow-ring shadow layer) — components/
+   WorkoutSession.css also assumed this class's base styles existed
+   from whichever page happened to host it, without ever defining them
+   itself. This is now the ONE place `.cta-btn` is defined; imported
+   here (via design-tokens.css, which every page/component CSS file
+   already imports first) so no per-file import list needed to change.
+   Page-specific mobile-breakpoint overrides (dashboard.css/goals.css
+   still each set `.cta-btn { width: 100%; }` at their own breakpoint)
+   are left in place — that's a legitimate per-page layout choice, not
+   duplicated visual identity. */
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--go-primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 26px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--go-base), box-shadow var(--go-base), background var(--go-base);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-primary) 30%, transparent);
+  white-space: nowrap;
+}
+
+.cta-btn:hover {
+  background: var(--go-primary-dark);
+  transform: translateY(-3px);
+  /* Lift shadow plus a soft outer glow ring — subtle, not neon. */
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--go-primary) 16%, transparent);
+}
+
+.cta-btn:active {
+  transform: translateY(0);
+}
+
+.cta-btn:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.cta-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-btn {
+    transition: none;
+  }
+}

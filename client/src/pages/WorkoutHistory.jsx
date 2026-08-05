@@ -354,6 +354,7 @@ function WorkoutHistory() {
                   deletingWorkoutId={deletingId}
                   onDeleteWorkout={handleDelete}
                   onEditTiming={() => setEditingTimingSession(session)}
+                  workouts={workouts}
                 />
               </div>
             ))}

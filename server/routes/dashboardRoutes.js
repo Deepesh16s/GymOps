@@ -7,7 +7,6 @@ const {
   getTotalExercises,
   getRecentWorkouts,
   getMuscleDistribution,
-  getWeeklyVolume,
   getMonthlyWorkouts,
   getFavoriteExercise,
   getLastWorkout,
@@ -30,7 +29,6 @@ router.get("/total-exercises", protect, getTotalExercises);
 
 router.get("/recent-workouts", protect, getRecentWorkouts);
 router.get("/muscle-distribution", protect, getMuscleDistribution);
-router.get("/weekly-volume", protect, getWeeklyVolume);
 router.get("/monthly-workouts", protect, getMonthlyWorkouts);
 
 router.get("/favorite-exercise", protect, getFavoriteExercise);

@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react";
+import ConfidenceBadge from "../ConfidenceBadge";
 import "./progression-charts.css";
 
 // Generic ranked-bar row — one label, a progress track, and a trailing
@@ -12,7 +13,21 @@ import "./progression-charts.css";
 // bar track entirely (a leaderboard read instead of a proportion read),
 // used where several of these lists sit back to back and an unbroken run
 // of identical bars starts to blend together.
-function DistributionRow({ label, sub, pct = 0, badge, rank, onSelect }) {
+// `confidence` is optional — a per-row standardized confidence level
+// (see components/ConfidenceBadge.jsx), for lists where each row is its
+// own independent intelligence read (Analytics' Recovery/Plateaus/Volume
+// Landmarks rows) rather than one shared confidence for the whole list.
+function DistributionRow({
+  label,
+  sub,
+  pct = 0,
+  badge,
+  rank,
+  onSelect,
+  confidence,
+  confidenceReason,
+  confidenceLabel = "Confidence",
+}) {
   const content = (
     <>
       {rank != null ? (
@@ -25,6 +40,7 @@ function DistributionRow({ label, sub, pct = 0, badge, rank, onSelect }) {
       <span className="prog-exdist__row-name">{label}</span>
       <span className="prog-exdist__row-count">
         {badge && <span className={`distribution-row__badge distribution-row__badge--${badge.tone}`}>{badge.label}</span>}
+        {confidence && <ConfidenceBadge level={confidence} reason={confidenceReason} label={confidenceLabel} />}
         {sub}
         {onSelect && <ChevronRight size={13} strokeWidth={2} />}
       </span>

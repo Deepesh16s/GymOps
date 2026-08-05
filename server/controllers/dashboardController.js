@@ -168,37 +168,6 @@ exports.getMuscleDistribution = async (req, res) => {
   }
 };
 
-exports.getWeeklyVolume = async (req, res) => {
-  try {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diffToMon);
-    monday.setHours(0, 0, 0, 0);
-
-    const workouts = await Workout.find({
-      user: req.user._id,
-      date: { $gte: monday },
-    });
-
-    const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const accum = Object.fromEntries(DAYS.map((d) => [d, 0]));
-
-    workouts.forEach((w) => {
-      const d = new Date(w.date).getDay();
-      const label = DAYS[d === 0 ? 6 : d - 1];
-      accum[label] += workoutVolume(w);
-    });
-
-    const result = DAYS.map((day) => ({ day, volume: accum[day] }));
-    res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server Error" });
-  }
-};
-
 exports.getMonthlyWorkouts = async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();

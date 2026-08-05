@@ -180,24 +180,6 @@
   }
 }
 
-/* Soft ambient glow behind the figures, matching the blurred "orb"
-   accents already used on Dashboard's own background — ties the map
-   into the same premium visual language instead of sitting on a flat
-   background. */
-.muscle-map__bodies::before {
-  content: "";
-  position: absolute;
-  inset: -20% -10%;
-  background: radial-gradient(
-    ellipse at center,
-    color-mix(in srgb, var(--heat-moderate-b) 16%, transparent) 0%,
-    transparent 70%
-  );
-  filter: blur(30px);
-  z-index: -1;
-  pointer-events: none;
-}
-
 .muscle-map__body {
   display: flex;
   flex-direction: column;

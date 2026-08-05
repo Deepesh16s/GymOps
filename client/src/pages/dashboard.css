@@ -17,61 +17,12 @@
   overflow-x: hidden;
   /* Shared "premium" ease-out used across every card's hover lift, so
      hero, primary/secondary cards, charts, and activity cards all move
-     with the same feel instead of each having its own timing curve. */
-  --dash-ease: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes dash-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dash-fade-in {
-  animation: dash-fade-in 0.45s var(--dash-ease);
-}
-
-.dash-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(110px);
-  opacity: 0.65;
-}
-
-.orb--1 {
-  width: 420px;
-  height: 420px;
-  background: color-mix(in srgb, var(--go-brand) 13%, transparent);
-  top: -140px;
-  left: -120px;
-}
-
-.orb--2 {
-  width: 320px;
-  height: 320px;
-  background: color-mix(in srgb, var(--go-brand) 9%, transparent);
-  top: 42%;
-  right: -100px;
-}
-
-.orb--3 {
-  width: 280px;
-  height: 280px;
-  background: color-mix(in srgb, var(--go-brand-light) 9%, transparent);
-  bottom: -80px;
-  left: 38%;
+     with the same feel instead of each having its own timing curve.
+     Phase 15A — now an alias for design-tokens.css's --go-ease-decel
+     (the exact same cubic-bezier value, confirmed also independently
+     hand-typed as progression.css's --prog-ease) rather than a second,
+     locally-duplicated literal. */
+  --dash-ease: var(--go-ease-decel);
 }
 
 .dash-main {
@@ -127,20 +78,9 @@
   align-items: flex-start;
   gap: 32px;
   box-shadow:
-    var(--go-shadow-xs),
-    0 8px 32px color-mix(in srgb, var(--go-primary) 7%, transparent),
+    var(--go-shadow-sm),
     inset 0 1px 0 color-mix(in srgb, var(--go-surface) 90%, transparent);
   position: relative;
-  overflow: hidden;
-}
-
-.hero-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 80% 50%, color-mix(in srgb, var(--go-primary) 6%, transparent) 0%, transparent 60%);
-  pointer-events: none;
 }
 
 .hero-card__eyebrow {
@@ -161,6 +101,18 @@
   background: var(--go-success);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-success) 22%, transparent);
   animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+/* Visual-delight pass — small date context next to "Live dashboard",
+   same eyebrow row, deliberately muted (--go-text-faint) so it reads as
+   supplementary context rather than competing with the live indicator. */
+.hero-card__eyebrow-sep {
+  color: var(--go-text-faint);
+}
+
+.hero-card__date {
+  color: var(--go-text-faint);
+  font-weight: 500;
 }
 
 @keyframes pulse-dot {
@@ -268,6 +220,259 @@
   line-height: 1.5;
 }
 
+/* User feedback ⭐2 — "Coach Priority" leading banner. Severity tone
+   mirrors the reminder-priority vocabulary this app already uses
+   (critical/high/medium/low), not a new color language. */
+.coach-priority-banner {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--go-radius-md);
+  border: 1px solid transparent;
+  cursor: default;
+}
+
+/* Only the clickable variant (a real, different navigation target)
+   invites a click — the plain <div> fallback (see dashboard.jsx's
+   CoachPriorityBanner) stays visually identical minus the affordance. */
+.coach-priority-banner--clickable {
+  cursor: pointer;
+}
+
+.coach-priority-banner:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.coach-priority-banner--critical {
+  background: var(--go-danger-50);
+  border-color: color-mix(in srgb, var(--go-danger-dark) 25%, transparent);
+}
+
+.coach-priority-banner--high {
+  background: var(--go-warning-50);
+  border-color: color-mix(in srgb, var(--go-warning) 25%, transparent);
+}
+
+.coach-priority-banner--medium,
+.coach-priority-banner--low {
+  background: var(--go-primary-50);
+  border-color: color-mix(in srgb, var(--go-primary) 20%, transparent);
+}
+
+.coach-priority-banner__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.coach-priority-banner--critical .coach-priority-banner__icon {
+  color: var(--go-danger-dark);
+}
+
+.coach-priority-banner--high .coach-priority-banner__icon {
+  color: var(--go-warning);
+}
+
+.coach-priority-banner--medium .coach-priority-banner__icon,
+.coach-priority-banner--low .coach-priority-banner__icon {
+  color: var(--go-primary);
+}
+
+.coach-priority-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  min-width: 0;
+}
+
+.coach-priority-banner__title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.coach-priority-banner__detail {
+  font-size: 0.78rem;
+  color: var(--go-text-muted);
+}
+
+/* Phase 14B, section 9 — "Today's Focus" section-level Why? disclosure.
+   Same collapsed-by-default pattern as .hero-brief-item__why-btn above,
+   just placed under the stat tile grid instead of inline with one item. */
+.coach-why {
+  margin-top: 10px;
+}
+
+.coach-why__btn {
+  all: unset;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--go-primary);
+  cursor: pointer;
+}
+
+.coach-why__btn:hover,
+.coach-why__btn:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+/* User feedback — one coherent coaching explanation (a single heading +
+   a short checklist) instead of four separate analytics cards. Same
+   surface/border language every other Dashboard card already uses — no
+   new visual system, just a different internal layout. */
+.coach-explanation {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface-sunken);
+}
+
+.coach-explanation__heading {
+  margin: 0 0 2px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.coach-explanation__generated {
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  color: var(--go-text-faint);
+}
+
+.coach-explanation__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coach-explanation__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--go-text-muted);
+  line-height: 1.45;
+}
+
+.coach-explanation__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.coach-explanation__item--success .coach-explanation__icon {
+  color: var(--go-success-dark);
+}
+
+.coach-explanation__item--neutral .coach-explanation__icon {
+  color: var(--go-primary);
+}
+
+.coach-explanation__item--warning .coach-explanation__icon {
+  color: var(--go-warning);
+}
+
+.coach-explanation__research {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--go-border-soft);
+}
+
+.coach-explanation__research-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--go-text-faint);
+  cursor: pointer;
+}
+
+.coach-explanation__research-btn:hover,
+.coach-explanation__research-btn:focus-visible {
+  color: var(--go-text-muted);
+  outline: none;
+}
+
+.coach-explanation__research-btn:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.coach-explanation__research-panel {
+  margin-top: 8px;
+  animation: coach-explanation-research-in 140ms ease-out;
+}
+
+@keyframes coach-explanation-research-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.coach-explanation__research-intro {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  color: var(--go-text-faint);
+  line-height: 1.4;
+}
+
+.coach-explanation__research-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.coach-explanation__research-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-decoration: none;
+}
+
+.coach-explanation__research-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--go-primary);
+  line-height: 1.4;
+}
+
+.coach-explanation__research-desc {
+  font-size: 10.5px;
+  color: var(--go-text-faint);
+  line-height: 1.35;
+}
+
+.coach-explanation__research-list a:hover .coach-explanation__research-name,
+.coach-explanation__research-list a:focus-visible .coach-explanation__research-name {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-explanation__research-panel {
+    animation: none;
+  }
+}
+
 .hero-brief-item--recommend .hero-brief-item__icon {
   background: color-mix(in srgb, var(--go-primary) 16%, transparent);
   color: var(--go-primary);
@@ -329,36 +534,11 @@
   }
 }
 
-.cta-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--go-primary);
-  color: #fff;
-  border: none;
-  border-radius: 14px;
-  padding: 14px 26px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-primary) 30%, transparent);
-  white-space: nowrap;
-}
-
-.cta-btn:hover {
-  background: var(--go-primary-dark);
-  transform: translateY(-3px);
-  /* Lift shadow (unchanged) plus a soft outer glow ring — subtle, not a
-     neon effect, matching the hero card's own quiet pulse-dot language. */
-  box-shadow:
-    0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent),
-    0 0 0 6px color-mix(in srgb, var(--go-primary) 16%, transparent);
-}
-
-.cta-btn:active {
-  transform: translateY(0);
-}
+/* Phase 15A — .cta-btn's base/hover/active/disabled/focus-visible styles
+   now live in client/src/styles/buttons.css (loaded globally via
+   index.css), consolidated from what used to be independent, drifted
+   definitions here and in goals.css. Only this page's own mobile
+   breakpoint override remains local (see the 480px media query below). */
 
 .primary-grid {
   display: grid;
@@ -371,7 +551,7 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 22px 24px;
   display: flex;
   align-items: center;
@@ -504,7 +684,7 @@ section.charts-row {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 28px 28px 22px;
   box-shadow:
     var(--go-shadow-xs),
@@ -539,18 +719,36 @@ section.charts-row {
   margin-top: 3px;
 }
 
-.chart-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--go-primary-50);
-  color: var(--go-primary-dark);
-  border: 1px solid color-mix(in srgb, var(--go-primary) 18%, transparent);
-  border-radius: 100px;
-  padding: 4px 11px;
+.chart-card__range-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  background: var(--go-surface-sunken);
+  border-radius: 8px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.chart-card__range-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 9px;
   font-size: 11.5px;
   font-weight: 600;
-  flex-shrink: 0;
+  color: var(--go-text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chart-card__range-btn:hover {
+  color: var(--go-primary);
+}
+
+.chart-card__range-btn--active {
+  background: var(--go-primary);
+  color: #fff;
 }
 
 .chart-tooltip {
@@ -656,6 +854,16 @@ section.charts-row {
   margin-top: 5px;
   font-size: 11.5px;
   color: var(--go-text-faint);
+}
+
+/* User feedback ⭐1 — standardized confidence badges/⭐5 — score
+   explainability, both slotted into SecondaryCard's new `children`. */
+.secondary-card > .confidence-badge {
+  margin-top: 8px;
+}
+
+.secondary-card > .recovery-breakdown {
+  margin-top: 4px;
 }
 
 /* Today's Steps (Priority 3) — "one of the most interactive cards":
@@ -995,7 +1203,7 @@ section.charts-row {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 26px;
   box-shadow:
     var(--go-shadow-xs),
@@ -1354,6 +1562,14 @@ section.charts-row {
     width: 100%;
     justify-content: center;
   }
+
+  /* Narrowest phones — drop the date context rather than let the
+     eyebrow row wrap awkwardly or overflow; "Live dashboard" + the
+     pulse dot still communicate the same "this is live" idea alone. */
+  .hero-card__eyebrow-sep,
+  .hero-card__date {
+    display: none;
+  }
 }
 .workout-row__sets {
   font-size: 11px;
@@ -1465,7 +1681,7 @@ section.charts-row {
   max-width: 380px;
   background: var(--go-surface);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 24px;
   box-shadow:
     var(--go-shadow-sm),
@@ -1594,7 +1810,7 @@ section.charts-row {
 .start-workout-modal-btn--confirm {
   background: var(--go-primary);
   color: #fff;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--go-primary) 28%, transparent);
+  box-shadow: var(--go-shadow-sm);
 }
 
 .start-workout-modal-btn--confirm:hover:not(:disabled) {
@@ -1628,7 +1844,7 @@ section.charts-row {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 24px 26px;
   box-shadow:
     var(--go-shadow-xs),

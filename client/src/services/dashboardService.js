@@ -15,8 +15,6 @@ export const getTopMuscle = () => api.get("/dashboard/top-muscle");
 
 export const getPersonalRecords = () => api.get("/dashboard/personal-records");
 
-export const getWeeklyVolume = () => api.get("/dashboard/weekly-volume");
-
 export const getRecentSessions = (limit = 6) =>
   api.get("/dashboard/recent-sessions", { params: { limit } });
 
@@ -26,7 +24,9 @@ export const getMuscleDistribution = (range) =>
 // Fetches every Dashboard summary widget's data in parallel (unchanged
 // from Dashboard.jsx's prior Promise.all — these are independent
 // resources, not sequential dependencies, so parallel fetch is already
-// correct and is preserved here, just centralized).
+// correct and is preserved here, just centralized). Weekly Volume is
+// computed client-side from muscleWorkouts (trailing 7d/30d/365d filter)
+// instead of a fixed calendar-week backend endpoint.
 export const getDashboardSummaryData = () =>
   Promise.all([
     getSessionSummary(),
@@ -34,6 +34,5 @@ export const getDashboardSummaryData = () =>
     getTopExercise(),
     getTopMuscle(),
     getPersonalRecords(),
-    getWeeklyVolume(),
     getRecentSessions(6),
   ]);

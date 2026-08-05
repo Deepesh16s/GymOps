@@ -58,8 +58,6 @@
   align-items: center;
 
   font-size: 25px;
-
-  box-shadow: 0 0 20px color-mix(in srgb, var(--go-brand) 30%, transparent);
 }
 
 .hero-content p {
@@ -188,8 +186,8 @@ input:focus {
 }
 
 .register-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 30px color-mix(in srgb, var(--go-primary) 25%, transparent);
+  transform: translateY(-1px);
+  box-shadow: var(--go-shadow-md);
 }
 
 .login-link {

@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import {
   ComposedChart,
+  Area,
   Line,
   ReferenceLine,
   XAxis,
@@ -82,6 +83,7 @@ function SessionDot(props) {
 // never recomputes sessions" contract as ExerciseSessionChart.
 function CardioSessionChart({ series = [], metricKey, metricDef, loading = false, height = 220 }) {
   const labelByKey = useMemo(() => new Map(series.map((p) => [p.key, p.label])), [series]);
+  const gradientId = `cardio-chart-gradient-${useId().replace(/:/g, "")}`;
 
   if (loading) return <ChartSkeleton height={height} />;
 
@@ -99,6 +101,14 @@ function CardioSessionChart({ series = [], metricKey, metricDef, loading = false
     <div className="progress-chart" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={series} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
+          {/* Same gradient treatment ExerciseSessionChart's own sibling
+              fix uses — presentation only, reads the same dataKey. */}
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--go-chart-accent)" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="var(--go-chart-accent)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid vertical={false} stroke="var(--go-border-soft)" strokeDasharray="0" />
           <XAxis
             dataKey="key"
@@ -121,6 +131,16 @@ function CardioSessionChart({ series = [], metricKey, metricDef, loading = false
             cursor={{ stroke: "var(--go-text-faint)", strokeWidth: 1 }}
           />
           <ReferenceLine y={0} stroke="var(--go-border-strong)" strokeWidth={1} />
+          <Area
+            type="linear"
+            dataKey={metricKey}
+            stroke="none"
+            fill={`url(#${gradientId})`}
+            connectNulls
+            isAnimationActive
+            animationDuration={450}
+            activeDot={false}
+          />
           <Line
             type="linear"
             dataKey={metricKey}

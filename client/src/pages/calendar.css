@@ -122,7 +122,7 @@
   cursor: pointer;
   font-family: var(--go-font);
   color: var(--go-text);
-  transition: transform var(--go-base), box-shadow var(--go-base), border-color var(--go-base), background var(--go-base);
+  transition: border-color var(--go-base), background var(--go-base);
 }
 
 .calendar-cell.is-weekend:not(.workout-day) {
@@ -143,8 +143,6 @@
 }
 
 .calendar-cell:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--go-shadow-sm);
   border-color: var(--go-primary-200);
 }
 
@@ -259,7 +257,6 @@
      a negative offset while still following the cell's rounded corners. */
   outline: 2px solid var(--go-primary);
   outline-offset: -5px;
-  box-shadow: var(--go-shadow-glow);
 }
 
 /* Marker: dot = exactly one session that day. */
@@ -475,7 +472,14 @@
 
 .planned-workout-card__recurring-tag {
   display: inline-flex;
-  color: var(--go-text-faint);
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
 }
 
 /* Phase 13C, section 14 — quiet inline flag, same visual weight as the
@@ -496,6 +500,50 @@
 .planned-workout-card__priority--high {
   background: var(--go-danger-50);
   color: var(--go-danger-dark);
+}
+
+/* User feedback ⭐1 — the standardized ConfidenceBadge sits just below
+   the badge row (readiness/reminder/recurring/priority), above the title. */
+.planned-workout-card > .confidence-badge {
+  margin-bottom: 6px;
+}
+
+/* Phase 14B, section 7 — confidence badge + conflict warning. Same pill
+   shape as priority above, tone-mapped like every other recovery-status
+   badge in this app (distribution-row__badge's balanced/warning/danger
+   vocabulary). */
+.planned-workout-card__readiness {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--go-radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.planned-workout-card__readiness--high {
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
+}
+
+.planned-workout-card__readiness--medium {
+  background: var(--go-warning-50);
+  color: var(--go-warning);
+}
+
+.planned-workout-card__readiness--low {
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+}
+
+.planned-workout-card__conflict {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--go-warning);
 }
 
 .planned-workout-card__title {

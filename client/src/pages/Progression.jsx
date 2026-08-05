@@ -19,6 +19,7 @@ import "./progression.css";
 import { getWorkouts } from "../services/workoutService";
 import { formatDate } from "../utils/dateUtils";
 import { isCardioEntry } from "../utils/workoutUtils";
+import { prHistory } from "../utils/strengthUtils";
 import FilterBar from "../components/progression/FilterBar";
 import ProgressSummary from "../components/progression/ProgressSummary";
 import TrendChart from "../components/progression/TrendChart";
@@ -28,6 +29,10 @@ import CardioSessionChart from "../components/progression/CardioSessionChart";
 import MetricCard from "../components/progression/MetricCard";
 import WorkoutLogTable from "../components/progression/WorkoutLogTable";
 import DistributionRow from "../components/progression/DistributionRow";
+import ConfidenceBadge from "../components/ConfidenceBadge";
+import { getExercisePlateau } from "../intelligence/plateauEngine";
+import { getOverloadSuggestion } from "../intelligence/overloadEngine";
+import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
 import {
   DEFAULT_TIME_RANGE,
   DEFAULT_METRIC,
@@ -141,6 +146,24 @@ function Progression() {
     () => getOverallProgression(workouts, { rangeKey: timeRange }),
     [workouts, timeRange]
   );
+
+  // Flagship pass — "Recent PR celebration" in the hero: reuses
+  // strengthUtils.prHistory exactly as Analytics' own "Latest PR" panel
+  // already does (never re-derived), scoped to the user's FULL lifetime
+  // history regardless of the page's own timeRange/viewMode filters —
+  // a PR from last week is worth celebrating even while looking at a
+  // single muscle's 90-day view. Only celebrated within a real "recent"
+  // window (14 days) — an old PR sitting in the hero forever would stop
+  // meaning anything.
+  const RECENT_PR_WINDOW_DAYS = 14;
+  const recentPr = useMemo(() => {
+    const events = prHistory(workouts);
+    if (!events.length) return null;
+    const latest = events[events.length - 1];
+    const daysAgo = Math.floor((Date.now() - new Date(latest.date).getTime()) / 86400000);
+    if (daysAgo > RECENT_PR_WINDOW_DAYS) return null;
+    return { ...latest, daysAgo };
+  }, [workouts]);
   const muscleProgression = useMemo(
     () => (muscle ? getMuscleProgression(workouts, muscle, { rangeKey: timeRange }) : null),
     [workouts, muscle, timeRange]
@@ -253,6 +276,39 @@ function Progression() {
     [viewMode, scopedWorkouts]
   );
 
+  // Phase 14B, section 5 — Exercise view coaching add-ons. Each of these
+  // is a single Phase 14A engine call composed here, never recomputed:
+  // plateau badge (plateauEngine), suggested next target (overloadEngine),
+  // recovery indicator for the muscle this exercise trains (recoveryEngine).
+  const exercisePlateau = useMemo(
+    () =>
+      viewMode === "exercise" && exercise ? getExercisePlateau(workouts, exercise, { rangeKey: timeRange }) : null,
+    [viewMode, exercise, workouts, timeRange]
+  );
+  const exerciseOverloadSuggestion = useMemo(
+    () =>
+      viewMode === "exercise" && exercise ? getOverloadSuggestion(workouts, exercise, { rangeKey: timeRange }) : null,
+    [viewMode, exercise, workouts, timeRange]
+  );
+  // The muscle group this exercise trains — read straight off the
+  // already-scoped workouts (every entry shares the same exercise, hence
+  // the same muscleGroup) rather than a second lookup table.
+  const exerciseMuscleGroup =
+    viewMode === "exercise" ? scopedWorkouts[0]?.exercise?.muscleGroup || null : null;
+  const muscleRecoveryScores = useMemo(() => getMuscleRecoveryScores(workouts), [workouts]);
+  const exerciseRecovery = useMemo(
+    () => (exerciseMuscleGroup ? muscleRecoveryScores.find((r) => r.muscle === exerciseMuscleGroup) || null : null),
+    [exerciseMuscleGroup, muscleRecoveryScores]
+  );
+  // Whether the intel row below has anything real to show — guards
+  // against rendering an empty wrapper div when none of the three
+  // signals apply (e.g. a brand-new exercise with no plateau/recovery/
+  // overload read yet).
+  const hasExerciseIntel =
+    (exercisePlateau && exercisePlateau.plateauLevel !== "None") ||
+    !!exerciseRecovery ||
+    (exerciseOverloadSuggestion?.available && exerciseOverloadSuggestion.metric !== "hold");
+
   // Cardio's own scoped log — kept entirely separate from scopedWorkouts
   // above (which stays untouched, still strength-only) rather than
   // teaching that memo a cardio branch, so Overall/Muscle/Exercise's
@@ -312,18 +368,35 @@ function Progression() {
     <div className="progression-page">
       <main className="progression-main">
         <section className="progression-hero">
-          <div>
-            <span className="progression-hero__eyebrow">
-              <span className="progression-hero__dot" />
-              Progression
-            </span>
-            <h1 className="progression-hero__title">Your Training Journey</h1>
-            <p className="progression-hero__sub">
-              From your first logged set to today — how you've progressed, where you improved,
-              and where it's time to push again.
-            </p>
+          <div className="progression-hero__top">
+            <div>
+              <span className="progression-hero__eyebrow">
+                <span className="progression-hero__dot" />
+                Progression
+              </span>
+              <h1 className="progression-hero__title">Your Training Journey</h1>
+              <p className="progression-hero__sub">
+                From your first logged set to today — how you've progressed, where you improved,
+                and where it's time to push again.
+              </p>
+            </div>
+            <ProgressSummary summary={overall.summary} trend={overall.trend} loading={loading} />
           </div>
-          <ProgressSummary summary={overall.summary} trend={overall.trend} loading={loading} />
+          {recentPr && (
+            <div className="progression-hero__pr">
+              <span className="progression-hero__pr-icon">
+                <Trophy size={16} strokeWidth={2} />
+              </span>
+              <div className="progression-hero__pr-body">
+                <p className="progression-hero__pr-label">
+                  New PR {recentPr.daysAgo === 0 ? "today" : recentPr.daysAgo === 1 ? "yesterday" : `${recentPr.daysAgo} days ago`}
+                </p>
+                <p className="progression-hero__pr-value">
+                  {recentPr.exercise} — <strong>{recentPr.weight} kg × {recentPr.reps}</strong>
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         <FilterBar
@@ -352,7 +425,11 @@ function Progression() {
             default, Muscle defaulting to Average Volume/Session since a
             muscle has no single "best set" the way one exercise does),
             Exercise plots lifting performance (Best Set by default). */}
-        <section className="progression-panel progression-timeline-hero">
+        <section
+          className={`progression-panel progression-timeline-hero${
+            activeTrend?.direction ? ` progression-timeline-hero--${activeTrend.direction}` : ""
+          }`}
+        >
           <div className="progression-panel__label-row">
             <p className="progression-panel__label">
               {viewMode === "exercise"
@@ -430,45 +507,51 @@ function Progression() {
             />
           )}
 
-          {viewMode === "exercise" && exerciseProgression && (
-            <div className="progression-timeline-hero__stats">
-              <MetricCard
-                label="Best Set"
-                icon={Trophy}
-                value={
-                  exerciseProgression.stats.bestSet
-                    ? `${exerciseProgression.stats.bestSet.weight} kg × ${exerciseProgression.stats.bestSet.reps}`
-                    : "—"
-                }
-              />
-              <MetricCard
-                label="Volume"
-                icon={TrendingUp}
-                value={`${(exerciseProgression.stats.totalVolume || 0).toLocaleString()} kg`}
-              />
-              <MetricCard label="Sessions" icon={Dumbbell} value={exerciseProgression.stats.totalSessions} />
-              <MetricCard
-                label="Average Weight"
-                icon={Layers}
-                value={
-                  exerciseProgression.stats.avgWorkingWeight != null
-                    ? `${exerciseProgression.stats.avgWorkingWeight} kg`
-                    : "—"
-                }
-              />
-            </div>
-          )}
+          {viewMode === "exercise" && exerciseProgression && hasExerciseIntel && (
+            <div className="progression-intel-row">
+              {exercisePlateau && exercisePlateau.plateauLevel !== "None" && (
+                <span className="progression-intel-row__item">
+                  <span
+                    className={`distribution-row__badge distribution-row__badge--${
+                      exercisePlateau.plateauLevel === "Confirmed" ? "danger" : "warning"
+                    }`}
+                  >
+                    {exercisePlateau.plateauLevel === "Confirmed" ? "Plateau Confirmed" : "Possible Plateau"}
+                    {exercisePlateau.maskedByVolume ? " · volume masked" : ""}
+                  </span>
+                  <ConfidenceBadge level={exercisePlateau.confidence} reason={exercisePlateau.confidenceReason} label="Plateau read" />
+                </span>
+              )}
 
-          {viewMode === "cardio" && cardioProgression && (
-            <div className="progression-timeline-hero__stats">
-              <MetricCard label="Total Distance" icon={MapPin} value={`${cardioProgression.stats.totalDistance} km`} />
-              <MetricCard label="Total Duration" icon={Timer} value={`${cardioProgression.stats.totalDuration} min`} />
-              <MetricCard label="Sessions" icon={HeartPulse} value={cardioProgression.stats.totalSessions} />
-              <MetricCard
-                label="Best Pace"
-                icon={Zap}
-                value={cardioProgression.stats.bestEver?.pace ? `${cardioProgression.stats.bestEver.pace} min/km` : "—"}
-              />
+              {exerciseRecovery && (
+                <span className="progression-intel-row__item">
+                  <span
+                    className={`distribution-row__badge distribution-row__badge--${
+                      exerciseRecovery.status === "Recovered"
+                        ? "balanced"
+                        : exerciseRecovery.status === "Recovering"
+                        ? "warning"
+                        : "danger"
+                    }`}
+                  >
+                    {exerciseRecovery.muscle}: {exerciseRecovery.status}
+                  </span>
+                  <ConfidenceBadge level={exerciseRecovery.confidence} reason={exerciseRecovery.confidenceReason} label="Recovery estimate" />
+                </span>
+              )}
+
+              {exerciseOverloadSuggestion?.available && exerciseOverloadSuggestion.metric !== "hold" && (
+                <span className="progression-intel-row__item">
+                  <span className="trend-badge trend-badge--up">
+                    Next: {exerciseOverloadSuggestion.suggested.weight} kg × {exerciseOverloadSuggestion.suggested.reps}
+                  </span>
+                  <ConfidenceBadge
+                    level={exerciseOverloadSuggestion.confidence}
+                    reason={exerciseOverloadSuggestion.confidenceReason}
+                    label="Suggested target"
+                  />
+                </span>
+              )}
             </div>
           )}
 
@@ -587,6 +670,25 @@ function Progression() {
                 }
                 trend={exerciseProgression.trend.estOneRM}
               />
+              <MetricCard
+                label="Total Volume"
+                icon={TrendingUp}
+                value={`${(exerciseProgression.stats.totalVolume || 0).toLocaleString()} kg`}
+              />
+              {/* Flagship pass — merges what used to be two separate cards
+                  (Timeline Hero's "Average Weight" value + this panel's own
+                  "Working Weight Trend" percentage) into one, since both
+                  describe the exact same working-weight figure. */}
+              <MetricCard
+                label="Average Weight"
+                icon={Layers}
+                value={
+                  exerciseProgression.stats.avgWorkingWeight != null
+                    ? `${exerciseProgression.stats.avgWorkingWeight} kg`
+                    : "—"
+                }
+                trend={exerciseProgression.trend.workingWeight}
+              />
               <MetricCard label="Total Sessions" icon={Dumbbell} value={exerciseProgression.stats.totalSessions} />
               <MetricCard
                 label="First Logged"
@@ -597,39 +699,27 @@ function Progression() {
                     : "—"
                 }
               />
-              <MetricCard
-                label="Working Weight Trend"
-                icon={TrendingUp}
-                value={
-                  exerciseProgression.trend.workingWeight
-                    ? `${exerciseProgression.trend.workingWeight.changePct > 0 ? "+" : ""}${exerciseProgression.trend.workingWeight.changePct}%`
-                    : "—"
-                }
-                trend={exerciseProgression.trend.workingWeight}
-              />
             </div>
           )}
 
           {viewMode === "cardio" && cardioProgression && (
             <div className="progression-stats-rail">
+              {/* Flagship pass — merges what used to be two separate cards
+                  (Timeline Hero's "Total Distance" value + this panel's own
+                  "Distance Trend" percentage) into one. */}
               <MetricCard
-                label="Distance Trend"
+                label="Total Distance"
                 icon={MapPin}
-                value={
-                  cardioProgression.trend.distance
-                    ? `${cardioProgression.trend.distance.changePct > 0 ? "+" : ""}${cardioProgression.trend.distance.changePct}%`
-                    : "—"
-                }
+                value={`${cardioProgression.stats.totalDistance} km`}
                 trend={cardioProgression.trend.distance}
               />
+              <MetricCard label="Total Duration" icon={Timer} value={`${cardioProgression.stats.totalDuration} min`} />
+              {/* Same merge as Total Distance above — "Best Pace" value +
+                  "Pace Trend" percentage, one fact instead of two cards. */}
               <MetricCard
-                label="Pace Trend"
+                label="Best Pace"
                 icon={Zap}
-                value={
-                  cardioProgression.trend.pace
-                    ? `${cardioProgression.trend.pace.changePct > 0 ? "+" : ""}${cardioProgression.trend.pace.changePct}%`
-                    : "—"
-                }
+                value={cardioProgression.stats.bestEver?.pace ? `${cardioProgression.stats.bestEver.pace} min/km` : "—"}
                 trend={cardioProgression.trend.pace}
               />
               <MetricCard label="Total Sessions" icon={HeartPulse} value={cardioProgression.stats.totalSessions} />

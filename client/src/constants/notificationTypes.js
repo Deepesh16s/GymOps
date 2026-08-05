@@ -120,6 +120,13 @@ const TYPE_TONE = {
   plannerOverlap: "reminder",
   plannerSeriesEndingSoon: "reminder",
   firstWorkoutAfterBreak: "achievement",
+  // Phase 14B, section 8 — intelligence-driven reminders. recoveryScoreIncreased
+  // gets its own "recovery" tone (matches recoveryComplete) rather than
+  // blending into the flat "insight" tone the other three share.
+  plateauDetected: "insight",
+  weeklyGradeImproved: "insight",
+  recoveryScoreIncreased: "recovery",
+  volumeLandmarkAchieved: "insight",
 };
 
 // Phase 13C, section 9 — mirrors server/constants/notificationTypes.js's
@@ -160,6 +167,12 @@ export const TYPE_PRIORITY = {
   workoutRescheduled: "low",
   recurringScheduleCreated: "low",
   workoutCancelled: "low",
+
+  // Phase 14B, section 8.
+  plateauDetected: "medium",
+  weeklyGradeImproved: "low",
+  recoveryScoreIncreased: "low",
+  volumeLandmarkAchieved: "low",
 };
 
 // Numeric sort weight, highest first — NotificationCenter sorts by this,
@@ -231,6 +244,13 @@ const TYPE_PREFERENCE_CATEGORY = {
   streakMilestone: "streak",
   streakProtection: "streak",
   cardioStreakExpiring: "streak",
+  // Phase 14B, section 8 — same "negative/actionable insight -> recovery
+  // toggle, positive insight -> achievement toggle" split
+  // muscleGroupNeglected/weeklyVolumeIncreased already established.
+  plateauDetected: "recovery",
+  recoveryScoreIncreased: "recovery",
+  weeklyGradeImproved: "achievement",
+  volumeLandmarkAchieved: "achievement",
 };
 
 export function getReminderPreferenceCategory(type) {

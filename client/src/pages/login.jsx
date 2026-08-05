@@ -88,16 +88,7 @@ export default function Login() {
   return (
     <div className="gl-root">
       <div className="gl-bg">
-        <div className="gl-orb gl-orb-1" />
-        <div className="gl-orb gl-orb-2" />
-        <div className="gl-orb gl-orb-3" />
         <div className="gl-grid" />
-        <div className="gl-particle" style={{ left: "8%", animationDelay: "0s", animationDuration: "5s" }} />
-        <div className="gl-particle" style={{ left: "20%", animationDelay: "1.2s", animationDuration: "7s" }} />
-        <div className="gl-particle" style={{ left: "35%", animationDelay: "0.5s", animationDuration: "6s" }} />
-        <div className="gl-particle" style={{ left: "55%", animationDelay: "2s", animationDuration: "8s" }} />
-        <div className="gl-particle" style={{ left: "72%", animationDelay: "0.8s", animationDuration: "5.5s" }} />
-        <div className="gl-particle" style={{ left: "88%", animationDelay: "1.8s", animationDuration: "7.5s" }} />
       </div>
 
       {/* LEFT: Hero Panel */}
@@ -219,7 +210,6 @@ export default function Login() {
             </div>
             {error && <p className="gl-error">{error}</p>}
             <button className="gl-btn" type="submit">
-              <span className="gl-btn-shimmer" />
               Sign In
             </button>
           </form>

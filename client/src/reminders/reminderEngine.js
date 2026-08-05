@@ -17,6 +17,7 @@ import { generateNeglectReminders } from "./neglectReminders";
 import { generateCardioReminders } from "./cardioReminders";
 import { generatePlannerReminders } from "./plannerReminders";
 import { generateAchievementReminders } from "./achievementReminders";
+import { generateIntelligenceReminders } from "./intelligenceReminders";
 import { isReminderCategoryEnabled } from "./reminderPreferences";
 import { TYPE_PRIORITY, getPriorityRank, getReminderPreferenceCategory } from "../constants/notificationTypes";
 import { dayKey } from "./reminderUtils";
@@ -90,6 +91,7 @@ export function generateReminders({ workouts = [], goals = [], plannedWorkouts =
     ...generateCardioReminders(workouts),
     ...generatePlannerReminders(plannedWorkouts),
     ...generateAchievementReminders(workouts),
+    ...generateIntelligenceReminders(workouts),
   ];
 
   const withPriority = raw.map((r) => ({

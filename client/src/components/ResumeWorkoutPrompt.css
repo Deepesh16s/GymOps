@@ -5,7 +5,7 @@
   flex-wrap: wrap;
   background: color-mix(in srgb, var(--go-surface) 78%, transparent);
   border: 1px solid var(--go-border-strong);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 20px 24px;
   box-shadow: var(--go-shadow-sm);
 }

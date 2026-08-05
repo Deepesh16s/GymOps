@@ -8,9 +8,9 @@ import {
   Dumbbell,
   Calendar,
 } from "lucide-react";
-import { startOfWeek, startOfMonth } from "../utils/dateUtils";
 import { computeMuscleBreakdown } from "../utils/workoutUtils";
-import { MUSCLE_SPLIT_CATEGORY, MUSCLE_TO_REGIONS } from "../constants/muscles";
+import { MUSCLE_TO_REGIONS } from "../constants/muscles";
+import { summarizeMuscleGroupSplit } from "../intelligence/balanceEngine";
 import "./MuscleBodyMap.css";
 
 // MUSCLE_TO_REGIONS (muscle -> Muscle Body Map SVG region id(s)) is
@@ -45,24 +45,19 @@ function intensityLevel(sets, max) {
 }
 
 const MODE_OPTIONS = [
-  { key: "week", label: "Weekly" },
-  { key: "month", label: "Monthly" },
-  { key: "90days", label: "Last 90 Days" },
-  { key: "lifetime", label: "Lifetime" },
+  { key: "7d", label: "Last 7 Days", days: 7 },
+  { key: "30d", label: "Last 30 Days", days: 30 },
+  { key: "365d", label: "Last 365 Days", days: 365 },
+  { key: "lifetime", label: "Lifetime", days: null },
 ];
 
-function ninetyDaysAgo() {
-  const d = new Date();
-  d.setDate(d.getDate() - 89);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 function getCutoffForMode(mode) {
-  if (mode === "week") return startOfWeek();
-  if (mode === "month") return startOfMonth();
-  if (mode === "90days") return ninetyDaysAgo();
-  return null; // lifetime — no cutoff
+  const opt = MODE_OPTIONS.find((o) => o.key === mode);
+  if (!opt || opt.days == null) return null;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (opt.days - 1));
+  return d;
 }
 
 function formatLastTrained(date) {
@@ -109,7 +104,7 @@ function MuscleBodyMap({
   onSelectMuscle = null,
   selectMuscleLabel = "View full progression",
 }) {
-  const [mode, setMode] = useState("month");
+  const [mode, setMode] = useState("30d");
   const [hovered, setHovered] = useState(null);
   const [expandedMuscle, setExpandedMuscle] = useState(null);
   const [isNarrow, setIsNarrow] = useState(false);
@@ -202,23 +197,21 @@ function MuscleBodyMap({
     );
     const least = trained.length > 1 ? trained[trained.length - 1] : null;
 
-    const byCategory = { Push: 0, Pull: 0, Legs: 0, Core: 0 };
-    KNOWN_MUSCLES.forEach((muscle) => {
-      const cat = MUSCLE_SPLIT_CATEGORY[muscle];
-      byCategory[cat] += entryByMuscle.get(muscle)?.sets || 0;
-    });
-    const categoryTotal = Object.values(byCategory).reduce((a, b) => a + b, 0) || 1;
+    // Phase 14A, Module 7 — reuses the ONE shared Push/Pull/Legs/Core
+    // split (intelligence/balanceEngine.js) instead of this component's
+    // own independent copy of the same arithmetic. `currentBreakdown` is
+    // already the exact computeMuscleBreakdown result entryByMuscle was
+    // built from, so this doesn't recompute anything.
+    const { pct: categoryPct } = summarizeMuscleGroupSplit(currentBreakdown, { metric: "sets" });
 
     return {
       most: trained[0] || null,
       least,
       neglected,
       trainedCount: trained.length,
-      categoryPct: Object.fromEntries(
-        Object.entries(byCategory).map(([k, v]) => [k, Math.round((v / categoryTotal) * 100)])
-      ),
+      categoryPct,
     };
-  }, [legendEntries, entryByMuscle]);
+  }, [legendEntries, entryByMuscle, currentBreakdown]);
 
   const pctOf = (sets) => (totalSets > 0 ? Math.round((sets / totalSets) * 100) : 0);
 
@@ -278,6 +271,7 @@ function MuscleBodyMap({
   const hasData = workouts.length > 0;
   const legendMax = legendEntries.length > 0 ? legendEntries[0].sets : 0;
   const modeLabel = MODE_OPTIONS.find((m) => m.key === mode)?.label || "";
+  const modeLabelPhrase = mode === "lifetime" ? "lifetime" : `in the ${modeLabel.toLowerCase()}`;
 
   const hoveredEntry = hovered ? entryByMuscle.get(hovered.muscle) : null;
   const hoveredPr = hoveredEntry ? getPrForMuscle(hoveredEntry, personalRecords) : null;
@@ -650,7 +644,7 @@ function MuscleBodyMap({
                 </>
               ) : (
                 <span className="muscle-map__tooltip-row">
-                  <Calendar size={10} strokeWidth={2} /> Not trained {modeLabel.toLowerCase()}
+                  <Calendar size={10} strokeWidth={2} /> Not trained {modeLabelPhrase}
                 </span>
               )}
               <span className="muscle-map__tooltip-row muscle-map__tooltip-row--muted">
@@ -718,7 +712,7 @@ function MuscleBodyMap({
                 </>
               ) : (
                 <p className="muscle-map__detail-note">
-                  <Info size={11} strokeWidth={2} /> Not trained {modeLabel.toLowerCase()} yet —
+                  <Info size={11} strokeWidth={2} /> Not trained {modeLabelPhrase} yet —
                   log a session that includes {expandedMuscle.toLowerCase()} to see stats here.
                 </p>
               )}

@@ -24,6 +24,7 @@ import {
   Ban,
   Repeat,
   Bell,
+  AlertTriangle,
 } from "lucide-react";
 import { getSessionTypeColor } from "../constants/sessionTypes";
 import { prHistory } from "../utils/strengthUtils";
@@ -51,11 +52,34 @@ import {
   PLANNED_STATUS,
   BUILT_IN_TEMPLATES,
   STATUS_BADGE_CLASS,
+  RECURRENCE_TYPE_OPTIONS,
 } from "../constants/plannedWorkoutTypes";
+
+const RECURRENCE_LABEL_BY_TYPE = Object.fromEntries(
+  RECURRENCE_TYPE_OPTIONS.map((opt) => [opt.value, opt.label])
+);
 import PlannedWorkoutModal from "../components/PlannedWorkoutModal";
 import { getPlannerAnalytics } from "../utils/plannedWorkoutAnalytics";
 import { generateWorkoutReminders } from "../reminders/workoutReminders";
 import { generatePlannerReminders } from "../reminders/plannerReminders";
+import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
+import { MUSCLES, MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
+import ConfidenceBadge from "../components/ConfidenceBadge";
+
+// Phase 14B, section 7 — maps a plan's workoutType to the muscles it
+// trains, reusing the SAME Push/Pull/Legs/Core categorization
+// MUSCLE_SPLIT_CATEGORY already establishes (no second taxonomy). Only
+// covers workoutType values that have a real muscle-group meaning;
+// "Cardio"/"Other" are deliberately absent — there's no muscle-recovery
+// signal to check either against.
+const WORKOUT_TYPE_MUSCLES = {
+  Push: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Push"),
+  Pull: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Pull"),
+  Legs: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Legs"),
+  Upper: MUSCLES.filter((m) => ["Push", "Pull"].includes(MUSCLE_SPLIT_CATEGORY[m])),
+  Lower: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Legs"),
+  "Full Body": MUSCLES,
+};
 
 // Relative to the single heaviest day ever logged (not a fixed kg
 // threshold) — so "Heavy" means the same thing whether a user's typical
@@ -247,6 +271,67 @@ function CalendarPage() {
     });
     return ids;
   }, [plannedWorkouts]);
+
+  // Phase 14B, section 7 — Planner confidence badge + conflict warning.
+  // Reuses intelligence/recoveryEngine.js's per-muscle recovery scores
+  // directly (called ONCE here, never re-derived per plan) to flag
+  // upcoming PLANNED strength workouts whose target muscle(s) are still
+  // recovering. A plan with no itemized exercises and a workoutType with
+  // no muscle mapping (Cardio/Other) is simply absent from this map —
+  // no confidence/conflict badge renders for it, rather than a guess.
+  const planRecoveryByPlanId = useMemo(() => {
+    const recoveryScores = getMuscleRecoveryScores(workouts);
+    const byMuscle = new Map(recoveryScores.map((r) => [r.muscle, r]));
+    const map = new Map();
+
+    plannedWorkouts.forEach((plan) => {
+      if (plan.status !== PLANNED_STATUS.PLANNED) return;
+
+      const muscleSet = new Set();
+      (plan.exercises || []).forEach((e) => {
+        if (e.exercise?.muscleGroup) muscleSet.add(e.exercise.muscleGroup);
+      });
+      if (!muscleSet.size && WORKOUT_TYPE_MUSCLES[plan.workoutType]) {
+        WORKOUT_TYPE_MUSCLES[plan.workoutType].forEach((m) => muscleSet.add(m));
+      }
+      if (!muscleSet.size) return;
+
+      const muscleScores = Array.from(muscleSet)
+        .map((m) => byMuscle.get(m))
+        .filter(Boolean);
+      if (!muscleScores.length) return;
+
+      const worst = [...muscleScores].sort((a, b) => a.recoveryScore - b.recoveryScore)[0];
+      const avgScore = Math.round(
+        muscleScores.reduce((s, r) => s + r.recoveryScore, 0) / muscleScores.length
+      );
+
+      // User feedback ⭐1 — "standardize confidence everywhere" surfaced
+      // that this badge was actually a READINESS read (how recovered is
+      // this plan's muscle group, bucketed off the average score) wearing
+      // the word "confidence" — a different concept from the standardized
+      // data-confidence every intelligence engine now returns (how much
+      // real history backs the number). Both are real and worth showing,
+      // just as two separate badges: `readiness` keeps this exact avg-
+      // score bucketing (renamed, not recomputed), and `confidence` is
+      // the genuine per-muscle confidence field from getMuscleRecoveryScores
+      // — the LOWEST among the muscles involved, a conservative aggregate
+      // (the read is only as trustworthy as its least-confident input).
+      const CONFIDENCE_RANK = { Low: 0, Medium: 1, High: 2 };
+      const leastConfident = muscleScores.reduce((worstConf, r) =>
+        CONFIDENCE_RANK[r.confidence] < CONFIDENCE_RANK[worstConf.confidence] ? r : worstConf
+      );
+
+      map.set(plan._id, {
+        readiness: avgScore >= 85 ? "High" : avgScore >= 50 ? "Medium" : "Low",
+        confidence: leastConfident.confidence,
+        confidenceReason: leastConfident.confidenceReason,
+        conflict: worst.recoveryScore < 50 ? `${worst.muscle} still recovering — recommend rescheduling` : null,
+      });
+    });
+
+    return map;
+  }, [plannedWorkouts, workouts]);
 
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -881,6 +966,7 @@ function CalendarPage() {
                   isToday={isSelectedDateToday}
                   busy={actionBusyId === plan._id}
                   hasReminder={reminderPlanIds.has(plan._id)}
+                  intel={planRecoveryByPlanId.get(plan._id)}
                   onStart={handleStartPlannedWorkout}
                   onEdit={handleOpenEditPlan}
                   onReschedule={handleReschedulePlan}
@@ -1178,6 +1264,7 @@ function PlannedWorkoutCard({
   isToday,
   busy,
   hasReminder,
+  intel,
   onStart,
   onEdit,
   onReschedule,
@@ -1218,17 +1305,35 @@ function PlannedWorkoutCard({
         {plan.recurrenceGroupId && (
           <span
             className="planned-workout-card__recurring-tag"
-            role="img"
-            aria-label="Part of a recurring series"
-            title="Part of a recurring series"
+            title={`Recurring — ${RECURRENCE_LABEL_BY_TYPE[plan.recurrence?.type] || "series"}`}
           >
             <Repeat size={11} strokeWidth={2} />
+            {RECURRENCE_LABEL_BY_TYPE[plan.recurrence?.type] || "Recurring"}
           </span>
         )}
         {plan.priority === "High" && (
           <span className="planned-workout-card__priority planned-workout-card__priority--high">High</span>
         )}
+        {/* Phase 14B, section 7 — readiness badge: how recovered this
+            plan's target muscle(s) are right now, per
+            intelligence/recoveryEngine.js. Absent for cardio plans/plans
+            with no muscle data to check (see Calendar's
+            planRecoveryByPlanId memo). */}
+        {intel && (
+          <span
+            className={`planned-workout-card__readiness planned-workout-card__readiness--${intel.readiness.toLowerCase()}`}
+          >
+            {intel.readiness} readiness
+          </span>
+        )}
       </div>
+      {/* User feedback ⭐1 — standardized data-confidence (distinct from
+          the readiness badge above): how much real recovery history
+          backs that read, reusing the SAME ConfidenceBadge every other
+          intelligence surface uses. */}
+      {intel && (
+        <ConfidenceBadge level={intel.confidence} reason={intel.confidenceReason} label="Recovery estimate" />
+      )}
 
       <p className="planned-workout-card__title">{plan.title}</p>
       <p className="planned-workout-card__meta">
@@ -1239,6 +1344,12 @@ function PlannedWorkoutCard({
         {plan.exercises?.length ? ` · ${plan.exercises.length} exercises` : ""}
       </p>
       {plan.notes && <p className="planned-workout-card__notes">{plan.notes}</p>}
+      {intel?.conflict && (
+        <p className="planned-workout-card__conflict">
+          <AlertTriangle size={12} strokeWidth={2} />
+          {intel.conflict}
+        </p>
+      )}
 
       <div className="planned-workout-card__actions">
         {isActivePlan && isToday && (

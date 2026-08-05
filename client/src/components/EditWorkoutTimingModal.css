@@ -18,7 +18,7 @@
   max-width: 420px;
   background: var(--go-surface);
   border: 1px solid var(--go-border-soft);
-  border-radius: 22px;
+  border-radius: var(--go-radius-lg);
   padding: 24px;
   box-shadow:
     var(--go-shadow-sm),

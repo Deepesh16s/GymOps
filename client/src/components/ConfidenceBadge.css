@@ -1,0 +1,100 @@
+@import "../styles/design-tokens.css";
+
+.confidence-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.confidence-badge__trigger {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  color: var(--go-text-faint);
+  cursor: pointer;
+}
+
+.confidence-badge__trigger:hover,
+.confidence-badge__trigger:focus-visible {
+  color: var(--go-text-muted);
+  background: var(--go-surface-sunken);
+  outline: none;
+}
+
+.confidence-badge__trigger:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 1px;
+}
+
+.confidence-badge__popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  max-width: 240px;
+  padding: 10px 12px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  box-shadow: var(--go-shadow-sm);
+  animation: confidence-popover-in 140ms ease-out;
+}
+
+@keyframes confidence-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confidence-badge__popover {
+    animation: none;
+  }
+}
+
+.confidence-badge__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint);
+}
+
+.confidence-badge__level {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* Low confidence is deliberately NOT a danger/red tone — it's not bad
+   news about the muscle, just less certainty behind the estimate, so it
+   shouldn't visually compete with an actual "Needs Rest" warning. */
+.confidence-badge__level--high {
+  color: var(--go-success-dark);
+}
+
+.confidence-badge__level--medium {
+  color: var(--go-warning);
+}
+
+.confidence-badge__level--low {
+  color: var(--go-text-muted);
+}
+
+.confidence-badge__reason {
+  font-size: 11.5px;
+  color: var(--go-text-muted);
+  line-height: 1.4;
+}

@@ -27,8 +27,20 @@ import {
   computeCurrentStreak,
   isCardioEntry,
 } from "../utils/workoutUtils";
-import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
 import { prHistory, estimate1RM } from "../utils/strengthUtils";
+import {
+  summarizeMuscleGroupSplit,
+  getTrainingBalance,
+  getUpperLowerSplit,
+  getStrengthCardioSplit,
+} from "../intelligence/balanceEngine";
+import { getMusclePlateaus } from "../intelligence/plateauEngine";
+import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
+import { getFatigueLevel } from "../intelligence/fatigueEngine";
+import { getWeeklyGrade } from "../intelligence/weeklyGradeEngine";
+import { getAllVolumeLandmarks } from "../intelligence/volumeLandmarkEngine";
+import { getExerciseInsights } from "../intelligence/exerciseIntelligence";
+import { getMusclePriorities } from "../intelligence/musclePriorityEngine";
 import {
   cardioPrHistory,
   getAvailableCardioActivities,
@@ -51,13 +63,14 @@ import InsightCard from "../components/progression/InsightCard";
 import DistributionRow from "../components/progression/DistributionRow";
 import PersonalRecordRow from "../components/progression/PersonalRecordRow";
 import PanelEmptyState from "../components/progression/PanelEmptyState";
+import TrainingHeatmap from "../components/progression/TrainingHeatmap";
+import ConfidenceBadge from "../components/ConfidenceBadge";
 import {
   TIME_RANGE_OPTIONS,
   DEFAULT_TIME_RANGE,
   getMetricDef,
   getAvailableMuscles,
   getOverallProgression,
-  getMuscleProgression,
   getExerciseProgression,
   getExerciseDistribution,
   getConsistency,
@@ -71,11 +84,6 @@ import {
   projectMilestone,
   getInsights,
 } from "../progression";
-
-// Muscle groups that haven't produced at least 4 weekly/monthly buckets of
-// history yet can't say anything meaningful about direction — same floor
-// progressionInsights.js uses for its own muscle-level comparisons.
-const MIN_BUCKETS_FOR_TREND = 4;
 
 // Training Overview's chart control is a bucket-granularity toggle, not a
 // date-range filter — a date-range chip often didn't visibly change the
@@ -95,6 +103,7 @@ const ANALYTICS_TABS = [
   { key: "strength", label: "Strength" },
   { key: "muscles", label: "Muscles" },
   { key: "cardio", label: "Cardio" },
+  { key: "intelligence", label: "Training Intelligence" },
   { key: "records", label: "Personal Records" },
   { key: "advanced", label: "Advanced" },
 ];
@@ -298,17 +307,15 @@ function Analytics() {
   // Lifetime Push/Pull split for the "Recovery & Balance" KPI card —
   // same categorization as the Muscle Balance section below, just scoped
   // to complete history like the rest of the Hero/KPI row.
-  const lifetimePplPct = useMemo(() => {
-    const totals = { Push: 0, Pull: 0, Legs: 0, Core: 0 };
-    muscleBySets.forEach((m) => {
-      const cat = MUSCLE_SPLIT_CATEGORY[m.muscle];
-      if (cat) totals[cat] += m.sets;
-    });
-    const total = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
-    return Object.fromEntries(
-      Object.entries(totals).map(([k, v]) => [k, Math.round((v / total) * 100)])
-    );
-  }, [muscleBySets]);
+  // Phase 14A, Module 7 — reuses the ONE shared Push/Pull/Legs/Core
+  // split (intelligence/balanceEngine.js) instead of this page's own
+  // independent copy of the same arithmetic (this page previously had
+  // TWO separate copies of it — see overviewPplPct below, also
+  // refactored).
+  const lifetimePplPct = useMemo(
+    () => summarizeMuscleGroupSplit(muscleBySets, { metric: "sets" }).pct,
+    [muscleBySets]
+  );
 
   // Training Score — a single 0-100 rollup of four things already
   // computed above (consistency, progressive overload, muscle balance,
@@ -428,17 +435,10 @@ function Analytics() {
   // categorization MuscleBodyMap already applies on Dashboard, reused
   // here as plain percentages rather than re-rendering that interactive
   // body-map widget a second time on this page.
-  const overviewPplPct = useMemo(() => {
-    const totals = { Push: 0, Pull: 0, Legs: 0, Core: 0 };
-    overviewMuscleBySets.forEach((m) => {
-      const cat = MUSCLE_SPLIT_CATEGORY[m.muscle];
-      if (cat) totals[cat] += m.sets;
-    });
-    const total = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
-    return Object.fromEntries(
-      Object.entries(totals).map(([k, v]) => [k, Math.round((v / total) * 100)])
-    );
-  }, [overviewMuscleBySets]);
+  const overviewPplPct = useMemo(
+    () => summarizeMuscleGroupSplit(overviewMuscleBySets, { metric: "sets" }).pct,
+    [overviewMuscleBySets]
+  );
   const topMuscles = overviewMuscleBySets.slice(0, 2);
   // Only called out once there's enough breadth of trained muscles that
   // the bottom ones are meaningfully under-trained, not just "the only
@@ -501,6 +501,22 @@ function Analytics() {
       .sort((a, b) => b.volume - a.volume)
       .map((e) => ({ ...e, volumePct: (e.volume / total) * 100 }));
   }, [advancedExerciseDistribution]);
+
+  // Exercise Intelligence needs one exercise selected at a time — state
+  // declared here (rather than down in the "TRAINING INTELLIGENCE" block
+  // below, which is only where its useMemo lives) because this default-
+  // selection effect needs it immediately below and a variable can't be
+  // read before its own declaration executes.
+  const [intelligenceExercise, setIntelligenceExercise] = useState("");
+
+  // Exercise Intelligence's default pick — first exercise actually present
+  // in the current advancedRange, same "nothing force-listed" convention
+  // getAvailableMuscles/getAvailableCardioActivities already established.
+  useEffect(() => {
+    if (!intelligenceExercise && advancedExerciseDistribution.length) {
+      setIntelligenceExercise(advancedExerciseDistribution[0].exercise);
+    }
+  }, [advancedExerciseDistribution, intelligenceExercise]);
 
   // ------------------------------------------------------------------
   // CARDIO — same time-range-scoped pattern as Muscle Balance/Advanced
@@ -614,30 +630,53 @@ function Analytics() {
     return projections.sort((a, b) => a.projection.daysAhead - b.projection.daysAhead)[0];
   }, [exerciseByVolume, workouts]);
 
-  // Per-muscle trend for the Plateau Detection panel, scoped to
-  // advancedRange like the rest of Advanced Analytics. Omitted from the
-  // page entirely when nothing qualifies (see plateauedMuscles usage
-  // below) rather than showing an empty-state hint that just wastes
+  // Per-muscle Plateau Detection, scoped to advancedRange like the rest
+  // of Advanced Analytics. Omitted from the page entirely when nothing
+  // qualifies rather than showing an empty-state hint that just wastes
   // vertical space every time training is going well.
-  const advancedMuscleTrends = useMemo(
-    () =>
-      availableMuscles.map((muscle) => ({
-        muscle,
-        progression: getMuscleProgression(workouts, muscle, { rangeKey: advancedRange }),
-      })),
+  //
+  // Phase 14A, Module 3 — this used to be computed inline here; it's now
+  // intelligence/plateauEngine.js's getMusclePlateaus (byte-identical
+  // algorithm, extracted into a reusable engine so Module 6's Deload
+  // Detection can also read plateau status without a second copy of this
+  // check).
+  const plateauedMuscles = useMemo(
+    () => getMusclePlateaus(workouts, availableMuscles, { rangeKey: advancedRange }),
     [workouts, availableMuscles, advancedRange]
   );
-  const plateauedMuscles = useMemo(
+
+  // ------------------------------------------------------------------
+  // TRAINING INTELLIGENCE — Phase 14B, section 4. This tab composes
+  // Phase 14A's intelligence/ engines directly; every value below is
+  // exactly one engine call, never recomputed here. plateauedMuscles
+  // (above) is reused as-is for this tab's own Plateaus section rather
+  // than calling getMusclePlateaus a second time.
+  // ------------------------------------------------------------------
+  const muscleRecoveryScores = useMemo(() => getMuscleRecoveryScores(workouts), [workouts]);
+  const fatigueLevel = useMemo(() => getFatigueLevel(workouts), [workouts]);
+  const trainingBalanceReport = useMemo(() => getTrainingBalance(workouts), [workouts]);
+  const upperLowerSplit = useMemo(() => getUpperLowerSplit(workouts), [workouts]);
+  const strengthCardioSplitReport = useMemo(() => getStrengthCardioSplit(workouts), [workouts]);
+  const weeklyGrade = useMemo(() => getWeeklyGrade(workouts), [workouts]);
+  const volumeLandmarks = useMemo(
     () =>
-      advancedMuscleTrends
-        .filter(
-          ({ progression }) =>
-            progression.series.length >= MIN_BUCKETS_FOR_TREND &&
-            progression.trend.volume &&
-            progression.trend.volume.direction !== "up"
-        )
-        .map(({ muscle, progression }) => ({ muscle, trend: progression.trend.volume })),
-    [advancedMuscleTrends]
+      getAllVolumeLandmarks(workouts, availableMuscles, { rangeKey: advancedRange }).filter(
+        (l) => l.available
+      ),
+    [workouts, availableMuscles, advancedRange]
+  );
+  const musclePriorities = useMemo(() => getMusclePriorities(workouts), [workouts]);
+
+  // Exercise Intelligence's `intelligenceExercise` state + default-
+  // selection effect are declared earlier (right after
+  // advancedExerciseDistribution) — only the engine call itself lives
+  // here alongside its sibling Training Intelligence engine calls.
+  const exerciseIntelligence = useMemo(
+    () =>
+      intelligenceExercise
+        ? getExerciseInsights(workouts, intelligenceExercise, { rangeKey: advancedRange })
+        : null,
+    [workouts, intelligenceExercise, advancedRange]
   );
 
   // Current record per exercise (latest prHistory event, deduped) — the
@@ -801,7 +840,6 @@ function Analytics() {
   return (
     <div className="progression-page analytics-page">
       <main className="progression-main">
-        {/* HERO — answers "how am I doing?" */}
         <section className="progression-hero analytics-hero--split">
           <div className="analytics-hero__top">
             <div>
@@ -978,7 +1016,13 @@ function Analytics() {
           />
         </div>
 
-        {/* INSIGHTS — prioritized, not six equal cards */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Training Activity</p>
+          <div className="progression-panel">
+            <TrainingHeatmap sessions={allSessions} />
+          </div>
+        </section>
+
         <section className="analytics-section">
           <p className="analytics-section__label">Insights</p>
           {!insightsData.available ? (
@@ -1527,6 +1571,384 @@ function Analytics() {
           )}
           </>
         )}
+        </>
+        )}
+
+        {activeTab === "intelligence" && (
+        <>
+        {/* Phase 14B, section 4 — Training Intelligence tab. Every
+            section below reuses a Phase 14A engine directly; nothing here
+            is recomputed. */}
+
+        {/* RECOVERY — Module 1 */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Recovery</p>
+          <div className="progression-panel">
+            {muscleRecoveryScores.length === 0 ? (
+              <PanelEmptyState icon={HeartPulse} message="Log a workout to see per-muscle recovery." />
+            ) : (
+              <div className="prog-exdist">
+                {muscleRecoveryScores.map((r) => (
+                  <DistributionRow
+                    key={r.muscle}
+                    label={r.muscle}
+                    sub={
+                      r.hoursUntilRecovered > 0
+                        ? `${Math.round(r.hoursUntilRecovered)}h left`
+                        : "Recovered"
+                    }
+                    pct={r.recoveryScore}
+                    badge={{
+                      label: r.status,
+                      tone:
+                        r.status === "Recovered" ? "balanced" : r.status === "Recovering" ? "warning" : "danger",
+                    }}
+                    confidence={r.confidence}
+                    confidenceReason={r.confidenceReason}
+                    confidenceLabel="Recovery estimate"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* FATIGUE — Module 5 */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Fatigue</p>
+          <div className="progression-panel">
+            <div className="analytics-latest-pr__head">
+              <Flame size={16} strokeWidth={2} />
+              <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                {fatigueLevel.band} Fatigue
+              </p>
+              <ConfidenceBadge level={fatigueLevel.confidence} reason={fatigueLevel.confidenceReason} label="Fatigue read" />
+            </div>
+            <div className="progression-stats-rail" style={{ marginTop: 12 }}>
+              <MetricCard
+                label="Weekly Volume Ratio"
+                value={`${Math.round(fatigueLevel.inputs.weeklyVolumeRatio * 100)}%`}
+                icon={TrendingUp}
+              />
+              <MetricCard label="Consecutive Days" value={fatigueLevel.inputs.consecutiveTrainingDays} icon={Flame} />
+              <MetricCard label="Long Sessions" value={fatigueLevel.inputs.longSessionCount} icon={Activity} />
+              <MetricCard label="Recent PRs" value={fatigueLevel.inputs.recentPrAttempts} icon={Trophy} />
+              {fatigueLevel.inputs.avgIntensityPct != null && (
+                <MetricCard label="Avg Intensity" value={`${fatigueLevel.inputs.avgIntensityPct}%`} icon={Gauge} />
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* PLATEAUS — Module 3, reuses the plateauedMuscles memo the
+            Strength tab already computed above rather than calling
+            getMusclePlateaus a second time. */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Plateaus</p>
+          <div className="progression-panel">
+            {plateauedMuscles.length === 0 ? (
+              <PanelEmptyState
+                icon={AlertTriangle}
+                message="No plateaus detected — training is trending up across your muscles."
+              />
+            ) : (
+              <div className="analytics-plateau-list">
+                {plateauedMuscles.map(({ muscle, trend, plateauLevel, confidence }) => (
+                  <div className="analytics-plateau-row" key={muscle}>
+                    <div>
+                      <p className="analytics-plateau-row__name">
+                        {muscle} <span className="prog-exdist__hint">— {plateauLevel}</span>
+                      </p>
+                      <p className="analytics-plateau-row__detail">
+                        {trend.direction === "flat"
+                          ? "Volume has held steady — consider progressive overload."
+                          : "Volume is trending down over its logged history."}
+                      </p>
+                    </div>
+                    <div className="analytics-plateau-row__badges">
+                      <TrendBadge trend={trend} />
+                      <ConfidenceBadge level={confidence} label="Plateau read" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* BALANCE — Module 7 + Phase 14B section 11 (Push:Pull,
+            Upper:Lower, Strength:Cardio). Compound:Isolation is
+            deliberately omitted — no exercise in this app's data model
+            carries a compound/isolation classification (see
+            balanceEngine.js's own comment); inventing a name-matching
+            heuristic would be fabricated intelligence. */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Training Balance</p>
+          <div className="progression-panel">
+            {!trainingBalanceReport.available ? (
+              <PanelEmptyState message={trainingBalanceReport.reason} />
+            ) : (
+              <>
+                <div className="analytics-section__head">
+                  <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                    Push / Pull / Legs / Core
+                  </p>
+                  <ConfidenceBadge
+                    level={trainingBalanceReport.confidence}
+                    reason={trainingBalanceReport.confidenceReason}
+                    label="Training balance"
+                  />
+                </div>
+                <div className="prog-exdist">
+                  {["Push", "Pull", "Legs", "Core"].map((cat) => (
+                    <DistributionRow
+                      key={cat}
+                      label={cat}
+                      sub={`${trainingBalanceReport.categoryPct[cat]}%`}
+                      pct={trainingBalanceReport.categoryPct[cat]}
+                    />
+                  ))}
+                </div>
+                <p className="prog-exdist__hint" style={{ marginTop: 10 }}>
+                  {trainingBalanceReport.imbalance.balanced
+                    ? "Your training is well balanced across categories."
+                    : `${trainingBalanceReport.imbalance.dominant} is dominant over ${trainingBalanceReport.imbalance.least} by ${trainingBalanceReport.imbalance.gap}pt.`}
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="analytics-panels-grid-2">
+            <div className="progression-panel">
+              <div className="analytics-section__head">
+                <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                  Upper / Lower
+                </p>
+                {upperLowerSplit.available && (
+                  <ConfidenceBadge
+                    level={upperLowerSplit.confidence}
+                    reason={upperLowerSplit.confidenceReason}
+                    label="Upper / Lower split"
+                  />
+                )}
+              </div>
+              {upperLowerSplit.available ? (
+                <div className="prog-exdist">
+                  <DistributionRow label="Upper" sub={`${upperLowerSplit.upperPct}%`} pct={upperLowerSplit.upperPct} />
+                  <DistributionRow label="Lower" sub={`${upperLowerSplit.lowerPct}%`} pct={upperLowerSplit.lowerPct} />
+                </div>
+              ) : (
+                <PanelEmptyState message={upperLowerSplit.reason} />
+              )}
+            </div>
+            <div className="progression-panel">
+              <div className="analytics-section__head">
+                <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                  Strength / Cardio
+                </p>
+                {strengthCardioSplitReport.available && (
+                  <ConfidenceBadge
+                    level={strengthCardioSplitReport.confidence}
+                    reason={strengthCardioSplitReport.confidenceReason}
+                    label="Strength / Cardio split"
+                  />
+                )}
+              </div>
+              {strengthCardioSplitReport.available ? (
+                <div className="prog-exdist">
+                  <DistributionRow
+                    label="Strength"
+                    sub={`${strengthCardioSplitReport.strengthPct}%`}
+                    pct={strengthCardioSplitReport.strengthPct}
+                  />
+                  <DistributionRow
+                    label="Cardio"
+                    sub={`${strengthCardioSplitReport.cardioPct}%`}
+                    pct={strengthCardioSplitReport.cardioPct}
+                  />
+                </div>
+              ) : (
+                <PanelEmptyState message={strengthCardioSplitReport.reason} />
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* WEEKLY GRADE — Module 10 */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Weekly Grade</p>
+          <div className="progression-panel">
+            {weeklyGrade.grade == null ? (
+              <PanelEmptyState icon={Trophy} message="Log more workouts this week to unlock a weekly grade." />
+            ) : (
+              <>
+                <div className="analytics-latest-pr__head">
+                  <Trophy size={16} strokeWidth={2} />
+                  <p className="progression-panel__label" style={{ marginBottom: 0 }}>
+                    Grade: {weeklyGrade.grade} ({weeklyGrade.score}/100)
+                  </p>
+                  <ConfidenceBadge level={weeklyGrade.confidence} reason={weeklyGrade.confidenceReason} label="Weekly grade" />
+                </div>
+                <div className="analytics-score-breakdown__list" style={{ marginTop: 10 }}>
+                  {weeklyGrade.factors.map((f) => (
+                    <div className="analytics-score-breakdown__row" key={f.key}>
+                      <div className="analytics-score-breakdown__row-head">
+                        <span className="analytics-score-breakdown__row-label">{f.label}</span>
+                        <span className="analytics-score-breakdown__row-value">
+                          {f.value != null ? Math.round(f.value) : "—"}
+                        </span>
+                      </div>
+                      <div className="analytics-score-breakdown__bar">
+                        <div
+                          className="analytics-score-breakdown__bar-fill"
+                          style={{ width: `${f.value != null ? f.value : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* VOLUME LANDMARKS — Module 8 */}
+        <section className="analytics-section">
+          <div className="analytics-section__head">
+            <p className="analytics-section__label">Volume Landmarks</p>
+            <select
+              className="progression-filterbar__select"
+              value={advancedRange}
+              onChange={(e) => setAdvancedRange(e.target.value)}
+              aria-label="Select time range for Volume Landmarks"
+            >
+              {TIME_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="progression-panel">
+            {volumeLandmarks.length === 0 ? (
+              <PanelEmptyState
+                icon={Gauge}
+                message="Log at least 4 trained weeks per muscle to estimate volume landmarks."
+              />
+            ) : (
+              <div className="analytics-pr-groups">
+                {volumeLandmarks.map((l) => (
+                  <div className="analytics-pr-group" key={l.muscle}>
+                    <div className="analytics-section__head">
+                      <p className="analytics-pr-group__label" style={{ marginBottom: 0 }}>
+                        {l.muscle}
+                      </p>
+                      <ConfidenceBadge level={l.confidence} reason={l.confidenceReason} label="Volume landmark" />
+                    </div>
+                    <div className="progression-stats-rail">
+                      <MetricCard label="Maintenance" value={`${l.maintenance} kg`} icon={Gauge} />
+                      <MetricCard label="MEV" value={`${l.mev} kg`} icon={Gauge} />
+                      <MetricCard label="MAV" value={`${l.mav} kg`} icon={Gauge} />
+                      <MetricCard label="MRV" value={`${l.mrv} kg`} icon={Gauge} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* EXERCISE INTELLIGENCE — Module 9 */}
+        <section className="analytics-section">
+          <div className="analytics-section__head">
+            <p className="analytics-section__label">Exercise Intelligence</p>
+            <select
+              className="progression-filterbar__select"
+              value={intelligenceExercise}
+              onChange={(e) => setIntelligenceExercise(e.target.value)}
+              aria-label="Select exercise for Exercise Intelligence"
+            >
+              {advancedExerciseDistribution.map((e) => (
+                <option key={e.exercise} value={e.exercise}>
+                  {e.exercise}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="progression-panel">
+            {!exerciseIntelligence?.available ? (
+              <PanelEmptyState
+                icon={Dumbbell}
+                message={exerciseIntelligence?.reason || "Select an exercise to see its intelligence."}
+              />
+            ) : (
+              <>
+                <div className="progression-stats-rail">
+                  <MetricCard label="Trend" value={exerciseIntelligence.trend || "—"} icon={TrendingUp} />
+                  <MetricCard
+                    label="Consistency"
+                    value={exerciseIntelligence.consistency != null ? `${exerciseIntelligence.consistency}%` : "—"}
+                    icon={Activity}
+                  />
+                  <MetricCard
+                    label="Best Set"
+                    value={
+                      exerciseIntelligence.bestSet
+                        ? `${exerciseIntelligence.bestSet.weight}kg x ${exerciseIntelligence.bestSet.reps}`
+                        : "—"
+                    }
+                    icon={Trophy}
+                  />
+                  <MetricCard label="Total Sessions" value={exerciseIntelligence.totalSessions} icon={Dumbbell} />
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <ConfidenceBadge
+                    level={exerciseIntelligence.confidence}
+                    reason={exerciseIntelligence.confidenceReason}
+                    label="Exercise read"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* MUSCLE PRIORITY — Module 11 */}
+        <section className="analytics-section">
+          <p className="analytics-section__label">Muscle Priority</p>
+          <div className="progression-panel">
+            {!musclePriorities.available ? (
+              <PanelEmptyState message={musclePriorities.reason} />
+            ) : (
+              <>
+                <ConfidenceBadge level={musclePriorities.confidence} reason={musclePriorities.confidenceReason} compact />
+                <div className="progression-stats-rail" style={{ marginTop: 10 }}>
+                  <MetricCard
+                    label="Most Overdue"
+                    value={musclePriorities.mostOverdue?.muscle || "—"}
+                    sub={musclePriorities.mostOverdue ? `${musclePriorities.mostOverdue.daysAgo}d ago` : null}
+                    icon={Zap}
+                  />
+                  <MetricCard
+                    label="Fastest Growing"
+                    value={musclePriorities.fastestGrowing?.muscle || "Log more to unlock"}
+                    sub={
+                      musclePriorities.fastestGrowing
+                        ? `+${Math.round(musclePriorities.fastestGrowing.changePct)}%`
+                        : null
+                    }
+                    icon={TrendingUp}
+                  />
+                </div>
+                {musclePriorities.neglected.length > 0 && (
+                  <p className="prog-exdist__hint" style={{ marginTop: 10 }}>
+                    Neglected: {musclePriorities.neglected.join(", ")}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </section>
         </>
         )}
 

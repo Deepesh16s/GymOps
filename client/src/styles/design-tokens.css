@@ -49,6 +49,12 @@
 
   --go-radius-sm: 12px;
   --go-radius-md: 20px;
+  /* Phase 15A — the de-facto "premium card" radius several pages
+     (goals.css's .go-card/.goal-modal, dashboard.css's hero/primary
+     cards) already converged on independently as a hardcoded 22px,
+     landing between --go-radius-md (20px) and full pill. Tokenized here
+     instead of leaving it as a repeated magic number. */
+  --go-radius-lg: 22px;
   --go-radius-pill: 999px;
 
   --go-shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -59,6 +65,19 @@
 
   --go-fast: 0.15s ease;
   --go-base: 0.25s ease;
+  /* Phase 15A — unified motion language: these two curves were already
+     the de-facto standard, hand-typed as raw cubic-bezier() values in
+     many files (Navbar.css's link hover/active-indicator, goal-modal's
+     mobile menu, workoutHistory.css's row reveals). Named here so future
+     motion work references one shared curve instead of re-typing —
+     and existing pixel-identical raw values, not a visual change.
+     --go-ease-standard: Material's "standard" curve — snappy in, gentle
+     settle; the right default for hover/press/UI-state transitions.
+     --go-ease-decel: a slower-starting, decelerating curve for entrance
+     reveals (a card/row fading+sliding into place), so a big list
+     doesn't feel like it's snapping in all at once. */
+  --go-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --go-ease-decel: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Type scale — a fixed set of steps so text sizes stop drifting by
      1-2px increments across components. Doesn't cover the oversized
@@ -149,4 +168,21 @@
   --go-emerald-100: var(--go-primary-100);
   --go-emerald-200: var(--go-primary-200);
   --go-emerald-300: var(--go-primary-300);
+}
+
+/* Shared keyframe still used by one-time, meaningful-feedback moments
+   (e.g. progression.css's .progression-hero__pr "new PR" celebration) —
+   the generic page-level entrance reveal utility (.go-reveal) that used
+   to wrap every hero/grid on every load was removed in the design-
+   restraint pass; repeated fade-ins on every page visit read as
+   decorative, not informative. */
+@keyframes go-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

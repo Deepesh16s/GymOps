@@ -21,6 +21,7 @@ import {
 } from "../constants/notificationTypes";
 import { getReminderPreferences, setReminderPreference } from "../reminders/reminderPreferences";
 import { groupRemindersByTimeline } from "../reminders/reminderTimeline";
+import PushSettings from "./PushSettings";
 import { formatRelativeTime } from "../utils/timeFormat";
 import "./NotificationCenter.css";
 
@@ -566,6 +567,7 @@ function NotificationCenter() {
                 {REMINDER_PREFERENCE_LABELS[category]}
               </label>
             ))}
+            <PushSettings />
           </div>
         )}
 

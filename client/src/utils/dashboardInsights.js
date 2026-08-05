@@ -199,6 +199,14 @@ function computeGoalFocusItem(goals) {
     title: goal.title,
     detail: `${analytics.remaining.toLocaleString()} ${goal.unit} to go`,
     explanation,
+    // Phase 14B.1 — the goal's own linked exercise's muscle group (when
+    // one exists — server/controllers/goalController.js's getGoals
+    // already populates `exercise: {name, muscleGroup}`), exposed raw so
+    // a presentation layer can check whether THIS goal genuinely relates
+    // to today's recommended muscle group before claiming it does —
+    // never a fabricated "contributes toward" claim for an unrelated
+    // goal. No goal-selection logic changes here.
+    muscleGroup: goal.exercise?.muscleGroup || null,
   };
 }
 
@@ -276,6 +284,17 @@ function computeWorkoutRecommendation(workouts) {
     title: `Train ${mostOverdue.category} today`,
     detail: detailParts.join(" · "),
     explanation,
+    // Phase 14B.1 — the SAME mostOverdue/freshest values the title/detail
+    // above are already built from, exposed raw (not just pre-formatted
+    // into a string) so a presentation layer can build its own sentence
+    // without re-deriving these numbers from a different source (e.g.
+    // musclePriorityEngine's independently-computed per-muscle overdue
+    // read, which groups by individual muscle rather than by category
+    // and could legitimately disagree in both the name and the day
+    // count). No decision logic changes here — same threshold, same
+    // sort, same category selected.
+    mostOverdueCategory: mostOverdue.category,
+    mostOverdueDays: mostOverdue.daysAgo,
   };
 }
 

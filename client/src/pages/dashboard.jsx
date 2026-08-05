@@ -1,5 +1,5 @@
 import "./dashboard.css";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useId } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Dumbbell,
@@ -21,6 +21,8 @@ import {
   MapPin,
   Target,
   Footprints,
+  AlertTriangle,
+  FlaskConical,
 } from "lucide-react";
 import {
   BarChart,
@@ -46,10 +48,16 @@ import { getGoals } from "../services/goalService";
 import { getPlannedWorkouts } from "../services/plannedWorkoutService";
 import { getDailySteps, setDailySteps } from "../services/dailyStepsService";
 import { getSessionBadges, getLongestStreakEver } from "../progression/liveWorkoutEngine";
-import { getDashboardInsights, getTodaysBrief } from "../utils/dashboardInsights";
+import { getDashboardInsights } from "../utils/dashboardInsights";
 import { generateReminders } from "../reminders/reminderEngine";
 import { generateNotifications } from "../services/notificationService";
 import { getCardioOverview } from "../progression/cardioProgressionEngine";
+import { buildProgressionSeries, filterWorkoutsByTimeRange } from "../progression";
+import { getStrengthCardioSplit } from "../intelligence/balanceEngine";
+import { generateTrainingBrief, generateWeeklyCoachReport, generateCoachPriority } from "../trainingIntelligence";
+import WeeklyCoachReport from "../components/WeeklyCoachReport";
+import ConfidenceBadge from "../components/ConfidenceBadge";
+import RecoveryBreakdownDisclosure from "../components/RecoveryBreakdownDisclosure";
 import { getGoalAnalytics } from "../utils/goalAnalytics";
 import {
   buildSessionSummaries,
@@ -69,6 +77,59 @@ import { formatDurationLong, formatClockTime, formatRelativeTime } from "../util
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Weekly Volume chart's trailing-window filter — same 7/30/365-day
+// semantics as MuscleBodyMap's MODE_OPTIONS, so "last 30 days" means the
+// same thing on every page instead of one page using calendar boundaries
+// and another using trailing windows.
+const VOLUME_RANGE_OPTIONS = [
+  { key: "7d", label: "7D", days: 7 },
+  { key: "30d", label: "30D", days: 30 },
+  { key: "365d", label: "365D", days: 365 },
+];
+
+// 7d/30d — one bar per day, trailing from today back (days - 1). Reuses
+// the same getWorkoutVolume/isCardioEntry primitives every other volume
+// stat on this page already reads from.
+function buildDailyVolumeSeries(workouts, days) {
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+
+  const totals = new Map();
+  workouts
+    .filter((w) => !isCardioEntry(w))
+    .forEach((w) => {
+      const d = new Date(w.date || w.createdAt);
+      d.setHours(0, 0, 0, 0);
+      if (d < cutoff) return;
+      totals.set(d.toDateString(), (totals.get(d.toDateString()) || 0) + getWorkoutVolume(w));
+    });
+
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(cutoff);
+    d.setDate(d.getDate() + i);
+    return {
+      day:
+        days <= 7
+          ? d.toLocaleDateString("en-US", { weekday: "short" })
+          : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      volume: Math.round(totals.get(d.toDateString()) || 0),
+    };
+  });
+}
+
+// 365d — reuses the Progression module's own trailing-window filter and
+// weekly/monthly bucketing engine (buildProgressionSeries auto-picks
+// "month" granularity past 120 days) instead of a new aggregation, so a
+// year of daily volume renders as ~12 readable bars rather than 365.
+function buildYearlyVolumeSeries(workouts) {
+  const filtered = filterWorkoutsByTimeRange(workouts, "1y");
+  return buildProgressionSeries(filtered, { granularity: "month" }).map((b) => ({
+    day: b.label,
+    volume: Math.round(b.volume),
+  }));
+}
+
 // Same "YYYY-MM-DD, local time" convention Calendar.jsx's getLocalDateKey
 // uses — the daily-steps log is keyed by the user's own local day, not
 // UTC, so "today" here always matches what Calendar/goalMetrics.js mean
@@ -86,6 +147,19 @@ function getTimeGreeting() {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+// Visual-delight pass — a small "premium dashboard" date line for the
+// hero eyebrow row (Apple Health/Linear-style "what day is it" context),
+// distinct from any stat the page already shows elsewhere. Same
+// {weekday, month, day} option shape Calendar.jsx's own formatLongDate
+// already established, not a new date-format convention.
+function getTodayLongLabel() {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function getFirstName() {
@@ -136,7 +210,7 @@ function PrimaryCard({ title, value, numericValue, formatValue, sub, icon: Icon,
   );
 }
 
-function SecondaryCard({ title, value, sub, icon: Icon }) {
+function SecondaryCard({ title, value, sub, icon: Icon, children }) {
   return (
     <div className="secondary-card">
       <div className="secondary-card__head">
@@ -145,6 +219,7 @@ function SecondaryCard({ title, value, sub, icon: Icon }) {
       </div>
       <span className="secondary-card__value">{value ?? <SkeletonVal />}</span>
       {sub && <span className="secondary-card__sub">{sub}</span>}
+      {children}
     </div>
   );
 }
@@ -367,6 +442,183 @@ function BriefListItem({ item, onStartPlanned }) {
   );
 }
 
+// User feedback — reads as one coherent coaching explanation ("Why
+// GymOps recommends Legs today" + a short checklist) rather than four
+// independent analytics cards each with their own heading. Collapsed by
+// default (progressive disclosure — Dashboard stays compact); every
+// checklist line is optional and simply absent when
+// trainingIntelligence/generateTrainingBrief.js's buildExplanationSections
+// had nothing real to say for it. `recommendedCategory` is the SAME
+// value the sections themselves were built from (never re-derived), so
+// the heading and the checklist can never disagree.
+//
+// Research references are hardcoded, verified sources (checked via web
+// search, not invented) describing the GENERAL training concepts these
+// engines draw loose inspiration from — explicitly not a claim that any
+// exact number here is drawn from a specific study.
+const RESEARCH_REFERENCES = [
+  {
+    name: "ACSM Position Stand",
+    year: "2009",
+    description: "Progression Models in Resistance Training for Healthy Adults",
+    url: "https://doi.org/10.1249/MSS.0b013e3181915670",
+  },
+  {
+    name: "Schoenfeld et al.",
+    year: "2017",
+    description: "Dose-response relationship between weekly training volume and muscle mass",
+    url: "https://doi.org/10.1080/02640414.2016.1210197",
+  },
+  {
+    // No year — this is an evolving applied coaching framework spanning
+    // years of RP Strength content, not a single dated publication;
+    // showing one would fabricate a precision that isn't real.
+    name: "RP Strength Volume Landmarks",
+    year: null,
+    description: "MEV / MAV / MRV training methodology",
+    url: "https://rpstrength.com/blogs/articles/training-volume-landmarks-muscle-growth",
+  },
+];
+
+function CoachExplanation({ sections, recommendedCategory, generatedAt }) {
+  const [open, setOpen] = useState(false);
+  const [researchOpen, setResearchOpen] = useState(false);
+  const panelId = useId();
+  const researchPanelId = useId();
+  if (!sections.length) return null;
+
+  const heading = recommendedCategory
+    ? `Why GymOps recommends ${recommendedCategory} today`
+    : "Why this recommendation?";
+
+  return (
+    <div className="coach-why">
+      <button
+        type="button"
+        className="coach-why__btn"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((o) => !o)}
+      >
+        Why this recommendation?
+      </button>
+      {open && (
+        <div id={panelId} className="coach-explanation" role="region" aria-label={heading}>
+          <p className="coach-explanation__heading">{heading}</p>
+          {generatedAt && (
+            <p className="coach-explanation__generated">Generated Today • {formatClockTime(generatedAt)}</p>
+          )}
+          <ul className="coach-explanation__list">
+            {sections.map((section) => {
+              const Icon = section.tone === "warning" ? AlertTriangle : CheckCircle2;
+              return (
+                <li className={`coach-explanation__item coach-explanation__item--${section.tone}`} key={section.key}>
+                  <Icon size={15} strokeWidth={2} className="coach-explanation__icon" />
+                  <span>{section.sentence}</span>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="coach-explanation__research">
+            <button
+              type="button"
+              className="coach-explanation__research-btn"
+              aria-expanded={researchOpen}
+              aria-controls={researchPanelId}
+              onClick={() => setResearchOpen((o) => !o)}
+            >
+              <FlaskConical size={13} strokeWidth={2} />
+              Research
+            </button>
+            {researchOpen && (
+              <div
+                id={researchPanelId}
+                className="coach-explanation__research-panel"
+                role="region"
+                aria-label="Research references"
+              >
+                <p className="coach-explanation__research-intro">
+                  Inspired by general concepts from published training research — not a literal implementation of
+                  any single study&apos;s exact formula.
+                </p>
+                <ul className="coach-explanation__research-list">
+                  {RESEARCH_REFERENCES.map((ref) => (
+                    <li key={ref.url}>
+                      <a href={ref.url} target="_blank" rel="noopener noreferrer">
+                        <span className="coach-explanation__research-name">
+                          {ref.name}
+                          {ref.year ? ` (${ref.year})` : ""}
+                        </span>
+                        <span className="coach-explanation__research-desc">{ref.description}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// User feedback ⭐2 — "Coach Priority": the single ranked signal across
+// Recovery/Goal/Plateau/Fatigue/Planner/Streak (trainingIntelligence's
+// generateCoachPriority), surfaced as a leading banner above the Today's
+// Focus tiles. Renders nothing when nothing qualifies — a quiet day
+// shouldn't manufacture a signal.
+const COACH_PRIORITY_ICON = {
+  recovery: HeartPulse,
+  goal: Target,
+  plateau: AlertTriangle,
+  fatigue: Flame,
+  planner: CalendarRange,
+  streak: Zap,
+};
+
+function CoachPriorityBanner({ signal, onNavigate }) {
+  if (!signal) return null;
+  const Icon = COACH_PRIORITY_ICON[signal.category] || AlertTriangle;
+  // Some signals (e.g. a reused streak reminder) carry a navigationTarget
+  // meant for the Notification Center, where "/dashboard" is a genuine
+  // destination — but THIS banner already lives on the dashboard, so that
+  // exact target would be a dead click (navigating to the page already
+  // being viewed). Only render the click affordance when it actually
+  // goes somewhere else.
+  const isClickable = signal.navigationTarget && signal.navigationTarget !== "/dashboard";
+
+  const content = (
+    <>
+      <span className="coach-priority-banner__icon">
+        <Icon size={18} strokeWidth={2} />
+      </span>
+      <span className="coach-priority-banner__body">
+        <span className="coach-priority-banner__title">{signal.title}</span>
+        {signal.detail && <span className="coach-priority-banner__detail">{signal.detail}</span>}
+      </span>
+      {isClickable && <ChevronRight size={16} strokeWidth={2} />}
+    </>
+  );
+
+  if (!isClickable) {
+    return (
+      <div className={`coach-priority-banner coach-priority-banner--${signal.severity}`}>{content}</div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`coach-priority-banner coach-priority-banner--clickable coach-priority-banner--${signal.severity}`}
+      onClick={() => onNavigate(signal.navigationTarget)}
+    >
+      {content}
+    </button>
+  );
+}
+
 // Priority 8 — a compact "see progress without opening Goals" widget.
 // `goal.unit === "days"` identifies the two windowed Daily-style periods
 // (goalController.js forces that unit specifically for those, overriding
@@ -396,7 +648,7 @@ function GoalsWidget({ goals, onViewAll }) {
           View all
         </button>
       </div>
-      <div className="goals-widget dash-fade-in">
+      <div className="goals-widget">
         {topGoals.map(({ goal, analytics }) => (
           <div className="goals-widget__row" key={goal._id}>
             <div className="goals-widget__row-top">
@@ -471,7 +723,7 @@ function LastSessionCard({ session, loading }) {
 
   if (!session) {
     return (
-      <div className="last-session-card last-session-card--empty dash-fade-in">
+      <div className="last-session-card last-session-card--empty">
         <div className="empty-state__icon">
           <Dumbbell size={24} strokeWidth={1.6} />
         </div>
@@ -489,7 +741,7 @@ function LastSessionCard({ session, loading }) {
   const sessionTime = formatClockTime(session.date);
 
   return (
-    <div className="last-session-card dash-fade-in">
+    <div className="last-session-card">
       <div className="last-session-card__top">
         <div className="last-session-card__title-row">
           <span
@@ -754,7 +1006,7 @@ function Dashboard() {
 
   const [recentSessions, setRecentSessions] = useState([]);
 
-  const [weeklyVolumeData, setWeeklyVolumeData] = useState([]);
+  const [volumeRange, setVolumeRange] = useState("7d");
 
   // Raw workout documents (Muscle Body Map enhancement) — fetched once
   // alongside the rest of the dashboard data, so the map's Week/Month/
@@ -814,7 +1066,6 @@ function Dashboard() {
         topExercise,
         topMuscle,
         records,
-        weeklyVol,
         recentSessionsRes,
       ] = summaryData;
 
@@ -869,13 +1120,6 @@ function Dashboard() {
       setRecentSessions(
         sortSessions(buildSessionSummaries(recentSessionsRes.data), "newest")
       );
-
-      const rawWeekly = weeklyVol.data;
-      const sortedWeekly = DAY_ORDER.map((d) => {
-        const found = rawWeekly.find((r) => r.day === d);
-        return { day: d, volume: found ? found.volume : 0 };
-      });
-      setWeeklyVolumeData(sortedWeekly);
 
       // Returned so callers that need the just-refetched raw workouts
       // immediately (e.g. the Finish Workout summary's streak/badge
@@ -1031,9 +1275,15 @@ function Dashboard() {
     (g) => g.type === "Cardio Goal" && g.metric === "steps" && g.dailyTarget
   );
 
+  const weeklyVolumeChartData = useMemo(() => {
+    if (volumeRange === "365d") return buildYearlyVolumeSeries(muscleWorkouts);
+    const opt = VOLUME_RANGE_OPTIONS.find((o) => o.key === volumeRange);
+    return buildDailyVolumeSeries(muscleWorkouts, opt.days);
+  }, [muscleWorkouts, volumeRange]);
+
   const barChartData =
-    weeklyVolumeData.length > 0
-      ? weeklyVolumeData
+    weeklyVolumeChartData.length > 0
+      ? weeklyVolumeChartData
       : DAY_ORDER.map((d) => ({ day: d, volume: 0 }));
 
   // Priority 4 — Insights (retrospective: "how am I doing"). Every
@@ -1068,14 +1318,32 @@ function Dashboard() {
     );
   }, [plannedWorkouts, todayDateKey]);
 
-  const todaysBrief = useMemo(
+  // Phase 14B — ONE composition call for the whole "Today's Focus"
+  // coaching summary: the hero's Today's Brief list (trainingBrief.brief,
+  // unchanged from before — generateTrainingBrief calls getTodaysBrief
+  // internally rather than this page calling it a second time) PLUS
+  // Recovery Score/Readiness/Weekly Grade/Training Balance/Fatigue/
+  // Recommended Workout, all read from this single memo. "Compose once,
+  // distribute everywhere" — every stat tile below reads from here, not
+  // from five separate engine calls.
+  const trainingBrief = useMemo(
     () =>
-      getTodaysBrief(muscleWorkouts, goals, {
+      generateTrainingBrief(muscleWorkouts, goals, {
         todaySteps,
         dailyGoalTarget: dailyStepsGoal?.dailyTarget ?? null,
         todaysPlannedWorkout,
       }),
     [muscleWorkouts, goals, todaySteps, dailyStepsGoal, todaysPlannedWorkout]
+  );
+  const todaysBrief = trainingBrief.brief;
+
+  const weeklyCoachReport = useMemo(() => generateWeeklyCoachReport(muscleWorkouts), [muscleWorkouts]);
+
+  // User feedback ⭐2 — "Coach Priority": the single ranked read across
+  // Recovery/Goal/Plateau/Fatigue/Planner/Streak, composed ONCE here.
+  const coachPriority = useMemo(
+    () => generateCoachPriority(muscleWorkouts, { goals, plannedWorkouts }),
+    [muscleWorkouts, goals, plannedWorkouts]
   );
 
   // ------------------------------------------------------------------
@@ -1105,20 +1373,10 @@ function Dashboard() {
     }, null);
   }, [muscleWorkouts]);
 
-  // Session-level Cardio vs Strength split (not set-based — cardio has
-  // no sets) — reuses buildSessionSummaries rather than re-grouping
-  // workouts into sessions a second time.
-  const trainingBalance = useMemo(() => {
-    const sessions = buildSessionSummaries(muscleWorkouts);
-    const strengthCount = sessions.filter((s) => s.stats.exerciseCount > 0).length;
-    const cardioCount = sessions.filter((s) => s.stats.cardioCount > 0).length;
-    const total = strengthCount + cardioCount || 1;
-    return {
-      strengthPct: Math.round((strengthCount / total) * 100),
-      cardioPct: Math.round((cardioCount / total) * 100),
-      hasData: strengthCount + cardioCount > 0,
-    };
-  }, [muscleWorkouts]);
+  // Phase 14B — reuses intelligence/balanceEngine.js's getStrengthCardioSplit
+  // (Module 7's own session-count-based Strength:Cardio split) instead of
+  // this page's own independent copy of the same arithmetic.
+  const trainingBalance = useMemo(() => getStrengthCardioSplit(muscleWorkouts), [muscleWorkouts]);
 
   // Nearest active (not yet completed) auto-tracked Cardio Goal — picked
   // by highest current progress, so the widget surfaces whichever one
@@ -1228,18 +1486,14 @@ function Dashboard() {
 
   return (
     <div className="dash-page">
-      <div className="dash-bg" aria-hidden="true">
-        <div className="orb orb--1" />
-        <div className="orb orb--2" />
-        <div className="orb orb--3" />
-      </div>
-
       <main className="dash-main">
         <section className="hero-card">
           <div className="hero-card__left">
             <span className="hero-card__eyebrow">
               <span className="hero-card__dot" />
               Live dashboard
+              <span className="hero-card__eyebrow-sep" aria-hidden="true">·</span>
+              <span className="hero-card__date">{getTodayLongLabel()}</span>
             </span>
             <h1 className="hero-card__title">
               {getTimeGreeting()}
@@ -1322,12 +1576,81 @@ function Dashboard() {
           />
         )}
 
+        {/* Phase 14B, section 2 — "Today's Focus": the cohesive coaching
+            summary the spec asks for, replacing what would otherwise be
+            isolated cards. Every tile reads from the ONE trainingBrief
+            composition above — no engine is called twice. Omits any tile
+            whose underlying value isn't available yet (a brand-new
+            account) rather than showing a fabricated number. */}
+        {!loading && (trainingBrief.recoveryScore != null || trainingBrief.weeklyGrade) && (
+          <section className="section">
+            <p className="section__label">Today's Focus</p>
+            <CoachPriorityBanner signal={coachPriority.top} onNavigate={navigate} />
+            <div className="secondary-grid">
+              {trainingBrief.recoveryScore != null && (
+                <SecondaryCard
+                  title="Recovery Score"
+                  value={`${trainingBrief.recoveryScore} / 100`}
+                  sub={trainingBrief.recoveryScore >= 85 ? "Recovered" : trainingBrief.recoveryScore >= 50 ? "Recovering" : "Needs Rest"}
+                  icon={HeartPulse}
+                >
+                  <ConfidenceBadge
+                    level={trainingBrief.recoveryConfidence}
+                    reason={trainingBrief.recoveryConfidenceReason}
+                    label="Recovery estimate"
+                  />
+                  <RecoveryBreakdownDisclosure score={trainingBrief.recoveryScore} breakdown={trainingBrief.recoveryBreakdown} />
+                </SecondaryCard>
+              )}
+              {trainingBrief.weeklyGrade && (
+                <SecondaryCard title="Weekly Grade" value={trainingBrief.weeklyGrade} icon={Trophy}>
+                  <ConfidenceBadge
+                    level={trainingBrief.weeklyGradeConfidence}
+                    reason={trainingBrief.weeklyGradeConfidenceReason}
+                    label="Weekly grade"
+                  />
+                </SecondaryCard>
+              )}
+              {trainingBrief.trainingBalance.available && (
+                <SecondaryCard
+                  title="Training Balance"
+                  value={trainingBrief.trainingBalance.imbalance.balanced ? "Balanced" : trainingBrief.trainingBalance.imbalance.dominant}
+                  sub={trainingBrief.trainingBalance.imbalance.balanced ? null : `${trainingBrief.trainingBalance.imbalance.least} lagging`}
+                  icon={BarChart2}
+                >
+                  <ConfidenceBadge
+                    level={trainingBrief.trainingBalance.confidence}
+                    reason={trainingBrief.trainingBalance.confidenceReason}
+                    label="Training balance"
+                  />
+                </SecondaryCard>
+              )}
+              {trainingBrief.fatigueBand && (
+                <SecondaryCard title="Fatigue" value={trainingBrief.fatigueBand} icon={Flame}>
+                  <ConfidenceBadge
+                    level={trainingBrief.fatigueConfidence}
+                    reason={trainingBrief.fatigueConfidenceReason}
+                    label="Fatigue read"
+                  />
+                </SecondaryCard>
+              )}
+              {trainingBrief.recommendedWorkout && (
+                <SecondaryCard title="Next Recommendation" value={trainingBrief.recommendedWorkout} icon={Dumbbell} />
+              )}
+            </div>
+            <CoachExplanation
+              sections={trainingBrief.explanationSections}
+              recommendedCategory={trainingBrief.recommendedCategory}
+              generatedAt={trainingBrief.generatedAt}
+            />
+          </section>
+        )}
+
+        {weeklyCoachReport.available && <WeeklyCoachReport report={weeklyCoachReport} />}
+
         <section className="section">
           <p className="section__label">Overview</p>
-          <div
-            className={`primary-grid${!loading ? " dash-fade-in" : ""}`}
-            key={loading ? "primary-loading" : "primary-loaded"}
-          >
+          <div className="primary-grid">
             <PrimaryCard
               title="Total Sessions"
               numericValue={loading ? null : stats.totalSessions}
@@ -1408,12 +1731,25 @@ function Dashboard() {
           <div className="chart-card chart-card--bar">
             <div className="chart-card__head">
               <div>
-                <p className="chart-card__title">Weekly Volume</p>
-                <p className="chart-card__sub">Total weight lifted per day (kg)</p>
+                <p className="chart-card__title">Training Volume</p>
+                <p className="chart-card__sub">
+                  Total weight lifted {volumeRange === "365d" ? "per month" : "per day"} (kg)
+                </p>
               </div>
-              <span className="chart-badge">
-                <TrendingUp size={14} strokeWidth={2} /> This week
-              </span>
+              <div className="chart-card__range-toggle">
+                {VOLUME_RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={`chart-card__range-btn ${
+                      volumeRange === opt.key ? "chart-card__range-btn--active" : ""
+                    }`}
+                    onClick={() => setVolumeRange(opt.key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart
@@ -1457,7 +1793,7 @@ function Dashboard() {
         {!loading && dashboardInsights.length > 0 && (
           <section className="section">
             <p className="section__label">Insights</p>
-            <div className="insights-grid dash-fade-in">
+            <div className="insights-grid">
               {dashboardInsights.map((insight) => (
                 <InsightCard key={insight.key} insight={insight} />
               ))}
@@ -1469,10 +1805,7 @@ function Dashboard() {
 
         <section className="section">
           <p className="section__label">Breakdown</p>
-          <div
-            className={`secondary-grid${!loading ? " dash-fade-in" : ""}`}
-            key={loading ? "secondary-loading" : "secondary-loaded"}
-          >
+          <div className="secondary-grid">
             <SecondaryCard
               title="Avg Volume (Last 5)"
               value={
@@ -1512,7 +1845,7 @@ function Dashboard() {
         {!loading && cardioWeekOverview.hasCardioData && (
           <section className="section">
             <p className="section__label">Cardio</p>
-            <div className="secondary-grid dash-fade-in">
+            <div className="secondary-grid">
               <SecondaryCard
                 title="Weekly Cardio Distance"
                 value={`${cardioWeekOverview.periodDistance} km`}
@@ -1531,7 +1864,7 @@ function Dashboard() {
                 sub={latestCardioWorkout ? formatSessionDate(latestCardioWorkout.date) : null}
                 icon={Activity}
               />
-              {trainingBalance.hasData && (
+              {trainingBalance.available && (
                 <SecondaryCard
                   title="Cardio vs Strength"
                   value={`${trainingBalance.strengthPct}% / ${trainingBalance.cardioPct}%`}
@@ -1599,7 +1932,7 @@ function Dashboard() {
                 ))}
               </div>
             ) : recentSessions.length === 0 ? (
-              <div className="empty-state dash-fade-in">
+              <div className="empty-state">
                 <div className="empty-state__icon">
                   <Dumbbell size={26} strokeWidth={1.6} />
                 </div>
@@ -1609,7 +1942,7 @@ function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className="activity-list dash-fade-in">
+              <div className="activity-list">
                 {recentSessions.map((session) => (
                   <RecentSessionRow key={session.key} session={session} />
                 ))}
