@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, LogOut, ChevronDown } from "lucide-react";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./ProfileDropdown.css";
 
 const readStoredUser = () => JSON.parse(localStorage.getItem("user") || "null");
@@ -11,11 +12,6 @@ function ProfileDropdown() {
   const [storedUser, setStoredUser] = useState(readStoredUser);
   const dropdownRef = useRef(null);
 
-  // Layout/Navbar stay mounted across nested route navigation, so this
-  // component doesn't naturally re-render when Profile.jsx writes a new
-  // name to localStorage on a sibling page. Profile.jsx dispatches this
-  // event right after that write so the dropdown picks it up immediately
-  // instead of showing a stale name until a hard refresh.
   useEffect(() => {
     const handleUserUpdated = () => setStoredUser(readStoredUser());
     window.addEventListener("gymops:user-updated", handleUserUpdated);
@@ -32,6 +28,9 @@ function ProfileDropdown() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleCloseDropdown = useCallback(() => setDropdownOpen(false), []);
+  useModalEscapeAndFocus(dropdownOpen, handleCloseDropdown);
 
   const handleLogout = () => {
     localStorage.removeItem("token");

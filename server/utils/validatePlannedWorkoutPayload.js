@@ -13,10 +13,6 @@ const throwBadRequest = (message) => {
   throw err;
 };
 
-// Shared by createPlannedWorkout and updatePlannedWorkout — validates
-// only the fields actually present in `body` when `partial` is true
-// (an update may only touch a couple of fields), or requires the full
-// required set when `partial` is false (creation).
 function validatePlannedWorkoutPayload(body, { partial = false } = {}) {
   const clean = {};
 

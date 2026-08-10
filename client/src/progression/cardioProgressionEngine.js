@@ -1,14 +1,3 @@
-// The Cardio Progression Engine — a parallel to progressionEngine.js,
-// not a retrofit of it. Cardio's metric vocabulary (distance, duration,
-// pace, speed, calories) is structurally different from strength's
-// (volume, sets, working weight, estimated 1RM), the same reason
-// progressionEngine.js/progressionFilters.js/strengthUtils.prHistory all
-// exclude cardio outright rather than branching internally. This file
-// mirrors their exact shapes (session grouping, time-range filtering,
-// chronological PR-event walk) with cardio-appropriate metric extraction
-// swapped in, so every consumer (Progression's cardio mode, Analytics'
-// Cardio section, Dashboard's cardio widgets) reuses one engine instead
-// of each re-deriving aggregates.
 import {
   groupWorkoutsIntoSessions,
   getSessionStats,
@@ -16,17 +5,8 @@ import {
 } from "../utils/workoutUtils";
 import { startOfWeek, startOfMonth } from "../utils/dateUtils";
 import { filterWorkoutsByTimeRange } from "./progressionFilters";
-// describeTrend is purely generic (series + metric key in, {direction,
-// changePct} out) — no strength-specific math — so it's reused as-is
-// rather than re-implemented for cardio's own metrics.
 import { describeTrend } from "./progressionEngine";
 
-// Mirrors progressionMetrics.js's PROGRESSION_METRICS registry — the
-// single place a cardio metric's key/label/formatter is defined, so the
-// metric dropdown, chart axis/tooltip formatting, and stat tiles all
-// read from the same source. Distance/duration/calories default to "—"
-// on null (no data that session); pace's null case reads "—" too rather
-// than 0, since 0 min/km would misleadingly imply an instant pace.
 export const CARDIO_METRICS_REGISTRY = [
   {
     key: "distance",
@@ -70,12 +50,6 @@ function entryDate(w) {
   return new Date(w.date || w.createdAt);
 }
 
-// Honest pace (min/km) and speed (km/h) derivation from real logged
-// distance+duration — pure arithmetic on real data, not an estimate or
-// invented figure, so it's safe to auto-fill a form field or fall back
-// to at read time for older entries that logged distance+duration but
-// not pace/speed directly. Never overwrites an already-logged pace/speed
-// (a user's own recorded value, e.g. from a GPS watch, is authoritative).
 export function deriveCardioMetrics(activityType, data = {}) {
   const result = { ...data };
   const distance = Number(data.distance);
@@ -85,17 +59,16 @@ export function deriveCardioMetrics(activityType, data = {}) {
 
   if (hasDistance && hasDuration) {
     if (result.pace === undefined || result.pace === null || result.pace === "") {
-      result.pace = Math.round((duration / distance) * 100) / 100; // min/km
+      result.pace = Math.round((duration / distance) * 100) / 100;
     }
     if (result.speed === undefined || result.speed === null || result.speed === "") {
-      result.speed = Math.round((distance / (duration / 60)) * 100) / 100; // km/h
+      result.speed = Math.round((distance / (duration / 60)) * 100) / 100;
     }
   }
 
   return result;
 }
 
-// Mirrors progressionFilters.filterWorkoutsByExercise.
 export function filterWorkoutsByCardioActivity(workouts, activityType) {
   if (!activityType) return workouts.filter(isCardioEntry);
   return workouts.filter(
@@ -103,8 +76,6 @@ export function filterWorkoutsByCardioActivity(workouts, activityType) {
   );
 }
 
-// Mirrors progressionFilters.getAvailableMuscles — activities actually
-// present in the user's own data, first-seen order, nothing fabricated.
 export function getAvailableCardioActivities(workouts) {
   const seen = new Set();
   const order = [];
@@ -118,14 +89,6 @@ export function getAvailableCardioActivities(workouts) {
   return order;
 }
 
-// One point per session — mirrors buildExerciseSessionSeries' exact
-// shape (session-grouped, running-best/PR flag, precomputed metrics so a
-// chart can switch what it plots without recomputing sessions).
-// `workouts` is expected pre-filtered to one activity (Progression/
-// Analytics do this via filterWorkoutsByCardioActivity before calling
-// in) — multiple cardio entries for that activity within one session
-// (e.g. a warmup jog + main run) are summed together into one point,
-// same as multiple sets summing into one strength session point.
 export function buildCardioSessionSeries(workouts) {
   const cardioWorkouts = workouts.filter(isCardioEntry);
   if (!cardioWorkouts.length) return [];
@@ -181,14 +144,6 @@ export function buildCardioSessionSeries(workouts) {
   });
 }
 
-// Chronological "record broken" events, per activity, per metric —
-// sibling to strengthUtils.prHistory. Distance/duration/calories: higher
-// wins. Pace: lower wins (faster). Only ever evaluated against metrics
-// actually present (logged or honestly derived from distance+duration)
-// — never fabricated for an activity that never recorded them. A single
-// workout can set more than one record at once (e.g. a run that's both
-// the longest distance AND the fastest pace), reflected as multiple
-// entries in `prTypes`.
 export function cardioPrHistory(workouts = []) {
   const sorted = workouts
     .filter(isCardioEntry)
@@ -253,14 +208,6 @@ export function cardioPrHistory(workouts = []) {
   return events;
 }
 
-// Mirrors workoutUtils.buildPRIndex's exact shape — a Map keyed by
-// `${activityType}|${timestamp}` for O(1) lookup when attaching PR
-// events onto sessions. Kept here (not in workoutUtils.js) specifically
-// to avoid a circular import: this file already imports session-grouping
-// helpers FROM workoutUtils.js, so workoutUtils.js importing cardioPrHistory
-// back from here would create a cycle. Callers (e.g. WorkoutHistory.jsx)
-// build this once and pass it into workoutUtils.attachSessionPRs
-// alongside the existing strength prIndex.
 export function buildCardioPRIndex(workouts) {
   const events = cardioPrHistory(workouts);
   const byKey = new Map();
@@ -270,17 +217,11 @@ export function buildCardioPRIndex(workouts) {
   return byKey;
 }
 
-// describeTrend's "up" always means "the raw number increased" — correct
-// for distance/duration (more is more training), but backwards for pace,
-// where a LOWER number means faster (an improvement). Flips direction
-// and sign so a pace trend badge reads "up/green" when actually getting
-// faster, matching what a runner means by "my pace is trending up."
 function invertPaceTrend(trend) {
   if (!trend || trend.direction === "flat") return trend;
   return { direction: trend.direction === "up" ? "down" : "up", changePct: -trend.changePct };
 }
 
-// Mirrors getExerciseProgression's shape, for Progression's cardio mode.
 export function getCardioActivityProgression(
   workouts,
   activityType,
@@ -322,8 +263,6 @@ export function getCardioActivityProgression(
   };
 }
 
-// Activity-type breakdown — mirrors getExerciseDistribution's shape
-// (sessions/pct), applied to cardio's own metrics instead of sets/volume.
 export function getCardioDistribution(workouts) {
   const byActivity = new Map();
 
@@ -356,13 +295,6 @@ export function getCardioDistribution(workouts) {
     .sort((a, b) => b.sessions - a.sessions);
 }
 
-// Optional drill-down within one parent activity (e.g. "Running ->
-// Outdoor 12km, Treadmill 8km") — mirrors getCardioDistribution's exact
-// shape, grouped by variant instead of activityType. Gracefully returns
-// [] when nobody has ever logged a variant for this activity (whether
-// because the activity has none defined, like Elliptical, or the user
-// just hasn't picked one yet), so callers can treat "no drill-down
-// available" as a simple empty-array check rather than a special case.
 export function getCardioVariantDistribution(workouts, activityType) {
   const matching = workouts.filter(
     (w) => isCardioEntry(w) && w.cardio?.activityType === activityType
@@ -394,11 +326,6 @@ export function getCardioVariantDistribution(workouts, activityType) {
     .sort((a, b) => b.sessions - a.sessions);
 }
 
-// Weekly/monthly cardio overview for Dashboard — computed once from
-// workouts the caller already fetched (no new API request). `period`
-// controls the resettable-window totals only; favorite activity/longest
-// activity/fastest & average pace are lifetime figures (more meaningful
-// than a one-week snapshot for those).
 export function getCardioOverview(workouts, { period = "week" } = {}) {
   const cardioWorkouts = workouts.filter(isCardioEntry);
   const since = period === "month" ? startOfMonth() : startOfWeek();

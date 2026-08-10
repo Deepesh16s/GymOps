@@ -30,6 +30,7 @@ import MetricCard from "../components/progression/MetricCard";
 import WorkoutLogTable from "../components/progression/WorkoutLogTable";
 import DistributionRow from "../components/progression/DistributionRow";
 import ConfidenceBadge from "../components/ConfidenceBadge";
+import LoadErrorBanner from "../components/LoadErrorBanner";
 import { getExercisePlateau } from "../intelligence/plateauEngine";
 import { getOverloadSuggestion } from "../intelligence/overloadEngine";
 import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
@@ -75,6 +76,8 @@ function Progression() {
   const navigate = useNavigate();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
 
   const [viewMode, setViewMode] = useState(() => {
     if (searchParams.get("exercise")) return "exercise";
@@ -93,15 +96,13 @@ function Progression() {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setLoadError(false);
       try {
-        // Progression is explicitly a lifetime-first view — fetch a much
-        // higher ceiling than the 500-workout convention used elsewhere
-        // (Dashboard/Analytics/Workout History) so "first workout ever"
-        // genuinely means the first one, even for long-tenured users.
         const res = await getWorkouts(5000);
         if (!cancelled) setWorkouts(res.data);
       } catch (err) {
         console.error("Progression fetch error:", err);
+        if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -109,17 +110,14 @@ function Progression() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryTrigger]);
 
-  // Keep the URL in sync so a Dashboard deep link (?muscle=Chest) is
-  // shareable/bookmarkable and survives a refresh.
   useEffect(() => {
     const next = {};
     if (viewMode === "muscle" && muscle) next.muscle = muscle;
     if (viewMode === "exercise" && exercise) next.exercise = exercise;
     if (viewMode === "cardio" && cardioActivity) next.activity = cardioActivity;
     setSearchParams(next, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, muscle, exercise, cardioActivity]);
 
   const availableMuscles = useMemo(() => getAvailableMuscles(workouts), [workouts]);
@@ -139,7 +137,6 @@ function Progression() {
     if (viewMode === "cardio" && !cardioActivity && availableCardioActivities.length) {
       setCardioActivity(availableCardioActivities[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, availableMuscles, availableExercises, availableCardioActivities]);
 
   const overall = useMemo(
@@ -147,14 +144,6 @@ function Progression() {
     [workouts, timeRange]
   );
 
-  // Flagship pass — "Recent PR celebration" in the hero: reuses
-  // strengthUtils.prHistory exactly as Analytics' own "Latest PR" panel
-  // already does (never re-derived), scoped to the user's FULL lifetime
-  // history regardless of the page's own timeRange/viewMode filters —
-  // a PR from last week is worth celebrating even while looking at a
-  // single muscle's 90-day view. Only celebrated within a real "recent"
-  // window (14 days) — an old PR sitting in the hero forever would stop
-  // meaning anything.
   const RECENT_PR_WINDOW_DAYS = 14;
   const recentPr = useMemo(() => {
     const events = prHistory(workouts);
@@ -194,20 +183,9 @@ function Progression() {
       : overall.hasSessionDuration;
 
   const metricOptions = useMemo(() => {
-    // Cardio has its own, entirely separate metric vocabulary (distance/
-    // duration/pace/speed/calories) — no session-duration extra, no
-    // strength registry involved at all, same "parallel not retrofit"
-    // rule the rest of the cardio engine follows.
     if (viewMode === "cardio") return CARDIO_METRICS_REGISTRY;
 
     const base = hasSessionDuration ? [...PROGRESSION_METRICS, SESSION_DURATION_METRIC] : PROGRESSION_METRICS;
-    // Best Set/Total Reps (per-session) and Average Volume/Session
-    // (per-muscle) each come from a series shape the OTHER view modes
-    // don't have — Overall/Muscle's week/month buckets have no
-    // bestSetWeight/totalReps field, and only Muscle's bucket carries a
-    // meaningful avgVolumePerSession (a single exercise's own volume
-    // trend doesn't have the "trained more often, not harder" problem a
-    // multi-exercise muscle does).
     if (viewMode === "exercise") return [...EXERCISE_ONLY_METRICS, ...base];
     if (viewMode === "muscle") return [...MUSCLE_ONLY_METRICS, ...base];
     return base;
@@ -217,15 +195,6 @@ function Progression() {
     if (!metricOptions.find((m) => m.key === metric)) setMetric(DEFAULT_METRIC);
   }, [metricOptions, metric]);
 
-  // Each tab defaults to the metric that answers its own natural
-  // question — Overall: "how's my training going overall" (Volume,
-  // unchanged); Muscle: "how much work is this muscle getting"
-  // (Average Volume/Session — a muscle has no single "best set" the
-  // way one exercise does); Exercise: "how strong am I getting on this
-  // lift" (Best Set); Cardio: "how far am I going" (Distance). Fires on
-  // every viewMode transition so switching tabs always lands on the
-  // sensible default instead of carrying over whatever metric happened
-  // to be active before.
   useEffect(() => {
     setMetric(
       viewMode === "exercise"
@@ -250,10 +219,6 @@ function Progression() {
       ? cardioProgression?.trend?.[metric] || cardioProgression?.trend?.distance
       : overall.trend?.[metric] || overall.trend?.volume;
 
-  // Raw backing data for whatever the chart above is currently scoped to
-  // — same filters (muscle/exercise/time range) applied to the exact
-  // same `workouts` array, just not bucketed/aggregated. Newest first,
-  // matching Workout History's convention.
   const scopedWorkouts = useMemo(() => {
     let scoped = filterWorkoutsByTimeRange(workouts, timeRange);
     if (viewMode === "muscle" && muscle) scoped = filterWorkoutsByMuscle(scoped, muscle);
@@ -263,23 +228,11 @@ function Progression() {
       .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
   }, [workouts, timeRange, viewMode, muscle, exercise]);
 
-  // Exercise view's Timeline: one point per workout SESSION (never per
-  // set — see buildExerciseSessionSeries), since "my Bench Press
-  // history" is naturally "what did I lift each time I trained it".
-  // Overall/Muscle reuse the existing bucketed `activeSeries` above
-  // (the same data Advanced Analytics already computed) instead of a
-  // separate PR-only reel — a single "record" doesn't mean anything
-  // for a muscle trained by several different exercises, or as the
-  // primary "how's my training going" story for Overall either.
   const exerciseSessionSeries = useMemo(
     () => (viewMode === "exercise" ? buildExerciseSessionSeries(scopedWorkouts) : []),
     [viewMode, scopedWorkouts]
   );
 
-  // Phase 14B, section 5 — Exercise view coaching add-ons. Each of these
-  // is a single Phase 14A engine call composed here, never recomputed:
-  // plateau badge (plateauEngine), suggested next target (overloadEngine),
-  // recovery indicator for the muscle this exercise trains (recoveryEngine).
   const exercisePlateau = useMemo(
     () =>
       viewMode === "exercise" && exercise ? getExercisePlateau(workouts, exercise, { rangeKey: timeRange }) : null,
@@ -290,9 +243,6 @@ function Progression() {
       viewMode === "exercise" && exercise ? getOverloadSuggestion(workouts, exercise, { rangeKey: timeRange }) : null,
     [viewMode, exercise, workouts, timeRange]
   );
-  // The muscle group this exercise trains — read straight off the
-  // already-scoped workouts (every entry shares the same exercise, hence
-  // the same muscleGroup) rather than a second lookup table.
   const exerciseMuscleGroup =
     viewMode === "exercise" ? scopedWorkouts[0]?.exercise?.muscleGroup || null : null;
   const muscleRecoveryScores = useMemo(() => getMuscleRecoveryScores(workouts), [workouts]);
@@ -300,20 +250,11 @@ function Progression() {
     () => (exerciseMuscleGroup ? muscleRecoveryScores.find((r) => r.muscle === exerciseMuscleGroup) || null : null),
     [exerciseMuscleGroup, muscleRecoveryScores]
   );
-  // Whether the intel row below has anything real to show — guards
-  // against rendering an empty wrapper div when none of the three
-  // signals apply (e.g. a brand-new exercise with no plateau/recovery/
-  // overload read yet).
   const hasExerciseIntel =
     (exercisePlateau && exercisePlateau.plateauLevel !== "None") ||
     !!exerciseRecovery ||
     (exerciseOverloadSuggestion?.available && exerciseOverloadSuggestion.metric !== "hold");
 
-  // Cardio's own scoped log — kept entirely separate from scopedWorkouts
-  // above (which stays untouched, still strength-only) rather than
-  // teaching that memo a cardio branch, so Overall/Muscle/Exercise's
-  // Workout Log output can never change for a history that has no
-  // cardio data.
   const cardioScopedWorkouts = useMemo(() => {
     let scoped = filterWorkoutsByTimeRange(workouts, timeRange);
     scoped = cardioActivity ? filterWorkoutsByCardioActivity(scoped, cardioActivity) : scoped.filter(isCardioEntry);
@@ -328,12 +269,6 @@ function Progression() {
   const hasAnyStrengthData = workouts.some((w) => w.entryType !== "cardio");
   const hasAnyCardioData = workouts.some(isCardioEntry);
 
-  // A cardio-only user (no strength history at all) lands on the Cardio
-  // tab instead of an empty Overall chart — but only when they arrived
-  // with no explicit deep-link (muscle/exercise/activity query param),
-  // so an intentional link is never overridden. Strength-having users
-  // are entirely unaffected: hasAnyStrengthData is true for them, so
-  // this never fires.
   useEffect(() => {
     if (
       !loading &&
@@ -345,7 +280,6 @@ function Progression() {
     ) {
       setViewMode((prev) => (prev === "overall" ? "cardio" : prev));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, hasAnyStrengthData, hasAnyCardioData]);
 
   if (!loading && !hasAnyStrengthData && !hasAnyCardioData) {
@@ -358,6 +292,9 @@ function Progression() {
             </div>
             <h1>Progression</h1>
             <p>Log your first workout and your progression story starts here.</p>
+            <button type="button" className="progression-empty-page__btn" onClick={() => navigate("/dashboard")}>
+              Go to Dashboard
+            </button>
           </div>
         </main>
       </div>
@@ -367,6 +304,13 @@ function Progression() {
   return (
     <div className="progression-page">
       <main className="progression-main">
+        {loadError && (
+          <LoadErrorBanner
+            message="Couldn't load your training history. Check your connection and try again."
+            onRetry={() => setRetryTrigger((t) => t + 1)}
+          />
+        )}
+
         <section className="progression-hero">
           <div className="progression-hero__top">
             <div>
@@ -415,16 +359,6 @@ function Progression() {
           onTimeRangeChange={setTimeRange}
         />
 
-        {/* HERO: this is the page's centerpiece — Timeline + Workout Log
-            sit right after the filters, ahead of Selected Statistics —
-            the same figures already shown in the hero summary/trend
-            badges above, so it's reference material rather than
-            something that needs to be seen first. Each tab's Timeline
-            answers that tab's own natural question instead of a single
-            shared "PR" reel: Overall/Muscle plot workload (Volume by
-            default, Muscle defaulting to Average Volume/Session since a
-            muscle has no single "best set" the way one exercise does),
-            Exercise plots lifting performance (Best Set by default). */}
         <section
           className={`progression-panel progression-timeline-hero${
             activeTrend?.direction ? ` progression-timeline-hero--${activeTrend.direction}` : ""
@@ -675,10 +609,6 @@ function Progression() {
                 icon={TrendingUp}
                 value={`${(exerciseProgression.stats.totalVolume || 0).toLocaleString()} kg`}
               />
-              {/* Flagship pass — merges what used to be two separate cards
-                  (Timeline Hero's "Average Weight" value + this panel's own
-                  "Working Weight Trend" percentage) into one, since both
-                  describe the exact same working-weight figure. */}
               <MetricCard
                 label="Average Weight"
                 icon={Layers}
@@ -704,9 +634,6 @@ function Progression() {
 
           {viewMode === "cardio" && cardioProgression && (
             <div className="progression-stats-rail">
-              {/* Flagship pass — merges what used to be two separate cards
-                  (Timeline Hero's "Total Distance" value + this panel's own
-                  "Distance Trend" percentage) into one. */}
               <MetricCard
                 label="Total Distance"
                 icon={MapPin}
@@ -714,8 +641,6 @@ function Progression() {
                 trend={cardioProgression.trend.distance}
               />
               <MetricCard label="Total Duration" icon={Timer} value={`${cardioProgression.stats.totalDuration} min`} />
-              {/* Same merge as Total Distance above — "Best Pace" value +
-                  "Pace Trend" percentage, one fact instead of two cards. */}
               <MetricCard
                 label="Best Pace"
                 icon={Zap}
@@ -741,10 +666,6 @@ function Progression() {
           )}
         </div>
 
-        {/* Cross-training Insights and Personal Records now live on the
-            Analytics page (the app's single source of truth for both —
-            see Analytics.jsx), so this scoped Progression view links out
-            instead of keeping a second, narrower copy of the same data. */}
         <section className="progression-panel progression-analytics-pointer">
           <div>
             <p className="progression-panel__label" style={{ marginBottom: 4 }}>

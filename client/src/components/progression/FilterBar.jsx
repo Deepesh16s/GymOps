@@ -9,14 +9,6 @@ const PRIMARY_VIEWS = [
   { key: "cardio", label: "Cardio", icon: HeartPulse },
 ];
 
-// The primary filter row for the whole Progression page — scope
-// (Overall/Muscle/Exercise) plus Time Range. Kept deliberately narrow:
-// Metric + Moving Average only apply to the Advanced Analytics chart
-// (a secondary, collapsible section), so those controls live there
-// instead of cluttering the page's top-level filter row. Every option
-// list (muscles, exercises) is passed in already-derived from the
-// current dataset, so this component has no knowledge of workouts/
-// sessions itself — purely a controlled input surface.
 function FilterBar({
   viewMode,
   onViewModeChange,

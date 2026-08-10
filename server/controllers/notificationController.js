@@ -3,17 +3,6 @@ const { createNotificationsIfNew } = require("../utils/notificationService");
 
 const MAX_LIST_LIMIT = 100;
 
-// GET /api/notifications?limit=50 — never-dismissed, not-currently-
-// snoozed, not-expired notifications, newest first. Dismissed ones are
-// excluded entirely (not just hidden client-side) since "Clear read" is
-// meant to actually free the list, not just toggle a filter.
-//
-// Phase 13C — expiry/snooze are both evaluated lazily HERE, on read, the
-// same "no scheduler" pattern PlannedWorkout's flipOverdueToMissed
-// already established: an expired reminder is auto-dismissed (it's
-// genuinely done, not coming back), while a snoozed one is only filtered
-// out of THIS query — it reappears on its own once snoozedUntil passes,
-// no write needed to "un-snooze" it.
 exports.getNotifications = async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, MAX_LIST_LIMIT);
@@ -42,7 +31,6 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-// PUT /api/notifications/:id/read
 exports.markRead = async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
@@ -60,7 +48,6 @@ exports.markRead = async (req, res) => {
   }
 };
 
-// PUT /api/notifications/read-all
 exports.markAllRead = async (req, res) => {
   try {
     await Notification.updateMany(
@@ -74,8 +61,6 @@ exports.markAllRead = async (req, res) => {
   }
 };
 
-// PUT /api/notifications/:id/dismiss — a single notification, e.g. its
-// own "Dismiss" action button.
 exports.dismiss = async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
@@ -93,11 +78,6 @@ exports.dismiss = async (req, res) => {
   }
 };
 
-// PUT /api/notifications/:id/snooze — body: { until: "today" | "tomorrow" }.
-// Section 11: snoozing is never a delete/dismiss — the reminder just
-// stops appearing in getNotifications' active-list query until
-// snoozedUntil passes, at which point it reappears on its own with no
-// extra write (see getNotifications above).
 const SNOOZE_END_OF_TODAY_HOURS = 23;
 const SNOOZE_END_OF_TODAY_MINUTES = 59;
 
@@ -131,10 +111,6 @@ exports.snooze = async (req, res) => {
   }
 };
 
-// PUT /api/notifications/clear-read — the panel's "Clear read" action:
-// dismisses every already-read notification in one write, leaving
-// unread ones untouched (dismissing an unread notification should only
-// ever happen explicitly, one at a time, via dismiss above).
 exports.clearRead = async (req, res) => {
   try {
     await Notification.updateMany(
@@ -148,23 +124,10 @@ exports.clearRead = async (req, res) => {
   }
 };
 
-// POST /api/notifications/generate — the client-triggered half of
-// notification generation (see utils/dashboardInsights.js on the
-// frontend): the client already computes recovery-complete/weekly-
-// volume-increased/neglected-muscle candidates from data it has loaded
-// anyway (no server recomputation), and posts them here for the SAME
-// dedup + persistence path every server-triggered notification goes
-// through (utils/notificationService.js). The server still validates
-// shape and scopes everything to req.user._id — a client can only ever
-// create notifications for itself, and only through this one
-// constrained shape (no arbitrary fields).
 const ALLOWED_CATEGORIES = ["progress", "cardio", "reminders", "insights"];
 const ALLOWED_PRIORITIES = ["low", "medium", "high", "critical"];
 const ALLOWED_CONFIDENCE = ["low", "medium", "high"];
 
-// Phase 13C.1 — Deep Links: only ever passes through plain strings for
-// page/entityId/focus, same "client computes, server trusts nothing
-// beyond shape" rule as every other field here.
 function sanitizeAction(action) {
   if (!action || typeof action !== "object") return null;
   const { page, entityId, focus } = action;
@@ -176,10 +139,6 @@ function sanitizeAction(action) {
   };
 }
 
-// Phase 13C — a reminder's expiresAt/metadata ride along the same
-// client-computes/server-persists shape every candidate here already
-// used in 13A; the server still only ever accepts a Date-parseable
-// string / plain object, never trusts anything else about them.
 exports.generateFromClient = async (req, res) => {
   try {
     const candidates = Array.isArray(req.body.candidates) ? req.body.candidates : [];
@@ -200,10 +159,6 @@ exports.generateFromClient = async (req, res) => {
           type: c.type,
           category: c.category,
           priority: ALLOWED_PRIORITIES.includes(c.priority) ? c.priority : "medium",
-          // Phase 13D, Part A.1 — optional; when absent,
-          // notificationService.js's buildFields resolves it from
-          // TYPE_CONFIDENCE by `type` (the same fallback pattern
-          // `priority` already uses on the client's reminder engine).
           confidence: ALLOWED_CONFIDENCE.includes(c.confidence) ? c.confidence : undefined,
           icon: c.icon,
           title: c.title,

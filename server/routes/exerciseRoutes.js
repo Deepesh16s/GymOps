@@ -10,6 +10,7 @@ const {
 const {
   protect,
 } = require("../middleware/authMiddleware");
+const validateObjectId = require("../middleware/validateObjectId");
 
 router.post("/", protect, createExercise);
 
@@ -17,12 +18,14 @@ router.get("/", protect, getExercises);
 router.put(
   "/:id",
   protect,
+  validateObjectId(),
   updateExercise
 );
 
 router.delete(
   "/:id",
   protect,
+  validateObjectId(),
   deleteExercise
 );
 

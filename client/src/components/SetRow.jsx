@@ -6,19 +6,11 @@ const isValidNumber = (value) => value !== "" && !isNaN(Number(value));
 
 const toFieldValue = (value) => (value === "" || value == null ? "" : String(value));
 
-// One row of the set-logging table — always a plain visible row, never a
-// separate modal-like editor (that was SetEditor's model; this replaces
-// it). `status` drives the two states Module 2 calls for: "pending" (not
-// yet logged, autofilled from last-time/previous-set data, editable in
-// place) and "completed" (already logged, editable again via the pencil
-// action). Weight/reps are always plain inline inputs on a pending row —
-// no click-to-reveal-a-form step — so logging a set that's already
-// autofilled correctly is genuinely one tap.
 function SetRow({
   index,
   weight,
   reps,
-  status, // "pending" | "completed"
+  status,
   isEditing = false,
   onStartEdit,
   onCancelEdit,

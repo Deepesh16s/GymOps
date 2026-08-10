@@ -1,10 +1,3 @@
-// Single source of truth for notification categories/types/priorities on
-// the backend. This is the backend half of a deliberately UNSHARED,
-// mirrored pair — see client/src/constants/notificationTypes.js for the
-// frontend counterpart (icon-name -> lucide-component lookup, category
-// filter labels). Same separation cardioMetadata.js already established:
-// not imported across the frontend/backend boundary, kept in sync
-// manually.
 
 const NOTIFICATION_CATEGORIES = {
   PROGRESS: "progress",
@@ -13,11 +6,6 @@ const NOTIFICATION_CATEGORIES = {
   INSIGHTS: "insights",
 };
 
-// One notification TYPE can render under a different category depending
-// on context (e.g. GOAL_COMPLETED is "progress" for a Strength PR goal
-// but "cardio" for a Cardio Goal) — category is decided at generation
-// time by notificationService.js, not fixed per type here. This list is
-// only the vocabulary of `type` values a Notification document may hold.
 const NOTIFICATION_TYPES = {
   PERSONAL_RECORD: "personalRecord",
   GOAL_COMPLETED: "goalCompleted",
@@ -29,17 +17,11 @@ const NOTIFICATION_TYPES = {
   NEW_LONGEST_RUN: "newLongestRun",
   WEEKLY_VOLUME_INCREASED: "weeklyVolumeIncreased",
   MUSCLE_GROUP_NEGLECTED: "muscleGroupNeglected",
-  // Phase 13B — planning actions, not reminder delivery. These fire
-  // once, at the moment the user takes the planning action itself.
   WORKOUT_SCHEDULED: "workoutScheduled",
   WORKOUT_RESCHEDULED: "workoutRescheduled",
   RECURRING_SCHEDULE_CREATED: "recurringScheduleCreated",
   WORKOUT_CANCELLED: "workoutCancelled",
 
-  // Phase 13C — reminder delivery, all computed client-side (or, for
-  // firstWorkoutAfterBreak, at session-save time) from data already
-  // fetched, re-evaluated whenever the app loads — no scheduler, "starts
-  // in 1 hour" is only ever as fresh as the user's last page load/reload.
   WORKOUT_TODAY: "workoutToday",
   WORKOUT_STARTING_SOON: "workoutStartingSoon",
   WORKOUT_OVERDUE: "workoutOverdue",
@@ -57,40 +39,24 @@ const NOTIFICATION_TYPES = {
   PLANNER_SERIES_ENDING_SOON: "plannerSeriesEndingSoon",
   FIRST_WORKOUT_AFTER_BREAK: "firstWorkoutAfterBreak",
 
-  // Phase 14B, section 8 — Intelligence-driven reminders. Computed
-  // entirely client-side (client/src/reminders/intelligenceReminders.js)
-  // from Phase 14A's intelligence/ engines, same "no scheduler, freshest
-  // as of last page load" model as the other Phase 13C reminder types
-  // above — listed here too only to keep this file the single mirrored
-  // vocabulary of every `type` a Notification-shaped object may carry.
   PLATEAU_DETECTED: "plateauDetected",
   WEEKLY_GRADE_IMPROVED: "weeklyGradeImproved",
   RECOVERY_SCORE_INCREASED: "recoveryScoreIncreased",
   VOLUME_LANDMARK_ACHIEVED: "volumeLandmarkAchieved",
 };
 
-// Phase 13C, section 9 — the single source of truth every reminder's
-// priority is stamped from at generation time (server-triggered
-// detectors here, and the client's reminders/ engine mirrors this same
-// map — see client/src/constants/notificationTypes.js). muscleGroupNeglected
-// is deliberately absent: its priority is severity-dependent (info/
-// warning/critical — section 5), computed per-instance by whichever
-// generator builds it rather than fixed per type.
 const TYPE_PRIORITY = {
-  // Critical — needs action today or it's lost.
   [NOTIFICATION_TYPES.WORKOUT_OVERDUE]: "critical",
   [NOTIFICATION_TYPES.STREAK_PROTECTION]: "critical",
   [NOTIFICATION_TYPES.CARDIO_STREAK_EXPIRING]: "critical",
   [NOTIFICATION_TYPES.GOAL_EXPIRING_TODAY]: "critical",
 
-  // High — timely and worth surfacing above routine progress notes.
   [NOTIFICATION_TYPES.WORKOUT_TODAY]: "high",
   [NOTIFICATION_TYPES.WORKOUT_STARTING_SOON]: "high",
   [NOTIFICATION_TYPES.WORKOUT_MISSED_YESTERDAY]: "high",
   [NOTIFICATION_TYPES.RECOVERY_COMPLETE]: "high",
   [NOTIFICATION_TYPES.PLANNER_OVERLAP]: "high",
 
-  // Medium — routine progress/planning notes.
   [NOTIFICATION_TYPES.GOAL_PROGRESS_REMINDER]: "medium",
   [NOTIFICATION_TYPES.GOAL_THRESHOLD]: "medium",
   [NOTIFICATION_TYPES.CARDIO_SESSION_DUE]: "medium",
@@ -100,8 +66,6 @@ const TYPE_PRIORITY = {
   [NOTIFICATION_TYPES.PLANNER_SERIES_ENDING_SOON]: "medium",
   [NOTIFICATION_TYPES.MILESTONE_ALMOST_COMPLETE]: "medium",
 
-  // Low — achievements (celebratory, not actionable) and planning-action
-  // confirmations (the user just did this themselves).
   [NOTIFICATION_TYPES.PERSONAL_RECORD]: "low",
   [NOTIFICATION_TYPES.GOAL_COMPLETED]: "low",
   [NOTIFICATION_TYPES.STREAK_MILESTONE]: "low",
@@ -115,26 +79,12 @@ const TYPE_PRIORITY = {
   [NOTIFICATION_TYPES.RECURRING_SCHEDULE_CREATED]: "low",
   [NOTIFICATION_TYPES.WORKOUT_CANCELLED]: "low",
 
-  // Phase 14B, section 8.
   [NOTIFICATION_TYPES.PLATEAU_DETECTED]: "medium",
   [NOTIFICATION_TYPES.WEEKLY_GRADE_IMPROVED]: "low",
   [NOTIFICATION_TYPES.RECOVERY_SCORE_INCREASED]: "low",
   [NOTIFICATION_TYPES.VOLUME_LANDMARK_ACHIEVED]: "low",
 };
 
-// Phase 13D, Part A.1 — Reminder Confidence: how certain the rule that
-// produced this notification actually is, derived from the NATURE of
-// that rule (never fabricated per-instance):
-//   high   — exact/deterministic (real logged numbers, a scheduled
-//            plan's own fields, a plain historical comparison)
-//   medium — a comparative/statistical heuristic (which muscle category
-//            is MORE overdue than another, an average logging cadence)
-//   low    — a speculative pattern-based nudge, not a certain fact
-// Unlike TYPE_PRIORITY (where muscleGroupNeglected's priority tracks
-// severity and is stamped per-instance by the generator instead), its
-// CONFIDENCE is flat "Medium" regardless of severity tier — the phase's
-// own example fixes it there, and severity is about urgency, not how
-// certain the underlying rule is.
 const TYPE_CONFIDENCE = {
   [NOTIFICATION_TYPES.MUSCLE_GROUP_NEGLECTED]: "medium",
   [NOTIFICATION_TYPES.PERSONAL_RECORD]: "high",
@@ -169,22 +119,14 @@ const TYPE_CONFIDENCE = {
   [NOTIFICATION_TYPES.RECURRING_SCHEDULE_CREATED]: "low",
   [NOTIFICATION_TYPES.WORKOUT_CANCELLED]: "low",
 
-  // Phase 14B, section 8 — mirrors the confidence each candidate already
-  // stamps on itself in client/src/reminders/intelligenceReminders.js.
   [NOTIFICATION_TYPES.PLATEAU_DETECTED]: "medium",
   [NOTIFICATION_TYPES.WEEKLY_GRADE_IMPROVED]: "high",
   [NOTIFICATION_TYPES.RECOVERY_SCORE_INCREASED]: "medium",
   [NOTIFICATION_TYPES.VOLUME_LANDMARK_ACHIEVED]: "medium",
 };
 
-// Streak lengths worth a one-time celebration. A day beyond 100 doesn't
-// get its own notification — the list is finite on purpose (matches
-// section 7's explicit "7, 14, 30, 60, 100").
 const STREAK_MILESTONES = [7, 14, 30, 60, 100];
 
-// Goal completion-percentage thresholds worth a nudge before the goal is
-// actually done (100% is handled separately as GOAL_COMPLETED, a
-// distinctly bigger moment than a progress checkpoint).
 const GOAL_PROGRESS_THRESHOLDS = [80, 90];
 
 module.exports = {

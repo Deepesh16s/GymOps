@@ -11,20 +11,6 @@ import {
 import { ChartEmptyState } from "./ChartStates";
 import "./progression-charts.css";
 
-// Raw, unaggregated backing data for whatever the chart above is
-// currently scoped to (Overall/Muscle/Exercise/Cardio × time range) —
-// every row is one real logged Workout document, nothing computed or
-// estimated. This is the Progression page's "table view" (every chart
-// needs one for accessibility/verification), and doubles as a fast way
-// to double-check a number the chart/stats show against the actual
-// logged entries.
-//
-// Phase 12: a single caller instance only ever receives one kind of
-// data (Progression scopes strength workouts and cardio workouts into
-// two separate arrays before passing either one in here — see
-// scopedWorkouts/cardioScopedWorkouts in Progression.jsx), so the
-// column headers can safely relabel for the whole table rather than
-// needing a per-row header switch.
 function WorkoutLogTable({ workouts = [], loading = false, limit = 50 }) {
   const isCardioTable = workouts.length > 0 && workouts.every(isCardioEntry);
   if (loading) {

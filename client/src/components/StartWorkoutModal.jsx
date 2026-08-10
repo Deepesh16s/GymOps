@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
 import { X, Dumbbell } from "lucide-react";
 import { SESSION_TYPES, OTHER_SESSION_TYPE } from "../constants/sessionTypes";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 
-// Purely presentational: takes open/onClose/onStart and owns only the
-// form's local input state. It does not call useWorkoutSession or any
-// other hook itself — the caller decides what happens with the chosen
-// sessionType/customSessionType.
 function StartWorkoutModal({ open, onClose, onStart }) {
   const [sessionType, setSessionType] = useState(SESSION_TYPES[0]);
   const [customSessionType, setCustomSessionType] = useState("");
   const [touchedCustom, setTouchedCustom] = useState(false);
 
-  // Reset the form every time the modal is (re)opened, so a previous
-  // session's leftover input never leaks into the next one.
   useEffect(() => {
     if (open) {
       setSessionType(SESSION_TYPES[0]);
@@ -20,6 +15,8 @@ function StartWorkoutModal({ open, onClose, onStart }) {
       setTouchedCustom(false);
     }
   }, [open]);
+
+  useModalEscapeAndFocus(open, onClose);
 
   if (!open) return null;
 

@@ -1,18 +1,8 @@
-// Phase 13C, section 6 — Cardio Reminders. Goal-backed cardio reminders
-// ("Weekly distance: 4 km remaining", "Daily steps: 3,200 left") are
-// already covered generically by goalReminders.js's goalProgressReminder
-// (category flips to "cardio" for any Cardio Goal) — duplicating that
-// here would just be the same number under a second type. This file
-// only covers what ISN'T goal-shaped: per-activity staleness and cadence,
-// reusing cardioProgressionEngine.getAvailableCardioActivities for the
-// activity list rather than re-deriving it.
 import { isCardioEntry } from "../utils/workoutUtils";
 import { getAvailableCardioActivities } from "../progression/cardioProgressionEngine";
 import { daysAgo } from "./reminderUtils";
 
 const NOT_LOGGED_THRESHOLD_DAYS = 14;
-// Minimum logged sessions of an activity before "average gap" is a
-// meaningful enough figure to base a "due" reminder on.
 const MIN_SESSIONS_FOR_CADENCE = 3;
 const DUE_MULTIPLIER = 1.4;
 
@@ -35,11 +25,6 @@ export function generateCardioReminders(workouts) {
     const gapSinceLast = daysAgo(lastLogged);
 
     if (gapSinceLast >= NOT_LOGGED_THRESHOLD_DAYS) {
-      // 13C.1 — bucketed by week, not exact days: with a stable
-      // dedupeKey, the subtitle text is what decides "meaningfully
-      // changed" vs "respect the cooldown" (see notificationService.js).
-      // An exact day-count would drift every single calendar day
-      // regardless of any real action, defeating the cooldown entirely.
       const weeksGone = Math.floor(gapSinceLast / 7);
       reminders.push({
         type: "cardioActivityNotLogged",
@@ -65,9 +50,6 @@ export function generateCardioReminders(workouts) {
     const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
 
     if (avgGap > 0 && gapSinceLast >= avgGap * DUE_MULTIPLIER) {
-      // Deliberately no exact day-count in the subtitle (same drift
-      // concern as above) — "due" is itself the meaningful signal, the
-      // average cadence doesn't change from one refresh to the next.
       reminders.push({
         type: "cardioSessionDue",
         category: "cardio",

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Clock } from "lucide-react";
 import { updateSessionTiming } from "../services/workoutService";
 import { toDateTimeLocalValue, formatDurationLong } from "../utils/timeFormat";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./EditWorkoutTimingModal.css";
 
 const EIGHT_HOURS_MINUTES = 8 * 60;
@@ -11,19 +12,12 @@ function minutesToHm(totalMinutes) {
   return { hours: Math.floor(total / 60), minutes: total % 60 };
 }
 
-// Purely presentational + its own local form state, same shape as
-// StartWorkoutModal — the caller (WorkoutHistory) owns nothing but
-// open/onClose/session/onSaved and applies whatever onSaved hands back
-// to its local session state, no refetch.
 function EditWorkoutTimingModal({ open, onClose, session, onSaved }) {
   const [mode, setMode] = useState("AUTO");
   const [startValue, setStartValue] = useState("");
   const [endValue, setEndValue] = useState("");
   const [durationHours, setDurationHours] = useState(0);
   const [durationMinutes, setDurationMinutes] = useState(0);
-  // Which time field the user most recently typed into directly — when
-  // duration is edited in Manual mode, the OTHER time field is the one
-  // that gets recalculated, so the field you just set stays put.
   const [anchorField, setAnchorField] = useState("start");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -49,6 +43,8 @@ function EditWorkoutTimingModal({ open, onClose, session, onSaved }) {
     setAnchorField("start");
     setError(null);
   }, [open, session]);
+
+  useModalEscapeAndFocus(open, onClose);
 
   if (!open || !session) return null;
 

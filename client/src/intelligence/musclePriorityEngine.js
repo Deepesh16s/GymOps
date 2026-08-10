@@ -1,8 +1,3 @@
-// Phase 14A, Module 11 — Muscle Priority Engine: most overdue muscle,
-// fastest-growing muscle, and which muscles are neglected. Reuses
-// workoutUtils.computeMuscleBreakdown for lastTrained gaps and
-// progression/progressionEngine.js's getMuscleProgression for volume
-// growth trends — no new per-muscle computation invented.
 import { computeMuscleBreakdown } from "../utils/workoutUtils";
 import { getMuscleProgression } from "../progression/progressionEngine";
 import { getAvailableMuscles } from "../progression/progressionFilters";
@@ -10,10 +5,6 @@ import { getConfidence } from "../utils/confidenceUtils";
 
 const MS_PER_DAY = 86400000;
 
-// Reuses reminders/neglectReminders.js's own "warning" tier (18+ days)
-// for what counts as "Neglected" here — the same severity vocabulary
-// the Notification Center's neglect reminders already established,
-// rather than picking a second, different cutoff for this module.
 const NEGLECTED_THRESHOLD_DAYS = 18;
 
 function daysSince(date) {
@@ -37,10 +28,6 @@ export function getMusclePriorities(workouts, { rangeKey = "lifetime" } = {}) {
     .map(({ muscle, progression }) => ({ muscle, changePct: progression.trend.volume.changePct }))
     .sort((a, b) => b.changePct - a.changePct);
 
-  // Standardized confidence — how many distinct muscles the read is
-  // actually spanning (breakdown.length, the same set already used to
-  // find mostOverdue/neglected above). A read over 2 muscles is a
-  // weaker claim about "priorities" than one spanning 8+.
   const { level: confidence, reason: confidenceReason } = getConfidence(breakdown.length, "muscle");
 
   return {

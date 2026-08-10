@@ -1,8 +1,5 @@
 @import "../styles/design-tokens.css";
 
-/* ---------------------------------------------------------- */
-/* Page shell                                                   */
-/* ---------------------------------------------------------- */
 
 .history-page {
   width: 100%;
@@ -25,10 +22,6 @@
 .history-header h1 { font-size: 1.5rem; color: var(--go-text); }
 .history-header p { color: var(--go-text-muted); font-size: 0.9rem; }
 
-/* ---------------------------------------------------------- */
-/* Controls — sticky so search/filters stay reachable while      */
-/* scrolling a long history, matching Navbar's own sticky top:0. */
-/* ---------------------------------------------------------- */
 
 .history-controls {
   position: sticky;
@@ -108,8 +101,6 @@
   outline-offset: 2px;
 }
 
-/* An active (non-default) filter should visually stand out from an
-   untouched one instead of carrying equal weight. */
 .history-select--active {
   border-color: color-mix(in srgb, var(--go-primary) 45%, transparent);
   background: var(--go-primary-50);
@@ -158,8 +149,6 @@
   color: var(--go-text-faint);
 }
 
-/* Toggle pills — PR Workouts / Favorites. aria-pressed carries the
-   semantic state; the active class only handles the visual. */
 .history-toggle-pill {
   display: inline-flex;
   align-items: center;
@@ -217,9 +206,6 @@
   outline-offset: 2px;
 }
 
-/* ---------------------------------------------------------- */
-/* Session Summary bar                                           */
-/* ---------------------------------------------------------- */
 
 .history-summary {
   display: grid;
@@ -282,9 +268,6 @@
   letter-spacing: 0.06em;
 }
 
-/* ---------------------------------------------------------- */
-/* Empty / loading states                                       */
-/* ---------------------------------------------------------- */
 
 @keyframes history-fade-in {
   from {
@@ -385,9 +368,6 @@
   gap: 0;
 }
 
-/* ---------------------------------------------------------- */
-/* Session list                                                  */
-/* ---------------------------------------------------------- */
 
 .history-list {
   display: flex;
@@ -395,9 +375,6 @@
   gap: 14px;
 }
 
-/* ---------------------------------------------------------- */
-/* Session card                                                  */
-/* ---------------------------------------------------------- */
 
 .history-card {
   position: relative;
@@ -562,9 +539,6 @@
   color: var(--go-primary);
 }
 
-/* Compact "hero" readout — the first thing the eye should catch after
-   the title, echoing what Hevy/Strong surface on a collapsed card
-   without needing to expand it. */
 .history-card__hero {
   display: flex;
   flex-direction: column;
@@ -609,13 +583,6 @@
   color: var(--go-text-muted);
 }
 
-/* ---------------------------------------------------------- */
-/* Expand / collapse                                             */
-/*                                                                */
-/* grid-template-rows trick avoids height measurement and         */
-/* animates both directions cleanly; opacity is layered on top    */
-/* so content fades in/out in step with the height change.        */
-/* ---------------------------------------------------------- */
 
 .session-body {
   display: grid;
@@ -654,9 +621,6 @@
   color: var(--go-text-faint);
 }
 
-/* ---------------------------------------------------------- */
-/* PR callout (Workout History 2.0)                              */
-/* ---------------------------------------------------------- */
 
 .session-pr-panel {
   margin: 20px 24px 0;
@@ -690,9 +654,6 @@
   color: var(--go-text);
 }
 
-/* ---------------------------------------------------------- */
-/* Workout Session Editing & Time Tracking                       */
-/* ---------------------------------------------------------- */
 
 .session-timing {
   margin: 20px 24px 0;
@@ -787,10 +748,6 @@
   color: var(--go-primary-light);
 }
 
-/* ---------------------------------------------------------- */
-/* Shared exercise bits — reused inside SessionTimeline          */
-/* (Phase 10B) for each exercise's Best-Set/Volume mini-tiles.    */
-/* ---------------------------------------------------------- */
 
 @keyframes history-row-fade-in {
   from {
@@ -845,11 +802,6 @@
   white-space: nowrap;
 }
 
-/* ---------------------------------------------------------- */
-/* Session Timeline (Phase 10B) — Workout Started -> each          */
-/* exercise in performed order, with its own set-by-set journey    */
-/* and a PR callout where earned -> Workout Finished.               */
-/* ---------------------------------------------------------- */
 
 .session-timeline {
   padding: 8px 24px 20px;
@@ -1067,11 +1019,6 @@
   font-style: italic;
 }
 
-/* ---------------------------------------------------------- */
-/* Session Summary footer — a finished-report close to the       */
-/* expanded view, reusing the same numbers already computed for   */
-/* the header/hero (no re-derivation).                            */
-/* ---------------------------------------------------------- */
 
 .session-summary-footer {
   margin: 4px 24px 20px;
@@ -1081,9 +1028,6 @@
   animation: history-row-fade-in 380ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
 }
 
-/* Phase 14B, section 6 — Session Intelligence. Same "muted card with an
-   uppercase label" shape as session-pr-panel, tinted with the primary
-   token instead of warning since this is coaching info, not an alert. */
 .session-intelligence {
   margin: 16px 24px 0;
   padding: 12px 16px;
@@ -1167,11 +1111,6 @@
   color: var(--go-text);
 }
 
-/* ---------------------------------------------------------- */
-/* Overflow menu — tucks destructive actions (Delete Session,     */
-/* Delete exercise) behind a "..." trigger instead of a red button */
-/* competing for attention on every card.                          */
-/* ---------------------------------------------------------- */
 
 .history-overflow-menu {
   position: relative;
@@ -1261,18 +1200,12 @@
   to { transform: rotate(360deg); }
 }
 
-/* ---------------------------------------------------------- */
-/* Responsive breakpoints                                        */
-/* ---------------------------------------------------------- */
 
 @media (max-width: 760px) {
   .history-main {
     padding: 24px 16px 48px;
   }
 
-  /* Sticky filters cost more vertical space than they're worth once the
-     Navbar itself may wrap to two rows on a narrow viewport — simpler
-     and safer to let the bar scroll away with the page on mobile. */
   .history-controls {
     position: static;
     background: transparent;
@@ -1371,13 +1304,6 @@
   }
 }
 
-/* ---------------------------------------------------------- */
-/* Reduced motion — every stagger/fade-in above (Phase 10A's      */
-/* section reveals and Phase 10B's timeline) is purely             */
-/* decorative, so it's safe to disable outright rather than just   */
-/* shortening it. Forcing the final opacity/transform keeps the    */
-/* content visible instead of stuck mid-animation.                 */
-/* ---------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   .history-fade-in,

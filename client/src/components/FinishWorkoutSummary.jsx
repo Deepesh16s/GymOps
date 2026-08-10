@@ -1,14 +1,10 @@
 import { CheckCircle2, Trophy, X } from "lucide-react";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./FinishWorkoutSummary.css";
 
-// Module 9 — replaces the plain-text success banner with a real
-// "Workout Complete" card. `summary` is assembled by Dashboard right
-// after a successful finishWorkout(): the local session totals
-// (duration/volume/exercises/sets/prExerciseCount) were captured from
-// WorkoutSession before it unmounted, and badges/currentStreak are
-// computed from the freshly-refetched workouts (so they already include
-// the session that just finished).
 function FinishWorkoutSummary({ summary, onClose }) {
+  useModalEscapeAndFocus(!!summary, onClose);
+
   if (!summary) return null;
 
   const {
@@ -21,9 +17,6 @@ function FinishWorkoutSummary({ summary, onClose }) {
     currentStreak,
   } = summary;
 
-  // Counts distinct exercises with a PR, not raw PR events — "PR in 2
-  // exercises" reads more meaningfully than a number that could double-
-  // count one exercise broken twice in the same session.
   const prLabel =
     prExerciseCount > 0
       ? `${prExerciseCount} ${prExerciseCount === 1 ? "exercise" : "exercises"}`

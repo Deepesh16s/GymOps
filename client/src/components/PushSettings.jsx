@@ -1,17 +1,6 @@
 import { Bell, BellOff, BellRing } from "lucide-react";
 import usePushNotifications from "../hooks/usePushNotifications";
 
-// Phase 13D, Part B — Browser Push permission flow + quiet hours,
-// rendered as a second section inside NotificationCenter's existing
-// preferences panel (the same one 13C's reminder-category toggles
-// already use) rather than a new settings page or component family.
-//
-// Section 15, Progressive Enhancement: when the browser doesn't support
-// the Push API at all, this renders one quiet, factual line and NOTHING
-// else — no broken buttons, no dead controls. Every other part of the
-// Notification Center (list, timeline, snooze, mark complete, dismiss)
-// is completely unaffected either way, since none of it depends on
-// push.
 function PermissionBadge({ permission }) {
   if (permission === "granted") {
     return (

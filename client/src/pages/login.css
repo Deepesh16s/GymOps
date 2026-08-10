@@ -318,6 +318,19 @@ body {
   box-shadow: 0 0 0 3px var(--go-primary-200);
 }
 
+.gl-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: -4px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 .gl-btn {
   position: relative;
   overflow: hidden;

@@ -14,16 +14,6 @@ import { Trophy } from "lucide-react";
 import { ChartSkeleton, ChartEmptyState } from "./ChartStates";
 import "./progression-charts.css";
 
-// Cardio sibling of ExerciseSessionChart — same shell (recharts
-// primitives, ChartSkeleton/ChartEmptyState, .progress-chart CSS
-// classes), reused as-is. Only the tooltip content differs, and
-// genuinely has to: ExerciseSessionChart's tooltip hardcodes Best
-// Set/Volume/Working Sets/Average Weight rows, which are meaningless
-// for a distance/duration/pace/calories cardio session — reusing it
-// directly would render "Volume: NaN kg" for real cardio data. This is
-// the "unavoidable" cardio-specific chart the phase's own scope allows
-// for exactly that reason; everything reusable about it (props shape,
-// styling, PR-dot behavior) is unchanged from its strength sibling.
 function buildTooltipRows(point, metricKey) {
   const base = [
     { key: "distance", label: "Distance", value: point.distance != null ? `${point.distance} km` : "—" },
@@ -78,9 +68,6 @@ function SessionDot(props) {
   );
 }
 
-// One point per session for a single cardio activity — reuses
-// buildCardioSessionSeries' precomputed metrics, same "switching metric
-// never recomputes sessions" contract as ExerciseSessionChart.
 function CardioSessionChart({ series = [], metricKey, metricDef, loading = false, height = 220 }) {
   const labelByKey = useMemo(() => new Map(series.map((p) => [p.key, p.label])), [series]);
   const gradientId = `cardio-chart-gradient-${useId().replace(/:/g, "")}`;
@@ -101,8 +88,6 @@ function CardioSessionChart({ series = [], metricKey, metricDef, loading = false
     <div className="progress-chart" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={series} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
-          {/* Same gradient treatment ExerciseSessionChart's own sibling
-              fix uses — presentation only, reads the same dataKey. */}
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--go-chart-accent)" stopOpacity={0.28} />

@@ -1,8 +1,5 @@
 @import "../../styles/design-tokens.css";
 
-/* ---------------------------------------------------------------- */
-/* ProgressChart / TimelineChart                                     */
-/* ---------------------------------------------------------------- */
 
 .progress-chart {
   width: 100%;
@@ -47,10 +44,6 @@
   max-width: 280px;
 }
 
-/* ---------------------------------------------------------------- */
-/* PanelEmptyState — same shape as the chart empty state above, for    */
-/* non-chart panels ("no PRs logged yet", etc.)                       */
-/* ---------------------------------------------------------------- */
 
 .panel-empty-state {
   display: flex;
@@ -177,9 +170,6 @@
   background-size: 6px 2px;
 }
 
-/* ---------------------------------------------------------------- */
-/* TrendChart                                                         */
-/* ---------------------------------------------------------------- */
 
 .trend-chart {
   display: flex;
@@ -241,9 +231,6 @@
   color: var(--go-text-muted);
 }
 
-/* ---------------------------------------------------------------- */
-/* MetricCard                                                        */
-/* ---------------------------------------------------------------- */
 
 .metric-card {
   display: flex;
@@ -293,9 +280,6 @@
   color: var(--go-text-faint);
 }
 
-/* ---------------------------------------------------------------- */
-/* StatGroupCard                                                      */
-/* ---------------------------------------------------------------- */
 
 .stat-group-card {
   display: flex;
@@ -353,9 +337,6 @@
   color: var(--go-text);
 }
 
-/* ---------------------------------------------------------------- */
-/* ProgressSummary                                                    */
-/* ---------------------------------------------------------------- */
 
 .progress-summary {
   display: flex;
@@ -378,9 +359,6 @@
   gap: 12px;
 }
 
-/* ---------------------------------------------------------------- */
-/* InsightCard                                                        */
-/* ---------------------------------------------------------------- */
 
 .insight-card {
   display: flex;
@@ -443,9 +421,6 @@
   font-style: italic;
 }
 
-/* ---------------------------------------------------------------- */
-/* FilterBar                                                         */
-/* ---------------------------------------------------------------- */
 
 .progression-filterbar {
   display: flex;
@@ -672,9 +647,6 @@
   border-radius: 2px;
 }
 
-/* ---------------------------------------------------------------- */
-/* WorkoutLogTable                                                    */
-/* ---------------------------------------------------------------- */
 
 .workout-log__skeleton {
   display: flex;
@@ -736,9 +708,6 @@
   text-align: center;
 }
 
-/* ---------------------------------------------------------------- */
-/* DistributionRow                                                    */
-/* ---------------------------------------------------------------- */
 
 .prog-exdist__hint {
   font-size: var(--go-text-body);
@@ -767,11 +736,6 @@
   grid-template-areas:
     "name count"
     "track track";
-  /* A <button> only fills its parent's width when that parent is itself
-     a stretching flex/grid item — wrapping a row in an extra <div> (e.g.
-     for an expandable accordion) breaks that chain and the button
-     shrinks to its content instead. Declaring the width here directly
-     makes every row full-width regardless of what wraps it. */
   width: 100%;
   box-sizing: border-box;
 }
@@ -807,9 +771,6 @@
   white-space: nowrap;
 }
 
-/* DistributionRow's optional status badge (e.g. Muscle Balance's
-   Balanced/Needs Work/Overtrained) — a category read alongside the raw
-   percentage, since a label registers faster than a number. */
 .distribution-row__badge {
   padding: 2px 8px;
   border-radius: var(--go-radius-pill);
@@ -842,8 +803,6 @@
   overflow: hidden;
 }
 
-/* Ranked variant — a leaderboard position instead of a proportional bar,
-   for lists placed where several bar-track rows already sit back to back. */
 .prog-exdist__row--ranked {
   grid-template-columns: auto 1fr auto;
   grid-template-areas: "rank name count";
@@ -877,9 +836,6 @@
   background: var(--go-chart-accent);
 }
 
-/* ---------------------------------------------------------------- */
-/* PersonalRecordRow                                                  */
-/* ---------------------------------------------------------------- */
 
 .prog-pr {
   display: flex;
@@ -900,10 +856,6 @@
   border-bottom: none;
 }
 
-/* Wide "landscape" tile grid — used where a Personal Records list can
-   run long (one row per exercise ever trained) and reads better as
-   several short columns than one tall one. Rows become self-contained
-   tiles instead of divider-separated lines in a single column. */
 .prog-pr--grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -999,6 +951,7 @@
 
   .progression-filterbar__tab {
     flex: 1;
+    min-width: 0;
     justify-content: center;
   }
 

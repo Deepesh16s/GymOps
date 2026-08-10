@@ -1,16 +1,3 @@
-// User feedback ⭐2 — "Coach Priority": Recovery/Goal/Plateau/Fatigue/
-// Planner/Streak can all have something to say at once, with no single
-// consistent rule for which one matters most right now. This is that
-// ONE ranking — every consumer (Dashboard's leading banner today; any
-// future surface) reads from here rather than picking its own order.
-//
-// Recovery/Plateau/Fatigue are read DIRECTLY off their own Phase 14A
-// engines — no existing reminder type covers "still fatigued/plateaued/
-// under-recovered right now" the way this needs. Goal/Planner/Streak
-// instead reuse the EXISTING reminder generators
-// (reminders/goalReminders.js, plannerReminders.js, streakReminders.js)
-// — their trigger logic is already correct; re-deriving it here would be
-// exactly the duplicated business logic Phase 14B forbids.
 import { getMuscleRecoveryScores, getMusclePlateaus, getFatigueLevel } from "../intelligence";
 import { getAvailableMuscles } from "../progression/progressionFilters";
 import { generateGoalReminders } from "../reminders/goalReminders";
@@ -19,9 +6,6 @@ import { generateStreakReminders } from "../reminders/streakReminders";
 import { TYPE_PRIORITY } from "../constants/notificationTypes";
 
 const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
-// Category tiebreak when severities are equal — matches the order the
-// feedback's own example ladder listed (Recovery, Goal, ..., Planner),
-// with Plateau/Fatigue/Streak filling the remaining "Insight" tier.
 const CATEGORY_RANK = { recovery: 0, goal: 1, plateau: 2, fatigue: 3, planner: 4, streak: 5 };
 
 function recoverySignal(workouts) {
@@ -33,10 +17,6 @@ function recoverySignal(workouts) {
     severity: needsRest.length >= 2 ? "critical" : "high",
     title: needsRest.length === 1 ? `${muscleNames[0]} needs rest` : `${needsRest.length} muscle groups need rest`,
     detail: "Recovery score below 50 — consider a lighter session or a different muscle group today.",
-    // Points to Analytics' Training Intelligence tab (the full per-muscle
-    // Recovery breakdown), not "/dashboard" — this banner IS the
-    // dashboard, so that target would be a dead click (navigating to the
-    // page already being viewed).
     navigationTarget: "/analytics",
   };
 }
@@ -68,11 +48,6 @@ function fatigueSignal(workouts) {
   };
 }
 
-// Resolves each reminder candidate's priority the SAME way
-// reminders/reminderEngine.js's own generateReminders does
-// (r.priority || TYPE_PRIORITY[r.type] || "medium") — these generators
-// are called directly here, bypassing that orchestrator, so this
-// mirrors its one resolution step rather than skipping it.
 function reminderSignal(category, reminders, navigationTarget) {
   if (!reminders.length) return null;
   const withPriority = reminders.map((r) => ({ ...r, priority: r.priority || TYPE_PRIORITY[r.type] || "medium" }));
@@ -86,11 +61,6 @@ function reminderSignal(category, reminders, navigationTarget) {
   };
 }
 
-// The orchestrator: composes all 6 signals (omitting any with nothing
-// to say right now), ranks them severity-first then by the fixed
-// category order, and returns the FULL ranked list — `top` is "the one
-// thing the coach would tell you right now", but every consumer can see
-// the whole ordering, not just the winner.
 export function generateCoachPriority(workouts, { goals = [], plannedWorkouts = [] } = {}) {
   const signals = [
     recoverySignal(workouts),

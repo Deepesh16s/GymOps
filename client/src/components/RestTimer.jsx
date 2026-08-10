@@ -6,9 +6,6 @@ import "./RestTimer.css";
 const SOUND_PREF_KEY = "gymops_rest_timer_sound";
 const PRESETS = [60, 90, 120, 180];
 
-// A short Web Audio beep — no binary asset, no external dependency.
-// Fails silently if the browser blocks/lacks AudioContext (e.g. no user
-// gesture yet); the timer itself still works without sound.
 function playBeep() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -24,7 +21,7 @@ function playBeep() {
     osc.start();
     osc.stop(ctx.currentTime + 0.5);
   } catch {
-    // Sound is optional — nothing to recover from here.
+    return;
   }
 }
 
@@ -34,10 +31,6 @@ function formatSeconds(total) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// Preset chip label. Rounding every value to the nearest minute (e.g.
-// Math.round(90/60)) made 90s and 120s both read as "2m" — this instead
-// only abbreviates to "Xm" when the preset is an exact whole minute,
-// otherwise spells out the remainder so every preset reads distinctly.
 function formatPresetLabel(totalSeconds) {
   if (totalSeconds < 60) return `${totalSeconds}s`;
   const m = Math.floor(totalSeconds / 60);
@@ -45,12 +38,6 @@ function formatPresetLabel(totalSeconds) {
   return s === 0 ? `${m}m` : `${m}m ${s}s`;
 }
 
-// One shared rest timer per workout session (not one per exercise —
-// only one rest period is ever active at a time). `restartTrigger`
-// changes (a new value, e.g. Date.now()) every time any exercise card
-// completes a set; `initialSeconds` is that exercise's default (compound
-// vs isolation heuristic, see liveWorkoutEngine.getDefaultRestSeconds),
-// always overridable via the preset chips below.
 function RestTimer({ initialSeconds, restartTrigger }) {
   const countdown = useCountdown(initialSeconds || 90);
   const [soundEnabled, setSoundEnabled] = useState(
@@ -64,7 +51,6 @@ function RestTimer({ initialSeconds, restartTrigger }) {
     if (restartTrigger == null) return;
     hasPlayedRef.current = false;
     countdown.start(initialSeconds || 90);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restartTrigger]);
 
   useEffect(() => {

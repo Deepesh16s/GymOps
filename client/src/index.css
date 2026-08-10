@@ -21,3 +21,31 @@ body {
   background: var(--go-bg);
   color: var(--go-text);
 }
+
+.route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.route-loading__spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--go-border-soft);
+  border-top-color: var(--go-primary);
+  animation: route-loading-spin 0.7s linear infinite;
+}
+
+@keyframes route-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading__spinner {
+    animation: none;
+  }
+}

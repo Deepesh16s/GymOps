@@ -15,6 +15,10 @@
   align-items: start;
 }
 
+.calendar-load-error {
+  grid-column: 1 / -1;
+}
+
 .calendar-card,
 .calendar-details-card {
   padding: 28px;
@@ -129,10 +133,6 @@
   background: color-mix(in srgb, var(--go-text) 4%, var(--go-surface-sunken));
 }
 
-/* Rest days otherwise share one identical flat fill with nothing to
-   distinguish one from the next — a barely-visible 1px inner edge gives
-   each cell its own definition, the same restrained treatment GitHub's
-   own empty contribution squares use, rather than a truly flat block. */
 .calendar-cell:not(.workout-day):not(.empty) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--go-text) 6%, transparent);
 }
@@ -146,9 +146,6 @@
   border-color: var(--go-primary-200);
 }
 
-/* Rest days (no workout logged) otherwise look completely static next
-   to the workout-day cells' own colored fill — a small background lift
-   on hover signals "this is clickable too" before the user ever clicks. */
 .calendar-cell:not(.workout-day):not(.empty):hover {
   background: color-mix(in srgb, var(--go-text) 5%, var(--go-surface-sunken));
 }
@@ -166,12 +163,6 @@
 
 .workout-day .calendar-cell-day { font-weight: 700; color: var(--go-success-dark); }
 
-/* Intensity tiers — relative to the single heaviest day ever logged
-   (see intensityTier() in Calendar.jsx). GitHub-contribution-graph
-   restraint: flat tints (no gradient/glow), low mix percentages even at
-   the top tier, so the darkest trained day still reads as calm data,
-   not a shiny "achievement" fill. Selection (below) stays the one bold,
-   fully-saturated element on the grid. */
 .calendar-cell.intensity-light {
   background: color-mix(in srgb, var(--go-success) 8%, var(--go-surface-sunken));
   border-color: color-mix(in srgb, var(--go-success) 14%, transparent);
@@ -197,9 +188,6 @@
   color: var(--go-success-dark);
 }
 
-/* PR day — a small dot, not a star. Independent of intensity tier (a
-   light session can still be a PR day); the full "New PR" detail only
-   shows in the hover preview, not as a permanent on-cell badge. */
 .calendar-cell.is-pr-day::before {
   content: "";
   position: absolute;
@@ -211,9 +199,6 @@
   background: color-mix(in srgb, var(--go-warning) 75%, transparent);
 }
 
-/* One dominant-type accent bar instead of a row of colored dots — a
-   single quiet signal at the bottom edge, not a cluster competing with
-   the day number and count badge. */
 .calendar-cell__accent {
   position: absolute;
   bottom: 0;
@@ -224,8 +209,6 @@
   opacity: 0.5;
 }
 
-/* Streak connector — thin and low-opacity (GitHub-style), sitting
-   behind the cells rather than reading as its own board-game path. */
 .calendar-cell__connector {
   position: absolute;
   top: 50%;
@@ -245,21 +228,11 @@
   box-shadow: 0 0 0 3px var(--go-primary-100);
 }
 
-/* Selection is a border, not a fill — fill already means "how much was
-   trained" (the intensity tiers above); reusing it for "this is the
-   selected day" too collapses two different meanings into one visual
-   channel, which is exactly why a selected heavy day used to be hard to
-   tell apart from a merely-heavy one. Border color is the one channel
-   reserved for selection alone. */
 .calendar-cell.is-selected {
-  /* An inset, floating ring rather than a border flush with the card's
-     own edge — outline (not border) so it can sit a few px inward via
-     a negative offset while still following the cell's rounded corners. */
   outline: 2px solid var(--go-primary);
   outline-offset: -5px;
 }
 
-/* Marker: dot = exactly one session that day. */
 .calendar-dot {
   width: 6px;
   height: 6px;
@@ -267,9 +240,6 @@
   background: var(--go-success-dark);
 }
 
-/* Marker: numeric badge = multiple sessions that day (replaces the dot).
-   A soft tinted chip, not a solid filled bubble — the count is a
-   secondary signal, not a second headline next to the day number. */
 .calendar-session-count-badge {
   min-width: 15px;
   height: 15px;
@@ -303,9 +273,6 @@
   flex: 1;
 }
 
-/* Phase 13B — small, always-available "Plan workout" action next to the
-   selected day's title, for adding a plan even on a day that already
-   has activity. Hidden for past days (nothing to plan retroactively). */
 .calendar-details-header__plan-btn {
   all: unset;
   display: inline-flex;
@@ -325,10 +292,6 @@
   background: var(--go-primary-100);
 }
 
-/* Phase 13B — section 7: a small marker distinct from the completed-
-   session dot, positioned in the opposite corner so the two never
-   compete for the same visual space. Outlined ring = still Planned;
-   solid amber = Missed (needs attention). */
 .calendar-plan-indicator {
   position: absolute;
   top: 5px;
@@ -347,8 +310,6 @@
   background: var(--go-warning);
 }
 
-/* Phase 13B — "Plan a workout" prompt shown in place of "Rest day" for
-   today/future days with nothing logged or planned yet. */
 .calendar-plan-prompt {
   display: flex;
   flex-direction: column;
@@ -399,8 +360,6 @@
   text-decoration: underline;
 }
 
-/* Phase 13B — planned workout card(s), rendered above the completed-
-   session timeline for the selected day. */
 .planned-workout-list {
   display: flex;
   flex-direction: column;
@@ -437,8 +396,6 @@
   margin-bottom: 8px;
 }
 
-/* Section 7 badge treatments — outlined/filled/warning/muted, so status
-   is legible at a glance without reading the text label. */
 .planned-badge {
   font-size: 10.5px;
   font-weight: 700;
@@ -482,9 +439,6 @@
   font-weight: 600;
 }
 
-/* Phase 13C, section 14 — quiet inline flag, same visual weight as the
-   recurring-tag above rather than a loud badge, so it reads as
-   supplementary context next to the status badge. */
 .planned-workout-card__reminder-tag {
   display: inline-flex;
   color: var(--go-warning);
@@ -502,16 +456,10 @@
   color: var(--go-danger-dark);
 }
 
-/* User feedback ⭐1 — the standardized ConfidenceBadge sits just below
-   the badge row (readiness/reminder/recurring/priority), above the title. */
 .planned-workout-card > .confidence-badge {
   margin-bottom: 6px;
 }
 
-/* Phase 14B, section 7 — confidence badge + conflict warning. Same pill
-   shape as priority above, tone-mapped like every other recovery-status
-   badge in this app (distribution-row__badge's balanced/warning/danger
-   vocabulary). */
 .planned-workout-card__readiness {
   font-size: 10.5px;
   font-weight: 700;
@@ -644,14 +592,6 @@
   }
 }
 
-/* ---------------------------------------------------------- */
-/* Session cards (visual reference: workoutHistory.css)         */
-/*                                                                */
-/* Scoped under calendar-* names so this page stays independent  */
-/* of workoutHistory.css — same spacing/typography/animation      */
-/* values, ported only where Calendar actually needs them,        */
-/* compacted slightly to fit the narrower details-card column.    */
-/* ---------------------------------------------------------- */
 
 .calendar-session-list {
   display: flex;
@@ -751,7 +691,6 @@
   color: var(--go-text-muted);
 }
 
-/* Expand/collapse: same grid-template-rows technique as Workout History. */
 .calendar-session-body {
   display: grid;
   grid-template-rows: 0fr;
@@ -860,9 +799,6 @@
 
 .go-skeleton.calendar-cell { cursor: default; }
 
-/* ---------------------------------------------------------- */
-/* Month summary strip                                          */
-/* ---------------------------------------------------------- */
 
 .calendar-month-summary {
   display: flex;
@@ -892,11 +828,6 @@
   color: var(--go-text-muted);
 }
 
-/* ---------------------------------------------------------- */
-/* Planner Analytics — deliberately its own strip, visually      */
-/* distinct from the workout month-summary chips above, so the    */
-/* two kinds of stats never read as one merged list.              */
-/* ---------------------------------------------------------- */
 
 .planner-analytics {
   margin: 0 0 20px;
@@ -906,20 +837,36 @@
   border: 1px solid var(--go-primary-100);
 }
 
-.planner-analytics__label {
-  display: block;
+.planner-analytics__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
   font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--go-primary-dark);
-  margin-bottom: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.planner-analytics__chevron {
+  transition: transform 0.15s ease;
+}
+
+.planner-analytics__chevron--open {
+  transform: rotate(180deg);
 }
 
 .planner-analytics__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .planner-analytics__chip {
@@ -958,9 +905,6 @@
   font-size: 0.7rem;
 }
 
-/* ---------------------------------------------------------- */
-/* Grid wrap (hover preview anchor) + month transition           */
-/* ---------------------------------------------------------- */
 
 .calendar-grid-wrap {
   position: relative;
@@ -1003,9 +947,6 @@
   }
 }
 
-/* ---------------------------------------------------------- */
-/* Hover preview — no click required                            */
-/* ---------------------------------------------------------- */
 
 .calendar-hover-preview {
   position: absolute;
@@ -1017,12 +958,6 @@
   flex-direction: column;
   gap: 3px;
   pointer-events: none;
-  /* Fixed max-width + wrapping, not white-space:nowrap — a day with 3+
-     session types ("Powerlifting Session + Push Session + Arms Session")
-     used to force the box arbitrarily wide, which overflowed the card
-     and got clipped/covered near the grid's left or right edge. Position
-     itself is also clamped in JS (see handleCellHover) as a second layer
-     of protection for cells right at the edge. */
   width: max-content;
   max-width: 200px;
   white-space: normal;
@@ -1059,14 +994,66 @@
   color: #fbbf24;
 }
 
-/* ---------------------------------------------------------- */
-/* Sidebar: bigger date header, timeline, day summary            */
-/* ---------------------------------------------------------- */
 
 .calendar-details-header__title {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--go-text);
+}
+
+.go-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.go-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--go-primary-50);
+  color: var(--go-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.go-empty-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.go-empty-sub {
+  font-size: 0.82rem;
+  color: var(--go-text-muted);
+  max-width: 280px;
+}
+
+.go-empty-btn {
+  margin-top: 4px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--go-primary) 30%, transparent);
+  color: var(--go-primary);
+  border-radius: 100px;
+  padding: 9px 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.go-empty-btn:hover {
+  background: var(--go-primary-50);
+}
+
+.go-empty-btn:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
 }
 
 .calendar-timeline-row {
@@ -1183,7 +1170,7 @@
 [data-theme="dark"] .calendar-page .go-empty-icon { color: var(--go-text-faint); }
 
 @media (max-width: 1000px) {
-  .calendar-main { grid-template-columns: 1fr; padding: 24px 20px 110px; }
+  .calendar-main { grid-template-columns: minmax(0, 1fr); padding: 24px 20px 110px; }
   .calendar-details-card { position: static; }
 }
 
@@ -1192,9 +1179,11 @@
   .calendar-grid { gap: 6px; }
   .calendar-card, .calendar-details-card { padding: 18px; }
   .calendar-month-label { min-width: 110px; font-size: 0.82rem; }
+  .calendar-nav { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .calendar-cell { transition: none; }
   .calendar-session-body { transition: none; }
+  .planner-analytics__chevron { transition: none; }
 }

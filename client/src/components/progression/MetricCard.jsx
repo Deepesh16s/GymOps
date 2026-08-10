@@ -10,9 +10,6 @@ function SkeletonSpan() {
   );
 }
 
-// Generic stat tile used by the "Selected Statistics" rail, the Overall
-// Progress Summary hero, and any future consumer that needs a single
-// labeled figure with an optional trend badge — one shape, everywhere.
 function MetricCard({ label, value, sub, icon: Icon, trend, loading = false }) {
   return (
     <div className="metric-card">

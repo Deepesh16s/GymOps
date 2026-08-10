@@ -13,19 +13,8 @@ import { MUSCLE_TO_REGIONS } from "../constants/muscles";
 import { summarizeMuscleGroupSplit } from "../intelligence/balanceEngine";
 import "./MuscleBodyMap.css";
 
-// MUSCLE_TO_REGIONS (muscle -> Muscle Body Map SVG region id(s)) is
-// defined once in constants/muscles.js, alongside every other per-muscle
-// fact (split, color, ordering) — not maintained as a parallel map here.
-// "Legs" stays mapped there (quads+calves combined) as a legacy fallback
-// for exercises already seeded/created with that muscleGroup — no
-// backend data migration has been run to reclassify them, so removing
-// "Legs" entirely would make that existing data invisible on the map.
 const KNOWN_MUSCLES = Object.keys(MUSCLE_TO_REGIONS);
 
-// Named intensity tiers instead of a flat 6-step color array — each maps
-// to an SVG gradient (defined once in <defs> below) so a region reads as
-// having depth/glow rather than a single flat swatch. "None" (zero sets)
-// stays a plain neutral fill, matching the previous behavior.
 const INTENSITY_LEVELS = ["none", "light", "moderate", "high", "extreme"];
 const INTENSITY_LABELS = {
   none: "None",
@@ -69,11 +58,6 @@ function formatLastTrained(date) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-// Cross-references a muscle's contributing exercises (ranked by sets,
-// from computeMuscleBreakdown) against the already-fetched
-// personal-records map to find whichever has the highest recorded PR.
-// Real data only — an exercise only appears here if the backend's
-// /dashboard/personal-records endpoint actually returned a weight for it.
 function getPrForMuscle(entry, personalRecords) {
   if (!entry?.exercises?.length || !personalRecords) return null;
   let best = null;
@@ -86,17 +70,6 @@ function getPrForMuscle(entry, personalRecords) {
   return best;
 }
 
-// workouts: raw Workout documents (Muscle Body Map enhancement) —
-// breakdown for every mode is derived client-side from this single
-// array via the shared computeMuscleBreakdown utility, so switching
-// Weekly/Monthly/90 Days/Lifetime is instant (no extra request).
-// personalRecords: the exercise-name -> weight map already fetched by
-// Dashboard's session-summary pipeline (see getPrForMuscle above).
-// onSelectMuscle: optional (muscle) => void. When provided, the expanded
-// detail panel gains a "View full progression" action — Dashboard passes
-// a navigate-to-/progression callback, the Progression page itself passes
-// a callback that just switches its own Muscle filter, so this one map
-// component serves both without duplicating its body/detail-panel markup.
 function MuscleBodyMap({
   workouts = [],
   loading = false,
@@ -111,13 +84,6 @@ function MuscleBodyMap({
   const [activeBodyView, setActiveBodyView] = useState("front");
   const wrapRef = useRef(null);
 
-  // Measures THIS component's own rendered width, not the viewport —
-  // this map now lives inside more than one layout (Dashboard's
-  // full-width card, Progression's narrower grid column), and a
-  // window-width check would stay "wide" on a big desktop screen even
-  // while the map itself is squeezed into a 300px column, causing the
-  // front/back bodies to render at full size and overflow their card.
-  // 560 matches the CSS @container threshold in MuscleBodyMap.css.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el || typeof ResizeObserver === "undefined") return undefined;
@@ -158,10 +124,6 @@ function MuscleBodyMap({
       const level = intensityLevel(sets, maxSets);
       MUSCLE_TO_REGIONS[muscle].forEach((region) => {
         const existing = fills[region];
-        // Several muscle names can share a region (legacy "Legs" vs the
-        // newer "Quads"/"Calves" covering the same shapes) — whichever
-        // actually has real data for this region should win the visual
-        // claim, not just whichever happens to be processed last.
         if (!existing || sets > existing.sets) {
           fills[region] = { muscle, sets, level };
         }
@@ -182,26 +144,13 @@ function MuscleBodyMap({
 
   const topMuscle = legendEntries.length > 0 ? legendEntries[0].muscle : null;
 
-  // Summary panel — every figure here is a plain, disclosed count over
-  // real logged sets (Push/Pull/Legs/Core is the same standard split
-  // Guide.jsx already explains to users). Nothing here is estimated.
   const summary = useMemo(() => {
     const trained = legendEntries;
-    // "Legs" is a legacy fallback for exercises created before Quads/
-    // Glutes/Calves existed as their own groups — new exercises use the
-    // finer-grained groups instead, so "Legs" would otherwise show as
-    // perpetually "neglected" for every new user who never logs
-    // anything under that exact legacy tag.
     const neglected = KNOWN_MUSCLES.filter(
       (m) => m !== "Legs" && !entryByMuscle.get(m)?.sets
     );
     const least = trained.length > 1 ? trained[trained.length - 1] : null;
 
-    // Phase 14A, Module 7 — reuses the ONE shared Push/Pull/Legs/Core
-    // split (intelligence/balanceEngine.js) instead of this component's
-    // own independent copy of the same arithmetic. `currentBreakdown` is
-    // already the exact computeMuscleBreakdown result entryByMuscle was
-    // built from, so this doesn't recompute anything.
     const { pct: categoryPct } = summarizeMuscleGroupSplit(currentBreakdown, { metric: "sets" });
 
     return {
@@ -246,11 +195,6 @@ function MuscleBodyMap({
       onMouseEnter: (e) => handleEnter(region, view, e),
       onMouseLeave: handleLeave,
       onClick: () => handleRegionClick(region),
-      // Keyboard-operable, matching the sidelist rows below — without
-      // this, a keyboard-only user could reach the trained muscles via
-      // the sidelist but had no way to reach an untrained one (which
-      // has no corresponding sidelist row) since <rect>/<path>/<ellipse>
-      // aren't natively focusable or clickable via Enter/Space.
       tabIndex: info ? 0 : -1,
       role: info ? "button" : undefined,
       "aria-label": info ? `${info.muscle}, ${info.sets} sets` : undefined,
@@ -375,11 +319,6 @@ function MuscleBodyMap({
                     <stop offset="0%" stopColor="var(--heat-none)" stopOpacity="0.34" />
                     <stop offset="100%" stopColor="var(--heat-none)" stopOpacity="0.34" />
                   </linearGradient>
-                  {/* One continuous navy -> bright-blue scale (see the
-                      token comment in MuscleBodyMap.css) — untrained
-                      regions stay dim so a trained region immediately
-                      pops instead of the whole body reading as equally
-                      "lit". */}
                   <linearGradient id="muscle-heat-light" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--heat-light-a)" />
                     <stop offset="100%" stopColor="var(--heat-light-b)" />
@@ -422,11 +361,6 @@ function MuscleBodyMap({
                       {...regionProps("shoulderR", "front")}
                     />
 
-                    {/* Pecs drawn as two separate tapering lobes (not one
-                        rectangle) — wider at the shoulder, narrowing to a
-                        point near the sternum, with a real gap between
-                        them so the chest reads as two muscles meeting in
-                        the middle rather than one rounded block. */}
                     <path
                       d="M57,56 C56,50 62,46 70,45 C75,45 78,48 78,53 Q76,68 78,83 C78,92 73,98 66,97 C59,95 55,87 55,77 C55,70 56,63 57,56 Z"
                       {...regionProps("chest", "front")}
@@ -496,11 +430,6 @@ function MuscleBodyMap({
                   <div className="muscle-map__figure">
                   <svg viewBox="0 0 160 340" className="body-svg">
                     <ellipse cx="80" cy="19" rx="12.5" ry="15.5" className="body-static" />
-                    {/* Neck/upper-traps saddle — the front view keeps this
-                        as a plain static fill (traps aren't a visually
-                        distinct front-facing muscle), but from the back
-                        it's the anatomically correct spot for an
-                        interactive Traps region. */}
                     <path
                       d="M74,30 C72,34 71,39 72,44 C72,45 74,46 76,46 L84,46 C86,46 88,45 88,44 C89,39 88,34 86,30 C84,33 76,33 74,30 Z"
                       {...regionProps("traps", "back")}

@@ -1,10 +1,5 @@
 import { Component } from "react";
 
-// Error boundaries must be class components — React has no hook
-// equivalent for getDerivedStateFromError/componentDidCatch. Without
-// this, an uncaught render-time exception anywhere in the tree unmounts
-// the entire app to a blank white screen instead of just the page that
-// broke.
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);

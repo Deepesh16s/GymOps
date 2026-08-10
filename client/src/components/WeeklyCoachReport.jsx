@@ -2,13 +2,6 @@ import "./WeeklyCoachReport.css";
 import ConfidenceBadge from "./ConfidenceBadge";
 import RecoveryBreakdownDisclosure from "./RecoveryBreakdownDisclosure";
 
-// Phase 14B, section 3 — Weekly Coach Report. A standalone, reusable
-// component (per the phase spec: "This should become a reusable
-// component. Future notifications may reference it.") — takes the
-// ALREADY-COMPUTED output of trainingIntelligence/generateWeeklyCoachReport
-// as a single `report` prop and only renders it; no computation happens
-// here. Renders nothing when there isn't enough history yet
-// (`report.available === false`) rather than showing a fabricated grade.
 const GRADE_TONE = {
   "A+": "excellent",
   A: "excellent",

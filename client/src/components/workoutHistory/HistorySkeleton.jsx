@@ -1,6 +1,3 @@
-// Loading placeholder shaped like a real session card (icon+title row,
-// subline, hero stat column) rather than a generic spinner/"Loading..."
-// line, so the page doesn't visually jump once real cards arrive.
 function HistorySkeleton({ count = 4 }) {
   return (
     <div className="history-list" aria-hidden="true">

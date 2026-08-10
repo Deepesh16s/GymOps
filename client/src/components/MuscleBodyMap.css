@@ -6,28 +6,11 @@
   align-items: center;
   position: relative;
   width: 100%;
-  /* Every responsive rule below reacts to this component's OWN rendered
-     width via @container, not the viewport (@media) — this map is reused
-     in more than one layout (Dashboard's full-width card, Progression's
-     narrow grid column), and a viewport-based breakpoint would stay
-     "wide" on a big desktop screen even while this component itself is
-     squeezed into a 300px column, overflowing its card. */
   container-type: inline-size;
   container-name: musclemap;
   --map-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Each theme gets its own continuous Inactive -> Highlight -> Peak
-   scale (not a shared one) — every tier is a step along that same
-   line, so the body reads as "one material getting brighter" rather
-   than switching colors. Each tier's own 2-stop gradient is also
-   deliberately high-contrast top-to-bottom so a trained region visibly
-   reads as lit from above instead of a flat swatch.
-
-   Light theme rides the app's own green brand accent (--go-primary is
-   green in light mode) instead of reusing dark mode's blue — the map
-   should feel native to whichever theme it's rendered in, not import
-   dark mode's palette into light mode. */
 [data-theme="light"] .muscle-map {
   --heat-none: #33503f;
   --heat-highlight: #10b981;
@@ -43,8 +26,6 @@
   --heat-outline: #cbd5e1;
 }
 
-/* Dark theme rides the app's own blue brand accent (--go-primary is
-   blue in dark mode). */
 [data-theme="dark"] .muscle-map {
   --heat-none: #3d5079;
   --heat-highlight: #4f7eff;
@@ -160,12 +141,6 @@
 }
 
 
-/* Once this component's own box is wide enough (Dashboard's full-width
-   Muscle Split card), the body diagrams are the visual centerpiece —
-   sized up and centered as a group instead of pinned to one side with
-   dead space beside them. Stays small/compact automatically in any
-   narrower host (e.g. Progression's grid column) since this is a
-   container query, not a viewport one. */
 @container musclemap (min-width: 640px) {
   .body-svg {
     width: 320px;
@@ -188,8 +163,6 @@
   transition: opacity 0.25s var(--map-ease);
 }
 
-/* Hovering a region on one view fades the other — makes the front/back
-   relationship legible at a glance instead of two disconnected figures. */
 .muscle-map__body--dim {
   opacity: 0.4;
 }
@@ -200,24 +173,12 @@
   }
 }
 
-/* Wraps just the <svg> (not the "Front"/"Back" label below it), so the
-   contact shadow below can anchor to the figure's own bottom edge
-   instead of the whole label-inclusive box. */
 .muscle-map__figure {
   position: relative;
   display: flex;
-  /* Gives the ::after shadow below its own local stacking context —
-     without this, its z-index:-1 escapes past this wrapper entirely and
-     ends up hidden behind the card's own opaque background instead of
-     just behind the svg. */
   isolation: isolate;
 }
 
-/* Soft contact shadow under each figure — wide and flat like a real
-   floor shadow, not a circular blob, heavily blurred so it reads as a
-   soft lift rather than a distinct shape. Always a fixed dark tone
-   (never var(--go-text), which is a LIGHT color in dark theme and would
-   render as a glow instead of a shadow against a dark background). */
 .muscle-map__figure::after {
   content: "";
   position: absolute;
@@ -248,10 +209,6 @@
     stroke-width 0.25s var(--map-ease), transform 0.25s var(--map-ease);
 }
 
-/* A click focuses the region but isn't a keyboard interaction, so
-   :focus-visible correctly won't match — without this, the browser's
-   own default focus rectangle would still draw on click, undermining
-   the intentionally soft glow-based selected state. */
 .body-region:focus:not(:focus-visible) {
   outline: none;
 }
@@ -270,9 +227,6 @@
   transform: scale(1.05);
 }
 
-/* Stroke deliberately dialed back (~25% softer than a solid line) — the
-   glow (via the pulse animation's drop-shadow, plus the fill/brightness
-   change itself) should read as "selected", not a hard border. */
 .body-region--expanded {
   stroke: color-mix(in srgb, var(--heat-peak) 75%, transparent);
   stroke-width: 2;
@@ -304,11 +258,6 @@
   stroke-width: 0.4;
 }
 
-/* Faint anatomical centerline (linea alba on the abs, spine on the
-   back) — purely decorative, sits on top of the colored regions to
-   suggest natural muscle definition instead of a flat blob. Never
-   interactive: no fill, no pointer events, so it can't intercept the
-   hover/click handlers on the region beneath it. */
 .body-detail-line {
   fill: none;
   stroke: color-mix(in srgb, var(--go-text) 18%, transparent);
@@ -329,9 +278,6 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
-  /* Sized to its own content, not stretched to fill whatever space is
-     left in a full-width card — the bodies+sidelist group centers as
-     one unit instead. */
   flex: 0 1 auto;
   min-width: 220px;
   max-width: 320px;
@@ -435,9 +381,6 @@
   font-style: italic;
 }
 
-/* ============================================================ */
-/* Detail panel (click-to-expand a muscle)                      */
-/* ============================================================ */
 
 .muscle-map__detail {
   width: 100%;
@@ -558,9 +501,6 @@
   color: var(--go-primary-light);
 }
 
-/* ============================================================ */
-/* Summary panel (most/least trained, neglected, PPL/Core split) */
-/* ============================================================ */
 
 .muscle-map__summary {
   width: 100%;
@@ -570,9 +510,6 @@
   gap: 12px 20px;
 }
 
-/* A wide-enough host can comfortably fit the two single-value stats
-   (Most/Least trained) beside the two wide items instead of stacking
-   everything into just 2 columns. */
 @container musclemap (min-width: 640px) {
   .muscle-map__summary {
     grid-template-columns: repeat(4, 1fr);
@@ -674,22 +611,11 @@
   border-radius: 2px;
 }
 
-/* Matches the actual untrained-region fill (--heat-none at the same
-   opacity the body gradient uses) instead of a generic light neutral
-   swatch, so the legend key is honest about what "None" looks like on
-   the figure. */
 .muscle-map__legend-swatch--none {
   background: color-mix(in srgb, var(--heat-none) 34%, var(--go-surface));
   border: 1px solid var(--go-border-soft);
 }
 
-/* Flat anchor color, not the same 2-stop gradient the body regions use
-   — in a 14x8px swatch the gradient blend between adjacent tiers
-   diluted the distinction (confirmed visually: High and Extreme read
-   as nearly the same blue). A solid color per tier keeps the legend
-   itself maximally scannable; the body regions still get the richer
-   gradient treatment where there's enough area for it to read as
-   depth instead of a wash. */
 .muscle-map__legend-swatch--light {
   background: var(--heat-light-b);
 }
@@ -702,9 +628,6 @@
   background: var(--heat-high-b);
 }
 
-/* The true peak color, not --heat-extreme-b (which is just
-   --heat-highlight, the same base tone "High" uses) — otherwise
-   Extreme and High read as nearly the same swatch. */
 .muscle-map__legend-swatch--extreme {
   background: var(--heat-peak);
 }
@@ -726,12 +649,6 @@
   gap: 8px;
 }
 
-/* ============================================================ */
-/* Phase 9 — Muscle Body Map polish (additive only)              */
-/*                                                                */
-/* No changes to region mapping, bucketFor color calc, or data    */
-/* flow above this line. Everything below is new/additive.        */
-/* ============================================================ */
 
 .muscle-map__caption {
   font-size: 12px;
@@ -751,11 +668,6 @@
   opacity: 0.85;
 }
 
-/* Soft permanent glow around the most-trained muscle's regions — not
-   just a hover state, so the single most-trained region reads as "the
-   highlight" of the whole figure at a glance. Uses the map's own peak
-   blue rather than --go-primary (green in light theme) so it stays
-   part of the same cohesive navy -> blue scale regardless of app theme. */
 .body-region--top {
   stroke: color-mix(in srgb, var(--heat-peak) 60%, transparent);
   stroke-width: 1.4;
@@ -802,10 +714,6 @@
   padding: 1px 6px;
 }
 
-/* New this round: subtle secondary line inside the tooltip, shown only
-   when hovering the most-trained muscle. Deliberately muted (faint
-   color, smaller size, no background) so it reads as a quiet footnote
-   rather than competing with the existing "Top" badge on the name. */
 .muscle-map__tooltip-subtle {
   font-size: 10px;
   font-weight: 500;
@@ -814,11 +722,6 @@
   margin-top: 2px;
 }
 
-/* Below this container width, the sidelist's own 220px min-width no
-   longer fits beside the body diagrams in one row (this is what a
-   ~300px Progression grid column hits) — stack instead of overflowing.
-   Matches the isNarrow threshold in MuscleBodyMap.jsx, which decides
-   whether to also collapse front/back into a single tabbed view. */
 @container musclemap (max-width: 560px) {
   .muscle-map__main {
     flex-direction: column;

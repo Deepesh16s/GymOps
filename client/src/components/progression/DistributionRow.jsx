@@ -2,21 +2,6 @@ import { ChevronRight } from "lucide-react";
 import ConfidenceBadge from "../ConfidenceBadge";
 import "./progression-charts.css";
 
-// Generic ranked-bar row — one label, a progress track, and a trailing
-// figure. Used for every "distribution" list across Progression and
-// Analytics (exercise sets, muscle volume, exercise volume, etc.) so
-// they share one row shape/markup instead of each page redrawing its own.
-// `badge` is optional — a plain-language status label (e.g. "Balanced",
-// "Needs Work") shown next to the numeric figure, for callers where a
-// reader benefits from a category as well as a percentage.
-// `rank` is optional — when set, a numbered position badge replaces the
-// bar track entirely (a leaderboard read instead of a proportion read),
-// used where several of these lists sit back to back and an unbroken run
-// of identical bars starts to blend together.
-// `confidence` is optional — a per-row standardized confidence level
-// (see components/ConfidenceBadge.jsx), for lists where each row is its
-// own independent intelligence read (Analytics' Recovery/Plateaus/Volume
-// Landmarks rows) rather than one shared confidence for the whole list.
 function DistributionRow({
   label,
   sub,

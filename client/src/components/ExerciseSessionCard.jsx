@@ -19,13 +19,6 @@ import {
 } from "../progression/liveWorkoutEngine";
 import "./ExerciseSessionCard.css";
 
-// The set table always ends with exactly one "pending" row — there is no
-// separate "+ Add Set" button/modal step (Module 2: fewer taps). The
-// pending row is autofilled from the last set logged for this exercise
-// earlier in the session if there is one, else the previous session's
-// same-numbered set (historicalWorkouts), so it's usually already correct
-// and completing it is one tap. Completing it commits it via onAddSet and
-// immediately opens a fresh pending row for the next set.
 function ExerciseSessionCard({
   entry,
   disabled = false,
@@ -62,15 +55,6 @@ function ExerciseSessionCard({
     [historicalWorkouts, exercise._id]
   );
 
-  // A brand-new exercise arrives with its first set already committed
-  // (AddWorkoutModal's "first set" fields, not logged through this
-  // card's pending row) — so it never passes through
-  // handleCompletePending below. Check it once, here, on mount, so it
-  // still gets a rest timer and counts toward the session's PR tally
-  // exactly like every other set. Runs only once: a duplicated/replaced
-  // exercise starts with an empty sets array, so there's nothing to
-  // check, and replacing an exercise re-renders this same component
-  // instance rather than remounting it.
   useEffect(() => {
     if (entry.sets.length > 0) {
       const firstSet = entry.sets[0];
@@ -78,13 +62,10 @@ function ExerciseSessionCard({
       if (pr) setCelebratingPR(pr);
       onSetCompleted?.(exercise, pr);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const suggestion = useMemo(() => getNextSetSuggestion(snapshot), [snapshot]);
 
-  // Autofill source for the pending row: this session's last set for the
-  // exercise, else the previous session's set at the same position.
   const autofill = useMemo(() => {
     const lastInSession = sets[sets.length - 1];
     if (lastInSession) return { weight: lastInSession.weight, reps: lastInSession.reps };
@@ -101,13 +82,9 @@ function ExerciseSessionCard({
   const [pendingWeight, setPendingWeight] = useState(autofill?.weight ?? "");
   const [pendingReps, setPendingReps] = useState(autofill?.reps ?? "");
 
-  // Re-seeds the pending row's defaults whenever the committed sets list
-  // changes (a set was just added/removed) — not on every render, so
-  // in-progress typing in the pending row is never clobbered mid-edit.
   useEffect(() => {
     setPendingWeight(autofill?.weight ?? "");
     setPendingReps(autofill?.reps ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets]);
 
   const handleCompletePending = (set) => {

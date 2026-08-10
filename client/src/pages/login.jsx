@@ -91,7 +91,6 @@ export default function Login() {
         <div className="gl-grid" />
       </div>
 
-      {/* LEFT: Hero Panel */}
       <div className="gl-hero">
         <img src={hero} alt="Gym" className="gl-hero-img" />
         <div className="gl-hero-overlay" />
@@ -116,14 +115,13 @@ export default function Login() {
             Track Workouts&nbsp;•&nbsp;Build Strength&nbsp;•&nbsp;Visualize Progress
           </p>
           <div className="gl-badges">
-            <span className="gl-badge">🏋️ Workouts</span>
-            <span className="gl-badge">📈 Analytics</span>
-            <span className="gl-badge">🥗 Nutrition</span>
+            <span className="gl-badge">Workouts</span>
+            <span className="gl-badge">Analytics</span>
+            <span className="gl-badge">Goals</span>
           </div>
         </div>
       </div>
 
-      {/* RIGHT: Auth Panel */}
       <div className="gl-panel">
         <div className="gl-card">
           <div className="gl-card-glow" />
@@ -145,7 +143,7 @@ export default function Login() {
             </span>
           </div>
 
-          <h1 className="gl-heading">Welcome back 👋</h1>
+          <h1 className="gl-heading">Welcome back</h1>
           <p className="gl-sub">Sign in to continue your fitness journey</p>
 
           <div className="gl-socials">
@@ -179,6 +177,7 @@ export default function Login() {
                 id="email"
                 type="email"
                 name="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
@@ -201,6 +200,7 @@ export default function Login() {
                 id="password"
                 type="password"
                 name="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}

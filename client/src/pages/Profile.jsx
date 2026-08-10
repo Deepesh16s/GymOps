@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  User,
   Mail,
   CalendarDays,
   Pencil,
@@ -217,7 +216,6 @@ function Profile() {
     <div className="profile-page">
       <main className="profile-main">
         <div className="profile-grid">
-          {/* HERO CARD */}
 
           <section className="profile-card profile-hero-card">
             <div className="profile-avatar">
@@ -247,7 +245,6 @@ function Profile() {
             )}
           </section>
 
-          {/* EDIT NAME */}
 
           <section className="profile-card">
             <div className="profile-section-header">
@@ -303,7 +300,6 @@ function Profile() {
             </form>
           </section>
 
-          {/* CHANGE PASSWORD */}
 
           <section className="profile-card">
             <div className="profile-section-header">
@@ -320,6 +316,15 @@ function Profile() {
                 handlePasswordChange
               }
             >
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                value={user?.email || ""}
+                readOnly
+                hidden
+              />
+
               <label
                 className="profile-label"
                 htmlFor="oldPassword"
@@ -331,6 +336,7 @@ function Profile() {
                 id="oldPassword"
                 className="profile-input"
                 type="password"
+                autoComplete="current-password"
                 placeholder="Enter current password"
                 value={oldPassword}
                 onChange={(e) =>
@@ -348,6 +354,7 @@ function Profile() {
                 id="newPassword"
                 className="profile-input"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 value={
                   newPassword
@@ -370,6 +377,7 @@ function Profile() {
                 id="confirmPassword"
                 className="profile-input"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 value={
                   confirmPassword
@@ -401,7 +409,6 @@ function Profile() {
             </form>
           </section>
 
-          {/* DANGER ZONE */}
 
           <section className="profile-card profile-danger">
             <div className="profile-section-header">

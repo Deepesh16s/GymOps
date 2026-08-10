@@ -24,7 +24,7 @@ exports.protect = async (req, res, next) => {
     );
 
     req.user = await User.findById(decoded.id).select(
-      "-password"
+      "-password -resetPasswordToken -resetPasswordExpires"
     );
 
     if (!req.user) {
@@ -35,6 +35,9 @@ exports.protect = async (req, res, next) => {
 
     next();
   } catch (error) {
+    if (error.name !== "JsonWebTokenError" && error.name !== "TokenExpiredError") {
+      console.error("Auth middleware error:", error);
+    }
     res.status(401).json({
       message: "Not authorized",
     });

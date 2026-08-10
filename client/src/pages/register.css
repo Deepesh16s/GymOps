@@ -52,12 +52,9 @@
   height: 50px;
   background: var(--go-brand);
   border-radius: 15px;
-
   display: flex;
   justify-content: center;
   align-items: center;
-
-  font-size: 25px;
 }
 
 .hero-content p {
@@ -77,11 +74,6 @@
   backdrop-filter: blur(12px);
   padding: 12px 22px;
   border-radius: 50px;
-  transition: all 0.3s ease;
-}
-
-.hero-tags span:hover {
-  transform: translateY(-3px);
 }
 
 .register-right {
@@ -111,11 +103,6 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
   position: relative;
   z-index: 10;
-  transition: transform 0.3s ease;
-}
-
-.register-card:hover {
-  transform: translateY(-4px);
 }
 
 .card-logo {
@@ -169,6 +156,19 @@ input {
 input:focus {
   border-color: var(--go-primary);
   box-shadow: 0 0 0 4px var(--go-primary-100);
+}
+
+.register-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: 14px;
+  border-radius: 12px;
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .register-btn {

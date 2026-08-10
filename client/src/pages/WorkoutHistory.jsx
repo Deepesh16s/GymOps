@@ -10,6 +10,8 @@ import HistoryFilterBar from "../components/workoutHistory/HistoryFilterBar";
 import SessionSummaryBar from "../components/workoutHistory/SessionSummaryBar";
 import EmptyState from "../components/workoutHistory/EmptyState";
 import HistorySkeleton from "../components/workoutHistory/HistorySkeleton";
+import LoadErrorBanner from "../components/LoadErrorBanner";
+import ConfirmDialog from "../components/ConfirmDialog";
 import useFavoriteSessions from "../hooks/useFavoriteSessions";
 import { DATE_RANGE_ALL } from "../constants/dateRanges";
 import { DURATION_RANGE_ALL } from "../constants/durationRanges";
@@ -51,15 +53,13 @@ function WorkoutHistory() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [deletingId, setDeletingId] = useState(null);
   const [deletingSessionKey, setDeletingSessionKey] = useState(null);
   const [expandedKeys, setExpandedKeys] = useState(() => new Set());
   const [editingTimingSession, setEditingTimingSession] = useState(null);
 
-  // Phase 13C.1 — Deep Links: "PR notification -> Workout History ->
-  // expand that session automatically" (?expandSession=<sessionId>, set
-  // by notificationTriggers.js/NotificationCenter's navigate call).
   const sessionRefs = useRef({});
   const hasAppliedSessionDeepLink = useRef(false);
 
@@ -67,11 +67,13 @@ function WorkoutHistory() {
 
   const fetchWorkouts = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await getWorkouts(500);
       setWorkouts(res.data);
     } catch (error) {
       console.log(error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -81,9 +83,6 @@ function WorkoutHistory() {
     fetchWorkouts();
   }, []);
 
-  // Collapse any expanded session cards whenever the active filters
-  // change, so expansion state never persists across a different
-  // visible set of sessions.
   useEffect(() => {
     setExpandedKeys(new Set());
   }, [filters]);
@@ -104,38 +103,18 @@ function WorkoutHistory() {
     return ["All", ...Array.from(set).sort()];
   }, [workouts]);
 
-  // Workouts are grouped into sessions + PR-tagged exactly once per
-  // `workouts` change. Filtering, muscle-matching, and sorting below all
-  // operate on this already-grouped + already-summarized list, so a
-  // session's stats/PRs are never recalculated just because a filter or
-  // sort order changed.
   const prIndex = useMemo(() => buildPRIndex(workouts), [workouts]);
-  // Phase 12 — same pattern as prIndex above, parallel index for cardio
-  // PR events (distance/pace/duration/calories records per activity).
-  // Passed alongside prIndex into attachSessionPRs, which merges both
-  // into the same session.prs array (see that function's own comment).
   const cardioPrIndex = useMemo(() => buildCardioPRIndex(workouts), [workouts]);
   const allSessions = useMemo(() => {
     const withPRs = attachSessionPRs(buildSessionSummaries(workouts), prIndex, cardioPrIndex);
-    // Cross-references the same prHistory/cardioPrHistory streams a
-    // second time (no re-detection) to attach "previous best" onto each
-    // PR already found above, for the timeline's PR celebration (Phase
-    // 10B, extended to cardio in Phase 12).
     return attachPreviousBestToPRs(withPRs, workouts, cardioPrHistory(workouts));
   }, [workouts, prIndex, cardioPrIndex]);
 
-  // "Best session ever" superlatives are computed over the FULL session
-  // list, not the filtered one, so a card's Highest Volume/Longest
-  // Session badge never shifts depending on which filters happen to be
-  // active — see getSessionRecordKeys' own doc comment.
   const { highestVolumeKeys, longestDurationKeys } = useMemo(
     () => getSessionRecordKeys(allSessions),
     [allSessions]
   );
 
-  // Session Timeline milestones (Phase 10B) — same "computed once over
-  // the full list" rule as the superlatives above, so a milestone chip
-  // doesn't flicker depending on active filters.
   const milestonesByKey = useMemo(() => getSessionMilestones(allSessions), [allSessions]);
 
   const visibleSessions = useMemo(() => {
@@ -150,11 +129,6 @@ function WorkoutHistory() {
     return result;
   }, [allSessions, filters, favoriteKeys]);
 
-  // Deep link from a PR/Longest-Workout notification
-  // (/workouts?expandSession=<sessionId>) — waits for sessions to load,
-  // expands the matching one, scrolls it into view, then strips the
-  // param so a refresh doesn't re-trigger it. Same ref-guard pattern
-  // Calendar.jsx's own date deep link already uses.
   useEffect(() => {
     if (hasAppliedSessionDeepLink.current) return;
     const sessionId = searchParams.get("expandSession");
@@ -184,9 +158,6 @@ function WorkoutHistory() {
     );
   }, [searchParams, loading, visibleSessions, setSearchParams]);
 
-  // Reacts to the active filters (e.g. narrows to "This Month" averages
-  // when that date range is selected) rather than always summarizing
-  // the entire history.
   const summary = useMemo(() => computeHistorySummary(visibleSessions), [visibleSessions]);
 
   const toggleExpanded = (key) => {
@@ -198,43 +169,38 @@ function WorkoutHistory() {
     });
   };
 
-  const handleDelete = async (workout) => {
-    const exerciseName = workout.exercise?.name || "this exercise";
-    const confirmed = window.confirm(
-      `Delete "${exerciseName}" from this workout session?\n\nThis action cannot be undone.`
-    );
-    if (!confirmed) return;
+  const [pendingDelete, setPendingDelete] = useState(null);
 
-    setDeletingId(workout._id);
-    try {
-      await api.delete(`/workouts/${workout._id}`);
-      // Removing the workout from state automatically re-groups on the next
-      // render via the `allSessions` memo above. If this was the last
-      // exercise in its session, the session card simply disappears —
-      // no extra bookkeeping needed.
-      setWorkouts((prev) => prev.filter((w) => w._id !== workout._id));
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDelete = (workout) => {
+    setPendingDelete({ type: "workout", workout });
   };
 
-  // Deletes an entire session in one request when it has a real sessionId
-  // (POST /workouts/session-created workouts), or falls back to the
-  // existing single-workout delete for legacy standalone sessions, which
-  // are always exactly one workout with no sessionId. Either way, local
-  // state is updated directly — no refetch, card disappears immediately.
-  const handleDeleteSession = async (session) => {
-    const label = getSessionTypeLabel(session);
-    const entryCount = session.workouts.length;
-    const confirmed = window.confirm(
-      `Delete this entire ${label}? This will remove all ${entryCount} entr${
-        entryCount !== 1 ? "ies" : "y"
-      } in this session.\n\nThis action cannot be undone.`
-    );
-    if (!confirmed) return;
+  const handleDeleteSession = (session) => {
+    setPendingDelete({ type: "session", session });
+  };
 
+  const handleCancelDelete = () => setPendingDelete(null);
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+
+    if (pendingDelete.type === "workout") {
+      const { workout } = pendingDelete;
+      setPendingDelete(null);
+      setDeletingId(workout._id);
+      try {
+        await api.delete(`/workouts/${workout._id}`);
+        setWorkouts((prev) => prev.filter((w) => w._id !== workout._id));
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setDeletingId(null);
+      }
+      return;
+    }
+
+    const { session } = pendingDelete;
+    setPendingDelete(null);
     setDeletingSessionKey(session.key);
     try {
       if (session.sessionId) {
@@ -257,11 +223,6 @@ function WorkoutHistory() {
     }
   };
 
-  // Applies the response from PUT /workouts/session/:id/timing (same
-  // startedAt/endedAt/sessionDuration/timingMode the backend just wrote
-  // to every document in the session) to every one of THIS session's
-  // workout documents in local state — mirrors the backend's own
-  // updateMany-by-sessionId, no refetch needed.
   const handleTimingSaved = (updated) => {
     setWorkouts((prev) =>
       prev.map((w) =>
@@ -283,6 +244,13 @@ function WorkoutHistory() {
   return (
     <div className="history-page">
       <main className="history-main">
+        {loadError && (
+          <LoadErrorBanner
+            message="Couldn't load your workout history. Check your connection and try again."
+            onRetry={fetchWorkouts}
+          />
+        )}
+
         <div className="history-header">
           <h1>Workout History</h1>
           <p>
@@ -367,6 +335,23 @@ function WorkoutHistory() {
         session={editingTimingSession}
         onClose={() => setEditingTimingSession(null)}
         onSaved={handleTimingSaved}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete?.type === "session" ? "Delete Session?" : "Delete Exercise?"}
+        body={
+          pendingDelete?.type === "workout"
+            ? `"${pendingDelete.workout.exercise?.name || "This exercise"}" will be removed from this workout session.`
+            : pendingDelete?.type === "session"
+            ? `This will remove all ${pendingDelete.session.workouts.length} entr${
+                pendingDelete.session.workouts.length !== 1 ? "ies" : "y"
+              } in this ${getSessionTypeLabel(pendingDelete.session)}.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
     </div>
   );

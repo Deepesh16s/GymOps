@@ -1,10 +1,3 @@
-// Phase 13C, section 13 — per-category enable/disable, one toggle per
-// REMINDER_PREFERENCE_CATEGORIES value. Stored in localStorage (same
-// mechanism DarkModeToggle already uses for a per-browser UI preference)
-// rather than a new backend model/endpoint — this is a small, low-risk
-// UI setting, not data that needs to sync across devices or survive a
-// logout, so a persisted server model would be more machinery than the
-// feature is worth.
 import { REMINDER_PREFERENCE_CATEGORIES } from "../constants/notificationTypes";
 
 const STORAGE_KEY = "gymops:reminderPreferences";

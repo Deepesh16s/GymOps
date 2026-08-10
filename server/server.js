@@ -2,7 +2,11 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const compression = require("compression");
 const connectDB = require("./config/db");
+
+const isProduction = process.env.NODE_ENV === "production";
 
 const authRoutes = require("./routes/authRoutes");
 const exerciseRoutes = require("./routes/exerciseRoutes");
@@ -17,8 +21,22 @@ const pushRoutes = require("./routes/pushRoutes");
 const app = express();
 
 connectDB();
-app.use(cors());
+
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
+
+app.use(cors(isProduction ? { origin: process.env.CLIENT_URL } : {}));
 app.use(express.json());
+
+if (!isProduction) {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+    });
+    next();
+  });
+}
 
 app.get("/", (req, res) => {
   res.send("GymOps Backend Running...");
@@ -41,7 +59,10 @@ app.use((err, req, res, next) => {
     return next(err);
   }
   console.error(err);
-  res.status(500).json({ message: "Server Error" });
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    message: status === 400 ? "Malformed request body" : "Server Error",
+  });
 });
 
 const PORT = process.env.PORT || 5000;

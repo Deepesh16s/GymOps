@@ -1,11 +1,3 @@
-// One-time data migration: the "Legs" muscle group has been split into
-// Quads / Glutes / Calves (Hamstrings already existed separately) to
-// match the new Muscle Body Map's finer-grained regions. Exercises
-// created before this change still have muscleGroup: "Legs" in the
-// database — this recategorizes the existing default-exercise names to
-// their new group, by exact name match, regardless of which user owns
-// them. Anything not in this list (e.g. a user's own custom "Legs"
-// exercise) is left untouched.
 require("dotenv").config();
 const mongoose = require("mongoose");
 const Exercise = require("../models/Exercise");

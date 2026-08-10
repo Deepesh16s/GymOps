@@ -12,6 +12,7 @@ import {
   Bell,
 } from "lucide-react";
 import { usesHealthBadge } from "../utils/goalAnalytics";
+import { formatDate } from "../utils/dateUtils";
 
 const HEALTH_ICONS = {
   Completed: CheckCircle2,
@@ -35,11 +36,6 @@ const healthBadgeClass = (status) => {
   }
 };
 
-// Phase 8C: variant derives from computed `health` (Behind/Ahead) only
-// when the goal's type actually uses health tracking (see
-// usesHealthBadge) — otherwise it would still visually imply a pace
-// judgment via color even with the text badge removed. Completed always
-// reads the real, reliable goal.status field regardless of type.
 function ProgressBar({ percent, health, isCompleted, showHealth }) {
   const variant = !showHealth
     ? isCompleted
@@ -60,13 +56,6 @@ function ProgressBar({ percent, health, isCompleted, showHealth }) {
   );
 }
 
-const formatDate = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-};
-
 const formatAmount = (n) => {
   if (n === null || n === undefined || !Number.isFinite(n)) return "—";
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
@@ -75,17 +64,9 @@ const formatAmount = (n) => {
 function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Phase 8C: the single decision point for "does this goal type show
-  // pace-based health" — see usesHealthBadge in goalAnalytics.js for the
-  // full rationale (Strength PR excluded, everything else unchanged).
   const showHealth = usesHealthBadge(goal);
   const isCompleted = goal.status === "Completed";
 
-  // Completed is a factual state (target reached), not a pace judgment,
-  // so it's shown for every goal type including Strength PR. For
-  // non-health types that aren't complete, no badge is shown at all —
-  // "No health badge" per the Phase 8C UX request, rather than falling
-  // back to a generic "In Progress" pill that goal.status would offer.
   const displayStatus = showHealth ? analytics.health || goal.status : isCompleted ? "Completed" : null;
   const HealthIcon = displayStatus ? HEALTH_ICONS[displayStatus] : null;
 
@@ -107,10 +88,6 @@ function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit
         <div>
           <p className="goal-card__title">
             {goal.title}
-            {/* Phase 13C, section 14 — flags a goal the reminder engine
-                has actively surfaced (see reminders/goalReminders.js),
-                reusing that exact generator rather than a second
-                progress check here. */}
             {hasReminder && (
               <span
                 className="goal-card__reminder-badge"
@@ -233,11 +210,6 @@ function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit
               </span>
             </div>
 
-            {/* Deadline is stored and collected on every goal type via the
-                Add/Edit form, but with pace/health hidden (usesHealthBadge
-                always false), it was previously never shown anywhere after
-                saving. This surfaces the plain, factual date only — no
-                pace judgment, no Ahead/Behind reasoning. */}
             {analytics.hasDeadline && (
               <div className="goal-analytics-item">
                 <span className="goal-analytics-label">

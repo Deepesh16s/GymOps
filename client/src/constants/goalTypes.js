@@ -16,18 +16,16 @@ export const GOAL_TYPES = {
 
 export const MANUAL_GOAL_TYPES = [GOAL_TYPES.CARDIO, GOAL_TYPES.WEIGHT];
 
-// Category configuration — single source of truth for grouping + the
-// Add/Edit Goal modal's category & type dropdowns.
 export const GOAL_CATEGORIES = [
   {
     key: "strength",
-    label: "🏋 Strength Goals",
+    label: "Strength Goals",
     shortLabel: "Strength",
     types: [GOAL_TYPES.STRENGTH_PR],
   },
   {
     key: "activity",
-    label: "🎯 Activity Goals",
+    label: "Activity Goals",
     shortLabel: "Activity",
     types: [
       GOAL_TYPES.WEEKLY_WORKOUT_SESSIONS,
@@ -42,13 +40,13 @@ export const GOAL_CATEGORIES = [
   },
   {
     key: "consistency",
-    label: "🔥 Consistency Goals",
+    label: "Consistency Goals",
     shortLabel: "Consistency",
     types: [GOAL_TYPES.CURRENT_STREAK],
   },
   {
     key: "body",
-    label: "⚖ Body Goals",
+    label: "Body Goals",
     shortLabel: "Body",
     types: [GOAL_TYPES.WEIGHT],
   },
@@ -82,9 +80,6 @@ export const TARGET_LABEL = {
   [GOAL_TYPES.WEIGHT]: "Target Weight (kg)",
 };
 
-// Fixed units auto-assigned for types where the form doesn't show a unit
-// picker. Strength PR and Cardio Goal are the only types with a visible
-// unit dropdown.
 export const FIXED_UNIT = {
   [GOAL_TYPES.WEEKLY_WORKOUT_SESSIONS]: "sessions",
   [GOAL_TYPES.MONTHLY_WORKOUT_SESSIONS]: "sessions",
@@ -100,12 +95,6 @@ export const FIXED_UNIT = {
 export const CARDIO_UNITS = ["Minutes", "Kilometers", "Runs"];
 export const WEIGHT_UNITS = ["kg", "lb"];
 
-// Mirrors server/constants/goalTypes.js's GOAL_PERIODS — the raw values
-// persisted on a Goal document and read by server-side computation. The
-// Goal Creation UI (Goals.jsx) never shows these 7 as one flat list —
-// see GOAL_STYLES/DAILY_TRACK_OVER/composePeriod/decomposePeriod below
-// for the two-level UI hierarchy (Goal Style, then Track Over only for
-// Daily) that maps onto this enum.
 export const GOAL_PERIODS = {
   WEEKLY: "weekly",
   MONTHLY: "monthly",
@@ -132,14 +121,6 @@ export const CARDIO_PERIOD_LABELS = {
   [GOAL_PERIODS.NEXT_SESSION]: "Next Session",
 };
 
-// --- Goal Creation UI hierarchy -------------------------------------
-// Product decision: don't expose all 7 GOAL_PERIODS values as one flat
-// dropdown. Instead the form asks Goal Style (5 options) and, only when
-// Style is "Daily", a second Track Over question (Week/Month/Lifetime).
-// composePeriod/decomposePeriod are the single place that translate
-// between this 2-level UI shape and the flat `period` enum the backend
-// actually stores and computes against — Goals.jsx should always go
-// through these rather than hand-rolling the mapping inline.
 export const GOAL_STYLES = {
   WEEKLY: "weekly",
   MONTHLY: "monthly",
@@ -199,12 +180,6 @@ export const decomposePeriod = (period) => {
   }
 };
 
-// Mirrors server/constants/goalTypes.js's CARDIO_SESSION_METRIC/
-// CARDIO_GOAL_METRICS — every value a Cardio Goal's `metric` field may
-// hold: any real cardio.data.* key, plus the "sessions" pseudo-metric
-// (computed via distinct-session counting server-side, not a summed
-// data field). Driven entirely by cardioMetadata.js — no separate
-// hardcoded metric list here.
 export const CARDIO_SESSION_METRIC = "sessions";
 
 export const CARDIO_GOAL_METRICS = [
@@ -217,18 +192,11 @@ export const CARDIO_GOAL_METRIC_LABELS = {
   [CARDIO_SESSION_METRIC]: "Sessions",
 };
 
-// Unit string to persist as the goal's `unit` field once auto-configured
-// — matches the real metric's honest unit (e.g. "km" for distance)
-// rather than the disconnected free-text CARDIO_UNITS list above, which
-// only exists for pre-Phase-12 manually-tracked Cardio Goals.
 export const CARDIO_GOAL_METRIC_UNITS = {
   ...Object.fromEntries(Object.entries(CARDIO_METRICS).map(([k, v]) => [k, v.unit])),
   [CARDIO_SESSION_METRIC]: "sessions",
 };
 
-// Quick-fill presets for Milestone-period Cardio Goals — pre-fill the
-// form, still fully editable (e.g. switching activityType to Cycling for
-// a "first century ride" goal reuses the same mechanism).
 export const CARDIO_MILESTONE_PRESETS = [
   { label: "First 5K", activityType: "Running", metric: "distance", target: 5 },
   { label: "First 10K", activityType: "Running", metric: "distance", target: 10 },

@@ -79,7 +79,6 @@
   gap: 12px;
 }
 
-/* .cta-btn's :disabled state now lives in styles/buttons.css. */
 
 .session-finish-btn {
   display: inline-flex;
@@ -217,6 +216,17 @@
   color: var(--go-text);
 }
 
+.finish-confirm-icon--danger {
+  background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
+  color: var(--go-danger-dark, #dc2626);
+}
+
+.finish-confirm-body {
+  font-size: 0.85rem;
+  color: var(--go-text-muted);
+  margin: 4px 0 0;
+}
+
 .finish-confirm-summary {
   width: 100%;
   display: flex;
@@ -286,6 +296,16 @@
 }
 
 .finish-confirm-btn--confirm:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.finish-confirm-btn--danger {
+  background: var(--go-danger-dark, #dc2626);
+  color: #fff;
+  border-color: transparent;
+}
+
+.finish-confirm-btn--danger:hover:not(:disabled) {
   filter: brightness(1.06);
 }
 

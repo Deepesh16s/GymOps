@@ -1,10 +1,6 @@
 import { CARDIO_METRICS } from "../constants/cardioMetadata";
 import "./ExerciseSessionCard.css";
 
-// Deliberately separate from ExerciseSessionCard (per Phase 8A rules) —
-// cardio entries have no sets to add/edit, just a single record of
-// metrics for one activity, so this component only needs to display
-// that record and offer a delete action.
 function CardioEntryCard({ entry, disabled = false, onDelete }) {
   const { cardio } = entry;
   const { activityType, variant, data } = cardio || {};

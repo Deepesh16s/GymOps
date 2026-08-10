@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
-// Generic "..." trigger + dropdown, used to tuck destructive actions
-// (Delete Session, Delete exercise) out of the primary visual hierarchy —
-// a red button shouldn't be the first thing a session card draws the eye
-// to. Closes on outside click or Escape. Each instance owns its own open
-// state, so multiple menus on one card never interfere with each other.
 function OverflowMenu({ label = "More actions", children }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);

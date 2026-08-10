@@ -78,9 +78,6 @@
   font-weight: 700;
 }
 
-/* Low confidence is deliberately NOT a danger/red tone — it's not bad
-   news about the muscle, just less certainty behind the estimate, so it
-   shouldn't visually compete with an actual "Needs Rest" warning. */
 .confidence-badge__level--high {
   color: var(--go-success-dark);
 }

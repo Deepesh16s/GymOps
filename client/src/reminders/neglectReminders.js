@@ -1,10 +1,3 @@
-// Phase 13C, section 5 — Muscle Neglect, with severity tiers. Reuses
-// workoutUtils.computeMuscleBreakdown EXCLUSIVELY (same source
-// dashboardInsights.js's workout recommendation reads lastTrained from).
-// Supersedes utils/notificationRules.js's buildNeglectedMuscleCandidates
-// (folded in here, not duplicated alongside it) — adds severity tiers
-// and section 10's grouping (multiple muscles at the same severity
-// collapse into one reminder).
 import { computeMuscleBreakdown } from "../utils/workoutUtils";
 import { daysAgo } from "./reminderUtils";
 
@@ -19,19 +12,8 @@ function severityOf(days) {
   return null;
 }
 
-// muscleGroupNeglected's priority is severity-dependent, not fixed per
-// type — see server/constants/notificationTypes.js's TYPE_PRIORITY
-// header comment for why this one type is deliberately absent there.
 const SEVERITY_PRIORITY = { critical: "high", warning: "medium", info: "low" };
 
-// 13C.1 — bucketed by WEEK rather than exact days: with the stable
-// dedupeKey below, subtitle text is what notificationService.js compares
-// to decide "did this meaningfully change" (bypassing the regeneration
-// cooldown) or not (respecting it). An exact day-count changes every
-// single calendar day regardless of any real action, which would defeat
-// the cooldown entirely (content would always look "new"). Rounding to
-// whole weeks means the wording — and therefore the regenerate/cooldown
-// decision — only shifts roughly weekly, matching a sensible cadence.
 function phraseFor(muscle, days, isPlural) {
   if (days >= 30) return `${muscle} ${isPlural ? "haven't" : "hasn't"} been trained this month`;
   const weeks = Math.floor(days / 7);
@@ -70,9 +52,6 @@ export function generateNeglectReminders(workouts) {
       subtitle,
       navigationTarget: "/progression",
       action: { page: "/progression", entityId: null, focus: null },
-      // 13C.1 — stable per severity+muscle-set (escalating from warning
-      // to critical for the same muscle IS a meaningfully different key,
-      // correctly bypassing any cooldown rather than being suppressed).
       dedupeKey: `neglect-${severity}-${muscleNames.join("-").toLowerCase()}`,
       expiresAt: null,
       metadata: { muscles: muscleNames, severity },

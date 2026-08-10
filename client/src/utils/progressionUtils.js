@@ -1,29 +1,14 @@
-// Phase 14A — "what to do next workout" suggestion math for Module 4
-// (Progressive Overload Engine), also reused by Module 9 (Exercise
-// Intelligence's "Trend" label) and Module 10 (Weekly Grade's
-// progression factor). Pure math over an already-computed trend
-// (progression/progressionEngine.js's describeTrend) and the last real
-// logged set — never re-derives what a trend or a set is.
 import { getConfidenceReason } from "./confidenceUtils";
 
-const WEIGHT_INCREMENT_KG = 2.5; // standard small-plate increment
+const WEIGHT_INCREMENT_KG = 2.5;
 const REP_INCREMENT = 1;
 const MIN_SESSIONS_FOR_SUGGESTION = 4;
 const MIN_SESSIONS_FOR_HIGH_CONFIDENCE = 8;
 
-// Rounds to the nearest half unit — a suggested weight should always be
-// something actually loadable (2.5kg plates -> 0.5kg smallest fraction
-// once split across a barbell), not an arbitrary decimal.
 function roundToHalf(n) {
   return Math.round(n * 2) / 2;
 }
 
-// Matches the phase spec's two examples exactly: a real upward weight
-// trend suggests a small weight bump ("82.5 x 8"); a stalled weight with
-// enough session history suggests a rep bump instead ("10 -> 11")
-// rather than forcing a weight increase the lifter hasn't earned yet.
-// Anything without enough trend history suggests holding steady —
-// "not enough data" is an honest answer, not a guess.
 export function suggestNextTarget({ lastSet, weightTrend, sessionCount = 0 }) {
   if (!lastSet) return null;
   const { weight, reps } = lastSet;

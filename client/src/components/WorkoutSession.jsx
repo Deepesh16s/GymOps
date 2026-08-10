@@ -1,11 +1,13 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Dumbbell, Plus, Activity, X, CheckCircle2, Loader2, StickyNote } from "lucide-react";
+import { Dumbbell, Plus, Activity, X, CheckCircle2, Loader2, StickyNote, AlertTriangle } from "lucide-react";
 import ExerciseSessionCard from "./ExerciseSessionCard";
 import CardioEntryCard from "./CardioEntryCard";
 import RestTimer from "./RestTimer";
 import ExerciseHistoryDrawer from "./ExerciseHistoryDrawer";
+import ConfirmDialog from "./ConfirmDialog";
 import { calculateVolume } from "../utils/strengthUtils";
 import { getDefaultRestSeconds } from "../progression/liveWorkoutEngine";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./WorkoutSession.css";
 
 const formatDuration = (ms) => {
@@ -18,6 +20,21 @@ const formatDuration = (ms) => {
 const formatMinutesLabel = (ms) => {
   const minutes = Math.floor(Math.max(0, ms) / 60000);
   return minutes < 1 ? "<1 min" : `${minutes} min`;
+};
+
+const PENDING_ACTION_COPY = {
+  deleteSet: {
+    title: "Remove Set?",
+    body: "Deleting this set will remove the exercise from your workout.",
+  },
+  deleteExercise: {
+    title: "Remove Exercise?",
+    body: "This exercise will be removed from the current workout.",
+  },
+  deleteCardio: {
+    title: "Remove Cardio Entry?",
+    body: "This cardio entry will be removed from the current workout.",
+  },
 };
 
 function WorkoutSession({
@@ -44,40 +61,22 @@ function WorkoutSession({
 }) {
   const [now, setNow] = useState(Date.now());
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
   const [showNoteField, setShowNoteField] = useState(false);
   const [historyEntryId, setHistoryEntryId] = useState(null);
 
-  // Stable across the elapsed-clock's every-second re-render (unlike an
-  // inline arrow function, which would be a new reference every tick and
-  // defeat ExerciseHistoryDrawer's memo — see that file's export comment).
   const handleCloseHistory = useCallback(() => setHistoryEntryId(null), []);
   const handleUpdateHistoryNote = useCallback(
     (note) => onUpdateEntryNote(historyEntryId, note),
     [historyEntryId, onUpdateEntryNote]
   );
 
-  // A card only reports itself here while it's mid-edit of an
-  // already-completed set (the always-visible pending row never counts —
-  // see ExerciseSessionCard) — so Finish/Discard/Add stay usable during
-  // normal set logging, matching Strong/Hevy's fluid feel, while still
-  // protecting an in-progress correction to a past set from being
-  // silently abandoned by a navigation click.
   const [editingEntryIds, setEditingEntryIds] = useState(() => new Set());
   const isEditingActive = editingEntryIds.size > 0;
 
-  // One shared rest timer for the whole session (Batch 3) — null until
-  // the first set is completed, then re-armed on every subsequent
-  // completion regardless of which exercise it came from.
   const [restTimer, setRestTimer] = useState(null);
-  // Distinct exercises (by _id, not by PR-event count) that had at least
-  // one set flagged as some kind of PR this session — "PR in 2
-  // exercises" reads more meaningfully than a raw event count, which
-  // would double-count an exercise where multiple sets in the same
-  // session each broke the record. Captured here (not recomputed later)
-  // since this is the only place with access to each exercise's live PR
-  // check as it happens; passed up via onFinishWorkout since this
-  // component unmounts once the session finishes.
   const [prExerciseIds, setPrExerciseIds] = useState(() => new Set());
   const handleSetCompleted = (exercise, pr) => {
     setRestTimer({ seconds: getDefaultRestSeconds(exercise?.name), trigger: Date.now() });
@@ -94,8 +93,6 @@ function WorkoutSession({
   const elapsed = startTime ? now - startTime : 0;
   const hasEntries = entries.length > 0;
 
-  // Total sets only counts strength entries — cardio entries have no
-  // `sets` array.
   const totalSets = entries.reduce(
     (sum, entry) =>
       sum + (entry.entryType === "cardio" ? 0 : entry.sets.length),
@@ -112,18 +109,16 @@ function WorkoutSession({
     [entries]
   );
 
-  const handleEntryEditingChange = (entryId, isEditing) => {
+  const handleEntryEditingChange = useCallback((entryId, isEditing) => {
     setEditingEntryIds((prev) => {
+      if (prev.has(entryId) === isEditing) return prev;
       const next = new Set(prev);
       if (isEditing) next.add(entryId);
       else next.delete(entryId);
       return next;
     });
-  };
+  }, []);
 
-  // Deleting the last remaining set of an exercise removes the exercise
-  // itself (see useWorkoutSession.deleteSet), so that specific case gets
-  // an explicit confirmation. Any other set is deleted immediately.
   const handleDeleteSet = (exerciseId, setId) => {
     if (isSaving) return;
 
@@ -132,10 +127,8 @@ function WorkoutSession({
       entry && entry.entryType !== "cardio" && entry.sets.length === 1;
 
     if (isLastSet) {
-      const confirmed = window.confirm(
-        "Deleting this set will remove the exercise. Continue?"
-      );
-      if (!confirmed) return;
+      setPendingAction({ type: "deleteSet", exerciseId, setId });
+      return;
     }
 
     onDeleteSet(exerciseId, setId);
@@ -143,24 +136,22 @@ function WorkoutSession({
 
   const handleDeleteExercise = (exerciseId) => {
     if (isSaving) return;
-
-    const confirmed = window.confirm(
-      "Remove this exercise from the current workout?"
-    );
-    if (!confirmed) return;
-
-    onRemoveEntry(exerciseId);
+    setPendingAction({ type: "deleteExercise", exerciseId });
   };
 
   const handleDeleteCardioEntry = (entryId) => {
     if (isSaving) return;
+    setPendingAction({ type: "deleteCardio", entryId });
+  };
 
-    const confirmed = window.confirm(
-      "Remove this cardio entry from the current workout?"
-    );
-    if (!confirmed) return;
+  const handleCancelPendingAction = useCallback(() => setPendingAction(null), []);
 
-    onRemoveEntry(entryId);
+  const handleConfirmPendingAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === "deleteSet") onDeleteSet(pendingAction.exerciseId, pendingAction.setId);
+    else if (pendingAction.type === "deleteExercise") onRemoveEntry(pendingAction.exerciseId);
+    else if (pendingAction.type === "deleteCardio") onRemoveEntry(pendingAction.entryId);
+    setPendingAction(null);
   };
 
   const handleToggleCollapse = (entryId) => {
@@ -184,8 +175,19 @@ function WorkoutSession({
 
   const handleDiscardClick = () => {
     if (isSaving || isEditingActive) return;
+    setShowDiscardConfirm(true);
+  };
+
+  const handleCancelDiscardConfirm = useCallback(() => {
+    setShowDiscardConfirm(false);
+  }, []);
+
+  const handleConfirmDiscard = () => {
+    setShowDiscardConfirm(false);
     onDiscard();
   };
+
+  useModalEscapeAndFocus(showDiscardConfirm, handleCancelDiscardConfirm);
 
   const handleFinishClick = () => {
     if (isSaving || !hasEntries || isEditingActive) return;
@@ -409,6 +411,47 @@ function WorkoutSession({
           </div>
         </div>
       )}
+
+      {showDiscardConfirm && (
+        <div className="finish-confirm-overlay">
+          <div className="finish-confirm-card">
+            <div className="finish-confirm-icon finish-confirm-icon--danger">
+              <AlertTriangle size={22} strokeWidth={1.8} />
+            </div>
+            <p className="finish-confirm-title">Discard Workout?</p>
+            <p className="finish-confirm-body">
+              {entries.length} {entries.length === 1 ? "entry" : "entries"} and {totalSets}{" "}
+              {totalSets === 1 ? "set" : "sets"} logged so far will be lost. This can't be undone.
+            </p>
+
+            <div className="finish-confirm-actions">
+              <button
+                type="button"
+                className="finish-confirm-btn finish-confirm-btn--cancel"
+                onClick={handleCancelDiscardConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="finish-confirm-btn finish-confirm-btn--danger"
+                onClick={handleConfirmDiscard}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={pendingAction ? PENDING_ACTION_COPY[pendingAction.type].title : ""}
+        body={pendingAction ? PENDING_ACTION_COPY[pendingAction.type].body : ""}
+        confirmLabel="Remove"
+        onConfirm={handleConfirmPendingAction}
+        onCancel={handleCancelPendingAction}
+      />
     </section>
   );
 }

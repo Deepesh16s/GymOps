@@ -10,10 +10,6 @@ const LABELS = {
   volumePR: "New Volume PR",
 };
 
-// A small, self-dismissing inline banner — not a global toast/notification
-// system (that's out of scope for Phase 11, see Non-Goals). It renders
-// inside the exercise card that produced the PR, celebrating without
-// covering the set table or blocking further logging.
 function PRCelebration({ pr, exerciseName, onDismiss }) {
   useEffect(() => {
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);

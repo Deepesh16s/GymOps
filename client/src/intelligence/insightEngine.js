@@ -1,12 +1,3 @@
-// Phase 14A, Module 12 — Smart Insights Engine. The composition layer:
-// every insight here is either a plain-language wrapper around an
-// EXISTING engine's already-computed output (progressionInsights.getInsights,
-// recoveryEngine, plateauEngine, deloadEngine, musclePriorityEngine), or
-// a small new cross-reference BETWEEN two existing engines (e.g.
-// "recovery is limiting X progression" = a muscle that's simultaneously
-// Needs-Rest AND plateaued — neither engine knows about the other, this
-// is the one place that connects them). No AI, no new raw computation —
-// every sentence traces back to a real, already-computed number.
 import { getInsights } from "../progression/progressionInsights";
 import { getExerciseProgression } from "../progression/progressionEngine";
 import { getAvailableExercises } from "../progression/progressionFilters";
@@ -18,17 +9,10 @@ import { getMusclePlateaus } from "./plateauEngine";
 import { getDeloadRecommendation } from "./deloadEngine";
 import { getMusclePriorities } from "./musclePriorityEngine";
 
-const MIN_BUCKETS_FOR_TREND = 4; // matches plateauEngine.js's own floor
+const MIN_BUCKETS_FOR_TREND = 4;
 const NEAR_PR_THRESHOLD_PCT = 5;
-const MAX_EXERCISES_SCANNED = 25; // bound cost on very large exercise libraries, same cap progressionInsights.js's own scans already use
+const MAX_EXERCISES_SCANNED = 25;
 
-// "Your {exercise} volume increased X%" — the spec's own example is
-// volume-based and per-EXERCISE; progressionInsights.js's existing
-// insights are either per-MUSCLE volume or per-exercise 1RM, neither an
-// exact match, so this composes the same two already-exported utilities
-// (getAvailableExercises + getExerciseProgression) with the one
-// different, still-existing field (`trend.volume` instead of
-// `trend.estOneRM`) — not a new trend computation.
 function findFastestVolumeGrowthExercise(workouts) {
   const exercises = getAvailableExercises(workouts).slice(0, MAX_EXERCISES_SCANNED);
   let best = null;
@@ -42,12 +26,6 @@ function findFastestVolumeGrowthExercise(workouts) {
   return best;
 }
 
-// "You are close to a PR" — the last logged session's best set for an
-// exercise, compared against that same exercise's current all-time
-// record (strengthUtils.prHistory). Only ever surfaces the SINGLE
-// closest exercise across the user's history, not one line per exercise
-// — avoiding the exact spam problem the Reminder Engine's own grouping
-// (Phase 13C) already guards against elsewhere in this app.
 function findExerciseCloseToRecord(workouts) {
   const exercises = getAvailableExercises(workouts).slice(0, MAX_EXERCISES_SCANNED);
   const records = prHistory(workouts);
@@ -61,7 +39,7 @@ function findExerciseCloseToRecord(workouts) {
     const exerciseWorkouts = filterWorkoutsByExercise(workouts, exercise);
     const sessionSeries = buildExerciseSessionSeries(exerciseWorkouts);
     const lastSession = sessionSeries[sessionSeries.length - 1];
-    if (!lastSession?.bestSet || lastSession.isPR) return; // isPR sessions are already a NEW record, not "close to one"
+    if (!lastSession?.bestSet || lastSession.isPR) return;
 
     const gapPct = ((record.weight - lastSession.bestSet.weight) / record.weight) * 100;
     if (gapPct <= 0 || gapPct > NEAR_PR_THRESHOLD_PCT) return;
@@ -71,11 +49,6 @@ function findExerciseCloseToRecord(workouts) {
   return closest;
 }
 
-// "Recovery is limiting {muscle} progression" — a real cross-reference
-// between Module 1 (recovery) and Module 3 (plateau): a muscle that's
-// BOTH showing poor recovery AND plateaued is a much stronger, more
-// specific claim than either signal alone. Neither engine knows about
-// the other; this is the one place that connects them.
 function findRecoveryLimitedMuscle(workouts) {
   const recoveryScores = getMuscleRecoveryScores(workouts);
   const poorRecoveryMuscles = new Set(
@@ -88,10 +61,6 @@ function findRecoveryLimitedMuscle(workouts) {
   return plateaued ? plateaued.muscle : null;
 }
 
-// The Module 12 entry point — returns an array of plain-language
-// strings, each independently optional (an insight with nothing real to
-// say is simply omitted, the same "no fabricated content" rule every
-// insight generator in this app already follows).
 export function getSmartInsights(workouts) {
   const insights = [];
 
@@ -122,9 +91,6 @@ export function getSmartInsights(workouts) {
     insights.push("Next week would be ideal for a deload.");
   }
 
-  // Composes progressionInsights.js's existing, already-shipped insights
-  // wholesale (their own `detail` prose) rather than re-deriving
-  // consistency/streak/balance insight text a second time.
   const existing = getInsights(workouts);
   if (existing.available) {
     const streak = existing.insights.find((i) => i.key === "longestStreak" && i.available);

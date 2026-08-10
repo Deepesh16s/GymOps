@@ -3,16 +3,9 @@ import { SESSION_TYPE_FILTER_OPTIONS } from "../../constants/sessionTypes";
 import { DATE_RANGE_ALL, DATE_RANGE_OPTIONS, DATE_RANGE_CUSTOM } from "../../constants/dateRanges";
 import { DURATION_RANGE_ALL, DURATION_RANGE_OPTIONS } from "../../constants/durationRanges";
 
-// Applied to a filter <select> whenever its value differs from the
-// "show everything" default, so an active filter visually stands out
-// instead of carrying the same weight as an untouched one.
 const activeSelectClass = (isActive) =>
   `history-select ${isActive ? "history-select--active" : ""}`;
 
-// `filters` holds every control's current value; `onChange(key, value)` is
-// the single setter WorkoutHistory.jsx uses to update whichever one
-// changed — keeps this component's prop list from growing by one pair
-// per filter as new ones are added.
 function HistoryFilterBar({ filters, muscleOptions, onChange, onClear, hasActiveFilters }) {
   const isCustomRange = filters.dateRange === DATE_RANGE_CUSTOM;
 

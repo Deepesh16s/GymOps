@@ -1,8 +1,3 @@
-// generateRecoverySummary — the "Recovery Dashboard" data (section 10):
-// an overall recovery percentage plus muscles bucketed by status.
-// Reuses recoveryEngine's getMuscleRecoveryScores exclusively (the
-// same per-muscle scores/status Module 1 already computes) — this file
-// only buckets and averages, never re-scores a muscle.
 import { getMuscleRecoveryScores } from "../intelligence";
 
 export function generateRecoverySummary(workouts) {

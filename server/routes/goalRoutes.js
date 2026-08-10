@@ -11,10 +11,11 @@ const {
 const {
   protect,
 } = require("../middleware/authMiddleware");
+const validateObjectId = require("../middleware/validateObjectId");
 
 router.post("/", protect, createGoal);
 router.get("/", protect, getGoals);
-router.put("/:id", protect, updateGoal);
-router.delete("/:id", protect, deleteGoal);
+router.put("/:id", protect, validateObjectId(), updateGoal);
+router.delete("/:id", protect, validateObjectId(), deleteGoal);
 
 module.exports = router;

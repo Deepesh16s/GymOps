@@ -6,21 +6,12 @@ import {
   updatePushPreferences,
 } from "../services/pushService";
 
-// Phase 13D, Part B (section 15) — Progressive Enhancement: this is the
-// ONE place that checks browser support. Every consumer reads `supported`
-// off this hook rather than re-checking `'serviceWorker' in navigator`
-// itself, so there's exactly one source of truth for "can this browser
-// even do push" and nothing downstream has to guess.
 const isPushSupported = () =>
   typeof window !== "undefined" &&
   "serviceWorker" in navigator &&
   "PushManager" in window &&
   "Notification" in window;
 
-// Web Push subscriptions need the VAPID public key as a raw Uint8Array,
-// not the base64url string it's stored/shared as — this is the standard
-// conversion every web-push client-side integration needs (there's no
-// browser-native helper for it).
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -32,15 +23,6 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// Phase 13D, Part B — the one hook every push-related UI reads from:
-// support/permission/subscription state, the subscribe/unsubscribe
-// actions (section 7), and server-side push preferences (section 10's
-// quiet hours + the master pushEnabled switch). Section 5's "do not
-// repeatedly prompt after denial" is satisfied structurally, not by an
-// extra guard here — `requestAndSubscribe` only ever runs when a caller
-// explicitly invokes it (never on mount), and the browser itself refuses
-// to show a second permission prompt once denied regardless of how many
-// times `Notification.requestPermission()` is called.
 export default function usePushNotifications() {
   const supported = isPushSupported();
   const [permission, setPermission] = useState(() =>

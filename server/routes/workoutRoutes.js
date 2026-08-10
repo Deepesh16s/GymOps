@@ -14,6 +14,7 @@ const {
 const {
   protect,
 } = require("../middleware/authMiddleware");
+const validateObjectId = require("../middleware/validateObjectId");
 
 router.post(
   "/",
@@ -36,13 +37,10 @@ router.get(
 router.put(
   "/:id",
   protect,
+  validateObjectId(),
   updateWorkout
 );
 
-// Declared above the single-workout "/:id" route. Not strictly required
-// since "/session/:sessionId" has two segments and can't collide with the
-// single-segment "/:id", but keeping the more specific route first matches
-// existing convention and avoids any ambiguity.
 router.delete(
   "/session/:sessionId",
   protect,
@@ -58,6 +56,7 @@ router.put(
 router.delete(
   "/:id",
   protect,
+  validateObjectId(),
   deleteWorkout
 );
 

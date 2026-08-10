@@ -1,10 +1,6 @@
 import { TrendBadge } from "./TrendChart";
 import "./progression-charts.css";
 
-// A merged KPI tile — several related stat rows under one title, instead
-// of one MetricCard per number. Analytics' Hero uses this to cut ~9
-// single-value cards down to 3 grouped ones (Training / Strength & Volume
-// / Muscle Focus) so a reader isn't scanning nine tiles for one answer.
 function StatGroupCard({ title, icon: Icon, rows = [] }) {
   return (
     <div className="stat-group-card">

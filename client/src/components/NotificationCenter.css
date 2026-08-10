@@ -4,7 +4,6 @@
   position: relative;
 }
 
-/* ---- Bell ---- */
 
 .notif-bell {
   position: relative;
@@ -78,7 +77,6 @@
   100% { transform: scale(1); }
 }
 
-/* ---- Panel ---- */
 
 .notif-panel {
   position: absolute;
@@ -139,9 +137,6 @@
   padding: 4px;
 }
 
-/* Phase 13C, section 13 — preferences panel, toggled from the header's
-   gear icon. Collapsible rather than a separate page: 7 checkboxes is
-   small enough to live inline without needing its own navigation. */
 .notif-panel__preferences {
   padding: 10px 16px;
   border-bottom: 1px solid var(--go-border-soft);
@@ -174,8 +169,6 @@
   cursor: pointer;
 }
 
-/* Phase 13D, Part B — Browser Push settings, second section of the same
-   preferences panel the reminder-category toggles already live in. */
 .push-settings {
   margin-top: 10px;
   padding-top: 10px;
@@ -326,8 +319,6 @@
   cursor: default;
 }
 
-/* Wraps onto a second row instead of ever scrolling horizontally — a
-   notification panel should never show a horizontal scrollbar. */
 .notif-panel__filters {
   display: flex;
   flex-wrap: wrap;
@@ -359,9 +350,6 @@
   font-weight: 700;
 }
 
-/* Phase 13D, Part A.2 — Reminder Timeline toggle, pinned to the end of
-   the filter row (margin-left: auto) rather than its own separate row —
-   it's a view preference, not another filter dimension. */
 .notif-panel__view-toggle {
   display: flex;
   gap: 2px;
@@ -406,9 +394,6 @@
   gap: 4px;
 }
 
-/* Phase 13D, Part A.2 — Reminder Timeline groups. Each group reuses the
-   exact same .notif-panel__list/NotificationItem rendering as the flat
-   List view — only the section label + grouping is new. */
 .notif-timeline {
   padding: 6px 6px 2px;
 }
@@ -434,7 +419,6 @@
   padding: 12px;
 }
 
-/* ---- Item ---- */
 
 .notif-item {
   position: relative;
@@ -472,9 +456,6 @@
   outline-offset: -2px;
 }
 
-/* Slide-in for a genuinely new (this-tab, this-moment) notification —
-   see NotificationCenter.jsx's recentlyAddedIds, populated only by the
-   instant "notifications-created" event, not by a routine poll refresh. */
 .notif-item--enter {
   animation: notif-item-enter 0.35s ease;
 }
@@ -484,9 +465,6 @@
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Type-specific accent tints (subtle, 5–8%) — one step more specific
-   than category, so "progress" doesn't read as one monotonous green
-   block. See constants/notificationTypes.js's getNotificationTone. */
 .notif-item--achievement { border-left-color: var(--go-success); }
 .notif-item--recovery { border-left-color: #14b8a6; }
 .notif-item--goal { border-left-color: #06b6d4; }
@@ -528,9 +506,6 @@
   min-width: 0;
 }
 
-/* Hierarchy (Item 3): title dominates, subtitle is clearly lighter,
-   timestamp is much quieter than either — previously all three read at
-   nearly the same visual weight. */
 .notif-item__title {
   margin: 0;
   font-size: 14px;
@@ -556,10 +531,6 @@
   opacity: 0.85;
 }
 
-/* Phase 13D, Part A.4 — Reminder Explanation. Inline text button (not a
-   full action-row button) since it lives inside the timestamp line —
-   underline-on-hover is enough affordance without competing visually
-   with the actual action buttons on the right. */
 .notif-item__why-btn {
   all: unset;
   font-size: 10.5px;
@@ -582,10 +553,6 @@
   line-height: 1.5;
 }
 
-/* Phase 13C, section 9 — a subtle emphasis for critical-priority items
-   only (high/medium/low stay exactly as before) — a slightly bolder
-   left border plus a small inline tag, not a full re-color of the card
-   (that would compete with the type-tint accent colors above). */
 .notif-item--priority-critical {
   border-left-width: 4px;
   border-left-color: var(--go-danger-dark);
@@ -605,9 +572,6 @@
   padding: 1px 5px;
 }
 
-/* Phase 13C, section 11 — snooze/mark-complete/dismiss action row,
-   replacing the single dismiss button. Same reveal-on-hover/focus
-   pattern as the old dismiss button had. */
 .notif-item__actions {
   flex-shrink: 0;
   display: flex;
@@ -682,7 +646,6 @@
   color: var(--go-primary-dark);
 }
 
-/* ---- Empty state ---- */
 
 .notif-empty {
   display: flex;
@@ -717,11 +680,6 @@
   color: var(--go-text-muted);
 }
 
-/* Section 11 — Visible focus. `all: unset` above (a plain reset for
-   these text-button elements) also strips the browser's default focus
-   ring, so each one needs its own explicit :focus-visible replacement —
-   otherwise keyboard-only navigation through the panel would have no
-   visible indicator at all. */
 .notif-panel__action:focus-visible,
 .notif-filter-tab:focus-visible,
 .notif-item__action-btn:focus-visible,

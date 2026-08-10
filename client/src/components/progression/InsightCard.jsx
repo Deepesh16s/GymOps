@@ -1,11 +1,6 @@
 import { Sparkles, Info } from "lucide-react";
 import "./progression-charts.css";
 
-// One row of the Insights section. `insight` is a single entry from
-// progressionInsights.getInsights() — either {available:true, value,
-// detail} or {available:false, reason}. Unavailable insights are shown
-// (not hidden) with a plain-language reason, per "never fabricate,
-// explain why" rather than silently omitting the card.
 function InsightCard({ insight }) {
   if (!insight) return null;
 

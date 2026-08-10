@@ -12,13 +12,14 @@ const {
 } = require("../controllers/notificationController");
 
 const { protect } = require("../middleware/authMiddleware");
+const validateObjectId = require("../middleware/validateObjectId");
 
 router.get("/", protect, getNotifications);
 router.post("/generate", protect, generateFromClient);
 router.put("/read-all", protect, markAllRead);
 router.put("/clear-read", protect, clearRead);
-router.put("/:id/read", protect, markRead);
-router.put("/:id/dismiss", protect, dismiss);
-router.put("/:id/snooze", protect, snooze);
+router.put("/:id/read", protect, validateObjectId(), markRead);
+router.put("/:id/dismiss", protect, validateObjectId(), dismiss);
+router.put("/:id/snooze", protect, validateObjectId(), snooze);
 
 module.exports = router;

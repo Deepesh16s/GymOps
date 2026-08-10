@@ -5,16 +5,16 @@ import {
   getActivityMetrics,
   getActivityVariants,
 } from "../constants/cardioMetadata";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./AddWorkoutModal.css";
 
-// Kept as its own modal (not merged into AddWorkoutModal), matching the
-// existing Exercise flow's pattern: takes closeModal/onAddCardio, returns
-// data only, and leaves all session-state decisions to the caller.
 function AddCardioModal({ closeModal, onAddCardio }) {
   const [activityType, setActivityType] = useState(CARDIO_ACTIVITY_TYPES[0]);
   const [variant, setVariant] = useState("");
   const [metricValues, setMetricValues] = useState({});
   const [validationMessage, setValidationMessage] = useState("");
+
+  useModalEscapeAndFocus(true, closeModal);
 
   const { requiredMetrics, optionalMetrics } = getActivityMetrics(activityType);
   const visibleMetrics = [...requiredMetrics, ...optionalMetrics];
@@ -67,9 +67,6 @@ function AddCardioModal({ closeModal, onAddCardio }) {
       }
     });
 
-    // Return data only. No branching on session state, no API call here —
-    // that decision belongs to whoever opened this modal (mirrors
-    // AddWorkoutModal.handleSubmit).
     onAddCardio({
       cardio: {
         activityType,
@@ -82,7 +79,7 @@ function AddCardioModal({ closeModal, onAddCardio }) {
   return (
     <div className="modal-overlay">
       <div className="modal-card">
-        <button className="close-btn" onClick={closeModal}>
+        <button type="button" className="close-btn" onClick={closeModal} aria-label="Close">
           ✕
         </button>
 
@@ -99,10 +96,6 @@ function AddCardioModal({ closeModal, onAddCardio }) {
             ))}
           </select>
 
-          {/* Phase 12 — optional refinement, only shown when this
-              activity actually has variants defined (e.g. Elliptical
-              has none, so no select renders at all — nothing to pick,
-              nothing to omit). */}
           {availableVariants.length > 0 && (
             <>
               <label>Variant (optional)</label>

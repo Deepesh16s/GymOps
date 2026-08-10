@@ -44,7 +44,6 @@
 
 .navbar-logo-dot { color: var(--go-brand); }
 
-/* ── desktop nav links ───────────────────────────────────────── */
 .navbar-links {
   display: flex;
   gap: 2px;
@@ -180,9 +179,6 @@
   font-weight: 600;
 }
 
-/* Slightly tighter link spacing before the layout collapses to the
-   hamburger menu, so all 7 items keep breathing room instead of
-   crowding right up to the mobile breakpoint. */
 @media (max-width: 1180px) and (min-width: 1081px) {
   .navbar {
     padding: 14px 24px;

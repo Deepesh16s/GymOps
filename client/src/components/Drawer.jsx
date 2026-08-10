@@ -1,10 +1,10 @@
 import { X } from "lucide-react";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./Drawer.css";
 
-// Generic slide-in side panel — first consumer is ExerciseHistoryDrawer
-// (Phase 11, Module 7), but deliberately not exercise-specific so any
-// future "view more without leaving the page" surface can reuse it.
 function Drawer({ open, onClose, title, children }) {
+  useModalEscapeAndFocus(open, onClose);
+
   if (!open) return null;
 
   return (

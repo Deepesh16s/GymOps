@@ -56,6 +56,7 @@ function ResetPassword() {
               id="newPassword"
               className="rp-input"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="••••••••"
@@ -69,6 +70,7 @@ function ResetPassword() {
               id="confirmPassword"
               className="rp-input"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"

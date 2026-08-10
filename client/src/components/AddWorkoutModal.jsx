@@ -3,10 +3,7 @@ import Select from "react-select";
 import "./AddWorkoutModal.css";
 import api from "../services/api";
 import { MUSCLES, LEGACY_MUSCLES } from "../constants/muscles";
-// mode: "add" (default) collects an exercise + first set, same as
-// always. "replace" (Live Workout Mode's "Replace Exercise" action) only
-// needs the exercise itself — the entry it's replacing already has its
-// own set-logging table, so no weight/reps are collected here.
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
   const [muscleGroup, setMuscleGroup] = useState("");
   const [exercises, setExercises] = useState([]);
@@ -19,6 +16,7 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
+  const [savingCustomExercise, setSavingCustomExercise] = useState(false);
 
   const isReplaceMode = mode === "replace";
 
@@ -37,6 +35,8 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
     fetchExercises();
   }, [muscleGroup]);
 
+  useModalEscapeAndFocus(true, closeModal);
+
   const fetchExercises = async () => {
     try {
       const res = await api.get("/exercises", {
@@ -45,6 +45,7 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
       setExercises(res.data);
     } catch (error) {
       console.log(error);
+      setValidationMessage("Couldn't load exercises. Check your connection and try again.");
     }
   };
 
@@ -61,15 +62,17 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
   };
 
   const createCustomExercise = async () => {
-    try {
-      if (!customExercise.name || !customExercise.muscleGroup) {
-        alert("Please fill all fields.");
-        return;
-      }
+    setValidationMessage("");
 
+    if (!customExercise.name || !customExercise.muscleGroup) {
+      setValidationMessage("Please fill all fields.");
+      return;
+    }
+
+    setSavingCustomExercise(true);
+    try {
       const res = await api.post("/exercises", customExercise);
 
-      alert("Exercise Added Successfully!");
       setShowCustomForm(false);
       setCustomExercise({ name: "", muscleGroup: "" });
 
@@ -77,7 +80,9 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
       setSelectedExercise(res.data._id);
     } catch (error) {
       console.log(error);
-      alert(error.response?.data?.message || "Failed to add exercise");
+      setValidationMessage(error.response?.data?.message || "Failed to add exercise");
+    } finally {
+      setSavingCustomExercise(false);
     }
   };
 
@@ -124,8 +129,6 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
         }
       : { _id: selectedExercise };
 
-    // Return data only. No branching on session state, no API call here —
-    // that decision belongs to whoever opened this modal.
     onAddExercise(
       isReplaceMode
         ? { exercise }
@@ -139,9 +142,6 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
     );
   };
 
-  // react-select theme: only non-color tokens go here (radius/spacing).
-  // Colors are handled entirely by the go-select__* CSS classes so that
-  // light/dark mode stays in sync with the rest of GymOps via [data-theme].
   const selectTheme = (theme) => ({
     ...theme,
     borderRadius: 12,
@@ -152,8 +152,6 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
     },
   });
 
-  // Only the portal wrapper needs an inline z-index (it renders on
-  // document.body, outside the modal's stacking context).
   const selectStyles = {
     menuPortal: (base) => ({ ...base, zIndex: 1200 }),
   };
@@ -161,7 +159,7 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
   return (
     <div className="modal-overlay">
       <div className="modal-card">
-        <button className="close-btn" onClick={closeModal}>
+        <button type="button" className="close-btn" onClick={closeModal} aria-label="Close">
           ✕
         </button>
 
@@ -180,10 +178,6 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
                 {muscle}
               </option>
             ))}
-            {/* Legacy values kept here (filter-only) so exercises already
-                tagged with them before the current taxonomy existed are
-                still findable — new exercises use MUSCLES above instead
-                (see the create-exercise dropdown). */}
             {LEGACY_MUSCLES.map((muscle) => (
               <option key={muscle} value={muscle}>
                 {muscle} (legacy)
@@ -252,8 +246,9 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
                 type="button"
                 className="save-custom-btn"
                 onClick={createCustomExercise}
+                disabled={savingCustomExercise}
               >
-                Save Exercise
+                {savingCustomExercise ? "Saving..." : "Save Exercise"}
               </button>
             </div>
           )}

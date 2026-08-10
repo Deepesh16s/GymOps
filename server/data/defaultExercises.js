@@ -1,5 +1,4 @@
 const defaultExercises = [
-  // Chest
   { name: "Bench Press", muscleGroup: "Chest" },
   { name: "Incline DB Press", muscleGroup: "Chest" },
   { name: "Incline Barbell Press", muscleGroup: "Chest" },
@@ -11,7 +10,6 @@ const defaultExercises = [
   { name: "Push Up", muscleGroup: "Chest" },
   { name: "Dips", muscleGroup: "Chest" },
 
-  // Back
   { name: "Lat Pulldown", muscleGroup: "Back" },
   { name: "Wide Grip Pulldown", muscleGroup: "Back" },
   { name: "Close Grip Pulldown", muscleGroup: "Back" },
@@ -27,7 +25,6 @@ const defaultExercises = [
   { name: "Single Arm DB Row", muscleGroup: "Back" },
   { name: "Straight Arm Pulldown", muscleGroup: "Back" },
 
-  // Shoulders
   { name: "Shoulder Press", muscleGroup: "Shoulders" },
   { name: "Arnold Press", muscleGroup: "Shoulders" },
   { name: "Machine Shoulder Press", muscleGroup: "Shoulders" },
@@ -39,7 +36,6 @@ const defaultExercises = [
   { name: "Cable Face Pull", muscleGroup: "Shoulders" },
   { name: "Upright Row", muscleGroup: "Shoulders" },
 
-  // Traps
   { name: "Barbell Shrug", muscleGroup: "Traps" },
   { name: "Dumbbell Shrug", muscleGroup: "Traps" },
   { name: "Smith Machine Shrug", muscleGroup: "Traps" },
@@ -49,7 +45,6 @@ const defaultExercises = [
   { name: "High Pull", muscleGroup: "Traps" },
   { name: "Power Shrug", muscleGroup: "Traps" },
 
-  // Biceps
   { name: "Bicep Curl", muscleGroup: "Biceps" },
   { name: "Incline DB Curl", muscleGroup: "Biceps" },
   { name: "Hammer Curl", muscleGroup: "Biceps" },
@@ -59,7 +54,6 @@ const defaultExercises = [
   { name: "Spider Curl", muscleGroup: "Biceps" },
   { name: "EZ Bar Curl", muscleGroup: "Biceps" },
 
-  // Triceps
   { name: "Tricep Pushdown", muscleGroup: "Triceps" },
   { name: "Rope Pushdown", muscleGroup: "Triceps" },
   { name: "Overhead Extension", muscleGroup: "Triceps" },
@@ -69,7 +63,6 @@ const defaultExercises = [
   { name: "Tricep Kickback", muscleGroup: "Triceps" },
   { name: "Diamond Push Up", muscleGroup: "Triceps" },
 
-  // Quads
   { name: "Squat", muscleGroup: "Quads" },
   { name: "Front Squat", muscleGroup: "Quads" },
   { name: "Hack Squat", muscleGroup: "Quads" },
@@ -79,16 +72,13 @@ const defaultExercises = [
   { name: "Bulgarian Split Squat", muscleGroup: "Quads" },
   { name: "Adductor Machine", muscleGroup: "Quads" },
 
-  // Glutes
   { name: "Hip Thrust", muscleGroup: "Glutes" },
   { name: "Cable Kickback", muscleGroup: "Glutes" },
   { name: "Abductor Machine", muscleGroup: "Glutes" },
 
-  // Calves
   { name: "Calf Raise", muscleGroup: "Calves" },
   { name: "Seated Calf Raise", muscleGroup: "Calves" },
 
-  // Hamstrings
   { name: "Leg Curl", muscleGroup: "Hamstrings" },
   { name: "Seated Leg Curl", muscleGroup: "Hamstrings" },
   { name: "Nordic Curl", muscleGroup: "Hamstrings" },
@@ -96,13 +86,11 @@ const defaultExercises = [
   { name: "Stiff Leg Deadlift", muscleGroup: "Hamstrings" },
   { name: "Good Morning", muscleGroup: "Hamstrings" },
 
-  // Forearms
   { name: "Wrist Curl", muscleGroup: "Forearms" },
   { name: "Reverse Wrist Curl", muscleGroup: "Forearms" },
   { name: "Reverse Curl", muscleGroup: "Forearms" },
   { name: "Farmer's Carry", muscleGroup: "Forearms" },
 
-  // Abs
   { name: "Rope Crunch", muscleGroup: "Abs" },
   { name: "Cable Crunch", muscleGroup: "Abs" },
   { name: "Hanging Leg Raise", muscleGroup: "Abs" },

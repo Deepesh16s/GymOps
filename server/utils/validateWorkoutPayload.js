@@ -67,11 +67,6 @@ const validateSessionMeta = (sessionId, sessionDuration) => {
   }
 };
 
-// Validates sessionType against the allowed enum, and enforces that
-// customSessionType is present (and non-blank) whenever sessionType is
-// "Other". Kept separate from validateSessionMeta so existing call sites
-// of validateSessionMeta are untouched — this is called only from the
-// session-creation flow that now also accepts sessionType.
 const validateSessionType = (sessionType, customSessionType) => {
   if (sessionType === undefined || sessionType === null || sessionType === "") {
     const err = new Error("sessionType is required");
@@ -102,17 +97,11 @@ const validateSessionType = (sessionType, customSessionType) => {
   }
 };
 
-// customSessionType is only ever meaningful when sessionType is "Other".
-// For every other sessionType it must be stored as null, regardless of
-// what the client sent, so history/filtering never has to guess which
-// field is authoritative.
 const normalizeCustomSessionType = (sessionType, customSessionType) => {
   if (sessionType !== OTHER_SESSION_TYPE) return null;
   return customSessionType.trim();
 };
 
-// requireSessionMeta defaults to true (new workout creation). Pass false
-// for updates, where sessionId/sessionDuration aren't being (re)supplied.
 const validateWorkoutPayload = ({
   workoutSets,
   sessionId,
@@ -125,13 +114,6 @@ const validateWorkoutPayload = ({
   }
 };
 
-// Metadata-driven cardio validation (Phase 8A). Which metrics are
-// REQUIRED comes entirely from CARDIO_ACTIVITIES in cardioMetadata.js —
-// there is no per-activity switch statement here or anywhere else. Any
-// metric not required for the given activityType is still accepted if
-// provided (and validated as a non-negative number), since every metric
-// is optional at the data level; only the required subset varies by
-// activity.
 const validateCardioEntry = (cardio, index) => {
   if (!cardio || typeof cardio !== "object") {
     const err = new Error(
@@ -191,14 +173,6 @@ const validateCardioEntry = (cardio, index) => {
     cleanData[metricKey] = Number(value);
   });
 
-  // Phase 12 — optional variant (e.g. "Treadmill Run" under "Running").
-  // Omitting it is always valid, regardless of whether this activity
-  // has any variants defined at all — a variant is a refinement a
-  // caller may choose to add, never a requirement. When one IS sent, it
-  // must be a real option for this specific activityType; an activity
-  // with no variants defined (Elliptical, Stair Climber, Other) simply
-  // has no valid values to send, so any non-empty variant for those is
-  // rejected rather than silently stored as an arbitrary free-text value.
   let variant = null;
   if (cardio.variant !== undefined && cardio.variant !== null && cardio.variant !== "") {
     const allowedVariants = CARDIO_ACTIVITY_VARIANTS[activityType] || [];
@@ -217,9 +191,6 @@ const validateCardioEntry = (cardio, index) => {
   return { activityType, data: cleanData, variant };
 };
 
-// Live Workout Mode (Phase 11) notes. Optional everywhere — omitting a
-// note is the overwhelmingly common case, so undefined/null/"" all
-// normalize to null rather than being treated as an error.
 const validateNote = (note, maxLength, label) => {
   if (note === undefined || note === null || note === "") return null;
 
@@ -243,12 +214,6 @@ const validateNote = (note, maxLength, label) => {
 
 const EIGHT_HOURS_IN_MINUTES = 8 * 60;
 
-// Workout Session Editing & Time Tracking. Two independent shapes:
-// AUTO (startedAt + endedAt given, duration derived) and MANUAL (a
-// duration given directly, startedAt/endedAt optional/best-effort).
-// Hard errors (End < Start, duration < 1 minute) throw; the "> 8 hours"
-// case is intentionally NOT thrown — the spec calls for a warning, not a
-// block, so it's returned on the result for the controller to pass back.
 const validateSessionTiming = ({ startedAt, endedAt, sessionDuration, timingMode }) => {
   if (timingMode !== "AUTO" && timingMode !== "MANUAL") {
     const err = new Error('timingMode must be "AUTO" or "MANUAL"');
@@ -324,13 +289,6 @@ const validateSessionTiming = ({ startedAt, endedAt, sessionDuration, timingMode
   };
 };
 
-// Session creation sends startedAt/endedAt captured directly from the live
-// workout timer (not user-typed), so unlike validateSessionTiming this is
-// just a sanity check on what's already trustworthy data — no duration
-// recomputation, no AUTO/MANUAL branching. Both fields are optional (older
-// clients, or a session somehow finished without a startTime) so the
-// resulting workout simply has no timing until edited via "Edit Workout
-// Timing", same as before this feature existed.
 const validateOptionalSessionTimestamps = (startedAt, endedAt) => {
   let parsedStart = null;
   let parsedEnd = null;

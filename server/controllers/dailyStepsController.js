@@ -4,9 +4,6 @@ const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const isValidDateKey = (value) => typeof value === "string" && DATE_KEY_PATTERN.test(value);
 
-// Default lookback when no range is requested — enough to cover a Daily
-// Steps goal's weekly/monthly window plus a comfortable margin, without
-// the client having to know those windows to ask for the right range.
 const DEFAULT_LOOKBACK_DAYS = 120;
 
 const todayKeyUTC = () => new Date().toISOString().slice(0, 10);
@@ -17,10 +14,6 @@ const daysAgoKeyUTC = (days) => {
   return d.toISOString().slice(0, 10);
 };
 
-// GET /api/daily-steps?from=YYYY-MM-DD&to=YYYY-MM-DD — both optional.
-// Returns every logged day in range, ascending by date. The client (not
-// this endpoint) decides what "today" is — from/to are plain string
-// keys, compared lexicographically, which is safe for YYYY-MM-DD.
 exports.getDailySteps = async (req, res) => {
   try {
     const { from, to } = req.query;
@@ -47,11 +40,6 @@ exports.getDailySteps = async (req, res) => {
   }
 };
 
-// PUT /api/daily-steps — upserts {date, steps} for the current user.
-// "Set today's total" semantics: overwrites whatever was previously
-// stored for that date rather than accumulating, per product decision —
-// a user re-checking their phone's step count later in the day corrects
-// the value, it doesn't add to it.
 exports.setDailySteps = async (req, res) => {
   try {
     const { date, steps } = req.body;

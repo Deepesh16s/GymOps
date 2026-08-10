@@ -6,7 +6,10 @@ export const MONTH_LABELS = [
 ];
 
 export function formatDate(date) {
-  return new Date(date).toLocaleDateString("en-US", {
+  if (!date) return null;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

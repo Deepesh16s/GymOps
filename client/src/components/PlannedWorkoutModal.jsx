@@ -29,13 +29,6 @@ const getDefaultFormData = (initialDateKey) => ({
   endDate: "",
 });
 
-// Phase 13B — Create/Edit Planned Workout. Professional modal per
-// section 3: title/type/duration/date/time/exercises/notes/priority,
-// plus recurrence (section 4) and, when editing an instance that's part
-// of a series, an edit-scope picker (only/future/series). Both
-// "Empty workout" (exercises left blank) and "Detailed workout"
-// (exercises added below) are equally valid — nothing here requires an
-// exercise list.
 function PlannedWorkoutModal({ mode, initialDateKey, templatePrefill, editingPlan, onClose, onSaved }) {
   const [formData, setFormData] = useState(() => getDefaultFormData(initialDateKey));
   const [editScope, setEditScope] = useState("only");
@@ -51,8 +44,6 @@ function PlannedWorkoutModal({ mode, initialDateKey, templatePrefill, editingPla
       .catch((err) => console.log(err));
   }, []);
 
-  // Escape-to-close, matching every other overlay/panel in the app
-  // (NotificationCenter's drawer, etc.) — this modal was missing it.
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -268,10 +259,6 @@ function PlannedWorkoutModal({ mode, initialDateKey, templatePrefill, editingPla
             </label>
           </div>
 
-          {/* Exercises — optional (section 3: "Empty workout OR Detailed
-              workout, both are valid"). Reuses the same Exercise model
-              every real workout draws from, via the same /exercises
-              endpoint AddWorkoutModal already fetches. */}
           <div className="planner-modal-exercises">
             <p className="planner-modal-field-label">Exercises (optional)</p>
             {formData.exercises.map((e) => {
@@ -318,10 +305,6 @@ function PlannedWorkoutModal({ mode, initialDateKey, templatePrefill, editingPla
             rows={2}
           />
 
-          {/* Recurrence (section 4) — only ever set at creation, or
-              edited via the "only/future/series" scope picker below when
-              editing an existing recurring instance; a one-off plan has
-              no recurrence UI beyond the type selector itself. */}
           {mode === "create" && (
             <div className="planner-modal-recurrence">
               <label className="planner-modal-field-label">

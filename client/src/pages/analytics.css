@@ -1,22 +1,10 @@
 @import "../styles/design-tokens.css";
 
-/* Analytics reuses the Progression page shell (progression.css: page
-   background, hero, panel, stats-rail, insights-grid) and every chart
-   component's own CSS (components/progression/progression-charts.css,
-   pulled in transitively by whichever components Analytics renders).
-   This file only adds the handful of layout pieces unique to Analytics'
-   own sections. */
 
-/* Tighter vertical rhythm than Progression's — Analytics is meant to be
-   scanned top-to-bottom in one sitting, not lived in, so ~20% less
-   whitespace between sections/panels than the shared defaults. Scoped
-   under .analytics-page so Progression.jsx (which reuses the same
-   progression-main/section/panel classes) is unaffected. */
 .analytics-page .progression-main {
   gap: 18px;
 }
 
-/* Hero — its own card again (not merged with Overall Progress). */
 .analytics-hero--split {
   padding: 26px 32px;
 }
@@ -30,11 +18,6 @@
   width: 100%;
 }
 
-/* Overall Progress — a separate card directly under the Hero. Pulled up
-   by the parent .progression-main's own inter-section gap (18px) so the
-   two cards sit flush with zero visible whitespace between them, while
-   staying two distinct bordered/shadowed cards rather than one merged
-   block. */
 .analytics-hero__progress--standalone {
   background: color-mix(in srgb, var(--go-surface) 78%, transparent);
   border: 1px solid var(--go-border-soft);
@@ -67,9 +50,6 @@
   }
 }
 
-/* ---------------------------------------------------------------- */
-/* Delight moments — small celebratory tags, used sparingly            */
-/* ---------------------------------------------------------------- */
 
 .analytics-celebrate-badge {
   display: inline-flex;
@@ -129,9 +109,6 @@
   margin: 0;
 }
 
-/* The dropdown always stays pinned to the right on its own row; a long
-   label (e.g. "EXERCISE DISTRIBUTION") truncates instead of wrapping the
-   select onto a second line below it. */
 .analytics-section__head .analytics-section__label,
 .analytics-section__head .progression-panel__label,
 .analytics-section__head .analytics-section__hint {
@@ -145,9 +122,6 @@
   flex-shrink: 0;
 }
 
-/* Groups multiple selects (e.g. Cardio's activity/metric/range) as one
-   unit that wraps together, rather than each select wrapping onto its
-   own line independently. */
 .analytics-section__head-controls {
   display: flex;
   align-items: center;
@@ -155,9 +129,6 @@
   flex-wrap: wrap;
 }
 
-/* Search inputs (unlike the compact range dropdowns) are fine wrapping
-   to their own line on narrow panels rather than forcing the label to
-   truncate — the label text matters more here than staying single-row. */
 .analytics-section__head--wrap {
   flex-wrap: wrap;
 }
@@ -170,9 +141,6 @@
   flex: 1 1 auto;
 }
 
-/* Panel-level header row (e.g. Exercise Distribution's muscle filter) —
-   needs the bottom margin the section-level head doesn't, since it isn't
-   followed by a .analytics-section__hint pulled up to close the gap. */
 .progression-panel > .analytics-section__head {
   margin-bottom: 14px;
 }
@@ -183,9 +151,6 @@
   margin-top: -8px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Training Score — the Hero's right-side headline stat               */
-/* ---------------------------------------------------------------- */
 
 .analytics-score {
   display: flex;
@@ -209,9 +174,6 @@
   letter-spacing: 0.05em;
 }
 
-/* The Training Score's headline numeral is a hero display figure, not a
-   heading — deliberately outside the type scale, same as the Latest PR
-   weight below. */
 .analytics-score__value {
   font-size: 3.8rem;
   font-weight: 800;
@@ -263,10 +225,6 @@
   }
 }
 
-/* ---------------------------------------------------------------- */
-/* Score breakdown — "the maths behind your GymOps score", filling    */
-/* the space beside the score block instead of leaving it empty      */
-/* ---------------------------------------------------------------- */
 
 .analytics-score-breakdown {
   flex: 1 1 280px;
@@ -345,9 +303,6 @@
   }
 }
 
-/* ---------------------------------------------------------------- */
-/* Overall Progress — "am I getting stronger?", right after the Hero  */
-/* ---------------------------------------------------------------- */
 
 .analytics-progress-grid {
   display: grid;
@@ -401,9 +356,6 @@
   font-style: italic;
 }
 
-/* ---------------------------------------------------------------- */
-/* Current Records search                                             */
-/* ---------------------------------------------------------------- */
 
 .analytics-pr-search {
   padding: 8px 12px;
@@ -424,9 +376,6 @@
   border-color: var(--go-primary);
 }
 
-/* ---------------------------------------------------------------- */
-/* Chart range chips — right on the chart, no scrolling to change      */
-/* ---------------------------------------------------------------- */
 
 .analytics-chart-chips {
   display: flex;
@@ -461,9 +410,6 @@
   gap: 10px;
 }
 
-/* Mini cards — Top/Neglected Muscles use these instead of another bar
-   list, since they sit in the same tab as several other bar-track
-   sections and a purely icon+figure card reads as a different shape. */
 .analytics-mini-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -487,10 +433,6 @@
   box-shadow: var(--go-shadow-sm);
 }
 
-/* ---------------------------------------------------------------- */
-/* "Next chapter" CTA — Dive Into Progression, deliberately bigger and */
-/* more like a section transition than a plain inline button          */
-/* ---------------------------------------------------------------- */
 
 .analytics-next-chapter {
   all: unset;
@@ -575,10 +517,6 @@
   }
 }
 
-/* ---------------------------------------------------------------- */
-/* Tabs — split the page (Overview/Strength/Muscles/Records/Advanced) */
-/* instead of one long scroll                                        */
-/* ---------------------------------------------------------------- */
 
 .analytics-tabs {
   display: flex;
@@ -640,20 +578,10 @@
   align-items: start;
 }
 
-/* A filtered list (e.g. Exercise Distribution scoped to a muscle with
-   only one exercise logged) can collapse to a single row while its
-   sibling panel stays tall — align-items:start means the grid doesn't
-   stretch them to match, so a lopsided pair reads as broken rather than
-   "just not much data yet". A shared floor keeps both panels visually
-   balanced regardless of how few rows either one has. */
 .analytics-panels-grid-2 .progression-panel {
   min-height: 240px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Latest PR spotlight — the page's one moment to celebrate, so it's   */
-/* deliberately the largest single figure on the page.                 */
-/* ---------------------------------------------------------------- */
 
 .analytics-latest-pr__head {
   display: flex;
@@ -669,9 +597,6 @@
   gap: 4px;
 }
 
-/* Deliberately outside the type scale, same reasoning as the Training
-   Score value — this is the page's one hero display figure to celebrate,
-   not a heading. */
 .analytics-latest-pr__weight {
   font-size: 2.6rem;
   font-weight: 800;
@@ -711,9 +636,6 @@
   margin-top: 8px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Current Records grouped by muscle                                  */
-/* ---------------------------------------------------------------- */
 
 .analytics-pr-groups {
   display: flex;
@@ -730,9 +652,6 @@
   margin-bottom: 8px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Detailed Breakdown accordion                                       */
-/* ---------------------------------------------------------------- */
 
 .analytics-breakdown-exercises {
   display: flex;
@@ -775,9 +694,6 @@
   white-space: nowrap;
 }
 
-/* ---------------------------------------------------------------- */
-/* Plateau Detection                                                  */
-/* ---------------------------------------------------------------- */
 
 .analytics-plateau-list {
   display: flex;
@@ -814,13 +730,6 @@
   gap: 6px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Projected Milestone spotlight (the "Projected PR Forecaster") —     */
-/* deliberately a little more celebratory than the rest of the page's  */
-/* flat panels, since this is the one place Analytics looks forward    */
-/* instead of summarizing what already happened. Still built entirely  */
-/* from design tokens.                                                 */
-/* ---------------------------------------------------------------- */
 
 .analytics-projection-row {
   display: flex;
@@ -865,9 +774,6 @@
   line-height: 1.4;
 }
 
-/* ---------------------------------------------------------------- */
-/* Featured Insights — Biggest Win / Attention / Consistency           */
-/* ---------------------------------------------------------------- */
 
 .analytics-featured-insights {
   display: flex;
@@ -891,9 +797,6 @@
   border-left: 3px solid var(--go-border-strong);
 }
 
-/* Attention (a real warning) is the one insight worth emphasizing over
-   the rest — full-width and a size step up from Biggest Win/Consistency
-   below it, rather than all three competing at equal weight. */
 .analytics-featured-insight--large {
   padding: 18px 20px;
   border-left-width: 4px;
@@ -973,9 +876,6 @@
   line-height: 1.4;
 }
 
-/* Secondary insights sit visually a step below the three featured ones
-   — smaller tiles, more per row, since they're reference material now
-   rather than the headline. */
 .analytics-insights-secondary {
   margin-top: 10px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

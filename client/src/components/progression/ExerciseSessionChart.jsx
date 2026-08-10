@@ -14,10 +14,6 @@ import { Trophy } from "lucide-react";
 import { ChartSkeleton, ChartEmptyState } from "./ChartStates";
 import "./progression-charts.css";
 
-// Fixed, always-shown rows (in this order) plus the active metric's own
-// row bumped to the top — e.g. selecting Estimated 1RM surfaces it
-// first, with Best Set/Volume/Working Sets/Average Weight still visible
-// underneath for context.
 function buildTooltipRows(point, metricKey) {
   const base = [
     {
@@ -87,18 +83,8 @@ function SessionDot(props) {
   );
 }
 
-// One point per workout SESSION for a single exercise — never per set
-// (buildExerciseSessionSeries already reduces each session to its
-// strongest working set, total volume, etc.). The active metric only
-// changes which precomputed field the Line reads (`dataKey={metricKey}`)
-// — switching metrics never recomputes sessions.
 function ExerciseSessionChart({ series = [], metricKey, metricDef, loading = false, height = 220 }) {
   const labelByKey = useMemo(() => new Map(series.map((p) => [p.key, p.label])), [series]);
-  // Unique per mount so several of these charts on one page (unlikely,
-  // but Progression/Analytics could both render one) never collide on
-  // the same gradient id. Colons stripped — useId()'s default format
-  // (":r0:") is valid XML but an unnecessary edge case inside an SVG
-  // url(#...) reference.
   const gradientId = `exercise-chart-gradient-${useId().replace(/:/g, "")}`;
 
   if (loading) return <ChartSkeleton height={height} />;
@@ -117,11 +103,6 @@ function ExerciseSessionChart({ series = [], metricKey, metricDef, loading = fal
     <div className="progress-chart" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={series} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
-          {/* Flagship pass — "premium chart presentation": a soft gradient
-              fill under the line (Linear/Stripe-analytics convention),
-              presentation only — the Area reads the exact same
-              already-computed dataKey the Line does, never a second
-              series. */}
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--go-chart-accent)" stopOpacity={0.28} />

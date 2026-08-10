@@ -1,12 +1,3 @@
-// Phase 13A — detects the workout-write-time notification events (PR,
-// highest-volume session, longest-workout session, new-longest-run),
-// each by comparing this write against the user's PRIOR history via the
-// SAME primitives goalMetrics.js/updateGoals.js already use
-// (getMaxWeight, groupBySessionId, sumVolume) — nothing here
-// re-implements what a PR or a session's volume means. Returns ready-to-
-// persist payload objects; workoutController.js is responsible for
-// actually calling notificationService.createNotificationsIfNew with
-// them (kept separate so detection stays a pure query+compare step).
 const Workout = require("../models/workout");
 const Exercise = require("../models/Exercise");
 const metrics = require("./goalMetrics");
@@ -18,17 +9,9 @@ const {
   GOAL_PROGRESS_THRESHOLDS,
 } = require("../constants/notificationTypes");
 
-// Phase 13C — a gap this long between two consecutive sessions counts as
-// "a break" worth celebrating a return from (distinct from a missed
-// single day, which isn't remarkable on its own).
 const BREAK_THRESHOLD_DAYS = 10;
 const { GOAL_TYPES } = require("../constants/goalTypes");
 
-// Phase 13C.1, Deep Links example: "PR notification -> Workout History ->
-// expand that session automatically" — sessionId is already available to
-// every caller here (it's the write that triggered detection), so the
-// destination is the exact session this PR was set in, not a generic
-// Progression filter.
 async function detectStrengthPRs(userId, { sessionId, strengthEntries }) {
   if (!strengthEntries.length) return [];
 
@@ -52,9 +35,6 @@ async function detectStrengthPRs(userId, { sessionId, strengthEntries }) {
     priorByExercise.get(key).push(w);
   });
 
-  // An exercise can appear in more than one entry within the same
-  // session (rare, but possible) — merge to this session's own best set
-  // per exercise before comparing against prior history.
   const sessionBestByExercise = new Map();
   strengthEntries.forEach((entry) => {
     const key = String(entry.exercise);
@@ -189,12 +169,6 @@ async function detectCardioMilestones(userId, { sessionId, cardioEntries }) {
   return payloads;
 }
 
-// Phase 13C, section 8 — "First workout after break": the gap between
-// this session's date and the immediately-prior session (across ALL
-// entry types, not just this one exercise/activity) exceeds
-// BREAK_THRESHOLD_DAYS. dedupeKey includes this session's own id, so
-// returning from a SECOND break later still celebrates that one too
-// (not a once-ever notification).
 async function detectFirstWorkoutAfterBreak(userId, { sessionId, sessionDate }) {
   const priorWorkouts = await Workout.find({
     user: userId,
@@ -224,9 +198,6 @@ async function detectFirstWorkoutAfterBreak(userId, { sessionId, sessionDate }) 
   };
 }
 
-// Single entry point workoutController.js calls after a session is
-// saved — runs every detector and returns one combined, ready-to-
-// persist payload list.
 async function detectWorkoutSessionNotifications(
   userId,
   { sessionId, strengthEntries, cardioEntries, sessionDuration, sessionDate }
@@ -247,13 +218,6 @@ async function detectWorkoutSessionNotifications(
   return [...prPayloads, ...milestonePayloads, ...cardioPayloads, breakPayload].filter(Boolean);
 }
 
-// Goal completion (crossing 100%) or an 80%/90% progress checkpoint —
-// called from updateGoals.js with the goal's PRE-update state (`goal`)
-// and the newly recomputed `newCurrent`, so old-vs-new percent can
-// actually be compared (a bulkWrite alone has no "before" to diff
-// against). Completion supersedes a same-recalculation threshold
-// notification for the same goal — hitting 100% is the bigger moment,
-// not "90% AND 100%" as two separate pings.
 function detectGoalNotificationPayloads(goal, newCurrent, target) {
   if (goal.status === "Completed") return [];
 
@@ -272,9 +236,6 @@ function detectGoalNotificationPayloads(goal, newCurrent, target) {
         navigationTarget: "/goals",
         action: { page: "/goals", entityId: String(goal._id), focus: "scrollToGoal" },
         dedupeKey: `goalCompleted:${goal._id}`,
-        // Phase 13D, Part A.3 — read by notificationService.js's
-        // createNotificationsIfNew to suppress this goal's lingering
-        // "goal:<id>" progress/milestone reminder, if any.
         metadata: { goalId: String(goal._id) },
       },
     ];
@@ -305,11 +266,6 @@ function detectGoalNotificationPayloads(goal, newCurrent, target) {
   return payloads;
 }
 
-// A day-streak crossing one of the fixed celebration lengths (7/14/30/
-// 60/100 — see constants/notificationTypes.js). dedupeKey is keyed only
-// by the milestone value (not a date), so it fires exactly once ever
-// per milestone regardless of how many times recalculation re-runs that
-// day.
 function detectStreakMilestonePayload(streak) {
   if (!STREAK_MILESTONES.includes(streak)) return null;
 

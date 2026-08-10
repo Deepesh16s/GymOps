@@ -1,8 +1,5 @@
 import { TrendingUp } from "lucide-react";
 
-// Shared loading/empty visuals for every Progression chart — pulled out
-// once so ProgressChart and TimelineChart don't each redraw their own
-// skeleton/empty markup.
 export function ChartSkeleton({ height = 260 }) {
   return (
     <div className="progress-chart__skeleton" style={{ height }} aria-hidden="true">

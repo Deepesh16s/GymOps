@@ -76,10 +76,6 @@ exports.createWorkoutSession = async (req, res) => {
       startedAt,
       endedAt,
       sessionNote,
-      // Phase 13B — set when this session was started via "Start
-      // Planned Workout" rather than "New Workout"; see the
-      // plannedWorkout-completion block below, right after the session
-      // itself is confirmed saved.
       plannedWorkoutId,
     } = req.body;
 
@@ -87,12 +83,6 @@ exports.createWorkoutSession = async (req, res) => {
     validateSessionType(sessionType, customSessionType);
     const cleanSessionNote = validateNote(sessionNote, SESSION_NOTE_MAX_LENGTH, "Workout note");
 
-    // Workout Session Editing & Time Tracking: when the workout was
-    // actually tracked live (Start Workout -> Finish Workout), the client
-    // sends the real startedAt/endedAt it captured, so the session shows
-    // accurate times by default without requiring a manual edit. Both are
-    // optional — a session finished without a live timer simply has no
-    // timing until set via "Edit Workout Timing", same as before.
     const { startedAt: parsedStartedAt, endedAt: parsedEndedAt } =
       validateOptionalSessionTimestamps(startedAt, endedAt);
 
@@ -102,12 +92,6 @@ exports.createWorkoutSession = async (req, res) => {
       throw err;
     }
 
-    // Phase 8A: each entry in `exercises` (the API field name is kept
-    // unchanged for backward compatibility — see finishWorkout in
-    // useWorkoutSession.js) may be a strength entry (unchanged shape) or
-    // a cardio entry, distinguished by `entryType`. Any entry without an
-    // explicit entryType is treated as "strength", so pre-Phase-8A
-    // clients continue to work unmodified.
     const cleanEntries = exercises.map((entry, i) => {
       const entryType =
         entry && entry.entryType === "cardio" ? "cardio" : "strength";
@@ -141,9 +125,6 @@ exports.createWorkoutSession = async (req, res) => {
       };
     });
 
-    // Verify every strength entry's exercise belongs to the requesting
-    // user, in one query rather than one per entry — mirrors
-    // goalController.createGoal's ownership check for the same relation.
     const strengthExerciseIds = [
       ...new Set(
         cleanEntries
@@ -152,11 +133,6 @@ exports.createWorkoutSession = async (req, res) => {
       ),
     ];
 
-    // Phase 13D, Part A.3 (Smart Suppression) — muscleGroup is selected
-    // alongside _id here so the SAME ownership-check query also tells us
-    // which muscles this session just trained, for suppressing any
-    // active recovery/neglect reminder that mentions them below. Not a
-    // second query — reusing what this call already fetches.
     let trainedMuscleGroups = [];
 
     if (strengthExerciseIds.length) {
@@ -205,36 +181,18 @@ exports.createWorkoutSession = async (req, res) => {
       ordered: true,
     });
 
-    // Phase 13B — "Start Planned Workout" completion linkage. Best-effort
-    // and non-fatal: a broken link is far less costly than losing the
-    // just-saved session, so any failure here is only ever logged, never
-    // thrown. Ownership-checked (the plan must belong to this user) so a
-    // forged id from another account can't be marked completed by proxy.
     if (plannedWorkoutId) {
       try {
         await PlannedWorkout.updateOne(
           { _id: plannedWorkoutId, user: req.user._id },
           { status: "Completed", completedSessionId: trimmedSessionId }
         );
-        // Phase 13D, Part A.3 (Smart Suppression) — "Planner reminder ->
-        // Workout completed -> Remove planner reminder." Same dedupeKey
-        // reminders/workoutReminders.js uses for every state of this
-        // plan's lifecycle (today/starting soon/overdue/missed), so one
-        // suppression call clears whichever of those was showing.
         await suppressNotifications(req.user._id, { dedupeKey: `workout:${plannedWorkoutId}` });
       } catch (linkError) {
         console.error("Planned workout completion link failed:", linkError);
       }
     }
 
-    // Phase 13D, Part A.3 — "Recovery reminder -> Muscle trained ->
-    // Suppress" (and the same principle for a Neglected Muscle reminder,
-    // which is equally stale once the muscle is trained again). Matches
-    // on `metadata.muscles` rather than an exact dedupeKey, since a
-    // recovery/neglect reminder may be a GROUPED one covering several
-    // muscles at once (see reminders/recoveryReminders.js /
-    // neglectReminders.js) — this trained session's muscles might only
-    // be part of that group.
     if (trainedMuscleGroups.length) {
       try {
         await suppressNotifications(req.user._id, {
@@ -246,14 +204,6 @@ exports.createWorkoutSession = async (req, res) => {
       }
     }
 
-    // Goal recalculation is strength-specific (Strength PR and volume/
-    // session metrics derive from workoutSets), but that's knowledge that
-    // belongs to the goal layer, not this controller. Cardio entries here
-    // simply have no `exercise`/`workoutSets` fields — and
-    // updateGoals.js's buildWeightsByExercise already skips any entry
-    // without a real workoutSets array. So every entry is passed through
-    // unfiltered; the goal layer's existing guard is what excludes
-    // cardio, not an entryType check duplicated here.
     const entriesForGoals = cleanEntries.map((entry) => ({
       exercise: entry.exercise,
       workoutSets: entry.workoutSets,
@@ -269,13 +219,6 @@ exports.createWorkoutSession = async (req, res) => {
       goalRecalculationFailed = true;
     }
 
-    // Phase 13A — PR / highest-volume / longest-workout / new-longest-run
-    // / goal-completion / streak-milestone notifications, persisted
-    // together in one call. Deliberately its own try/catch, independent
-    // of goal recalculation above: a notification failure must never
-    // block the session save response, same "log and move on" contract
-    // every other fire-and-forget side effect in this controller already
-    // follows.
     let notifications = [];
     try {
       const strengthEntries = cleanEntries.filter((e) => e.entryType === "strength");
@@ -350,55 +293,6 @@ exports.getWorkouts = async (req, res) => {
   }
 };
 
-exports.searchWorkouts = async (req, res) => {
-  try {
-    const { exercise } = req.query;
-
-    const workouts = await Workout.find({
-      user: req.user._id,
-    }).populate("exercise");
-
-    // Defensive fix (Phase 8A): cardio entries have no `exercise`, so
-    // `workout.exercise.name` would throw. Guard mirrors the pattern
-    // already used elsewhere in this codebase (e.g. dashboardController's
-    // `if (!w.exercise) return;`).
-    const filtered = workouts.filter((workout) =>
-      workout.exercise?.name?.toLowerCase().includes(exercise.toLowerCase())
-    );
-
-    res.status(200).json(filtered);
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Server Error",
-    });
-  }
-};
-
-exports.filterByMuscle = async (req, res) => {
-  try {
-    const { muscle } = req.query;
-
-    const workouts = await Workout.find({
-      user: req.user._id,
-    }).populate("exercise");
-
-    // Defensive fix (Phase 8A): cardio entries have no `exercise`, so
-    // `workout.exercise.muscleGroup` would throw without this guard.
-    const filtered = workouts.filter(
-      (workout) => workout.exercise && workout.exercise.muscleGroup === muscle
-    );
-
-    res.status(200).json(filtered);
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Server Error",
-    });
-  }
-};
 
 exports.updateWorkout = async (req, res) => {
   try {
@@ -416,10 +310,6 @@ exports.updateWorkout = async (req, res) => {
       });
     }
 
-    // Only workoutSets/exercise are editable here — previously the
-    // entire req.body (including `user`) was passed straight into
-    // findByIdAndUpdate, which let a request reassign a workout to a
-    // different account. Whitelisting closes that hole.
     const updates = {};
 
     if (req.body.workoutSets !== undefined) {
@@ -474,12 +364,6 @@ exports.updateWorkout = async (req, res) => {
   }
 };
 
-// Workout Session Editing & Time Tracking. sessionDuration/startedAt/
-// endedAt/timingMode are session-level metadata duplicated across every
-// Workout document sharing a sessionId (same pattern sessionType already
-// uses) — updateMany keeps every document in the session consistent in
-// one write, mirroring deleteWorkoutSession's ownership + sessionId
-// lookup just below.
 exports.updateWorkoutSessionTiming = async (req, res) => {
   try {
     const { sessionId } = req.params;
@@ -566,13 +450,6 @@ exports.deleteWorkout = async (req, res) => {
   }
 };
 
-// Deletes every workout belonging to a session in ONE query, then
-// recalculates goals ONCE for the whole session (see
-// recalculateGoalsForExercises in utils/recalculateGoals.js) instead of
-// once per exercise. Legacy standalone workouts (no sessionId) are not
-// reachable through this route at all — the frontend falls back to the
-// existing single-workout DELETE /workouts/:id for those, so this handler
-// only ever deals with real, non-null sessionId values.
 exports.deleteWorkoutSession = async (req, res) => {
   try {
     const { sessionId } = req.params;

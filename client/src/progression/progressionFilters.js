@@ -1,8 +1,3 @@
-// Filtering/derivation layer for the Progression module. Operates on raw
-// Workout documents (the same shape every page already fetches via
-// services/workoutService.getWorkouts) — no network calls here, so
-// switching any filter recomputes client-side only, per the "avoid
-// unnecessary API requests" requirement.
 import { isCardioEntry } from "../utils/workoutUtils";
 
 export const TIME_RANGE_OPTIONS = [
@@ -45,9 +40,6 @@ export function filterWorkoutsByExercise(workouts, exerciseName) {
   );
 }
 
-// Muscles actually present in the user's own data, in first-seen order —
-// drives the Muscle filter's dropdown. A muscle with zero logged sets
-// simply won't appear here; nothing is force-listed or fabricated.
 export function getAvailableMuscles(workouts) {
   const seen = new Set();
   const order = [];
@@ -61,8 +53,6 @@ export function getAvailableMuscles(workouts) {
   return order;
 }
 
-// Exercises present in the data, optionally narrowed to one muscle (so
-// the Exercise filter can be scoped once a Muscle is already selected).
 export function getAvailableExercises(workouts, muscle) {
   const seen = new Set();
   workouts.forEach((w) => {
@@ -73,9 +63,6 @@ export function getAvailableExercises(workouts, muscle) {
   return Array.from(seen).sort((a, b) => a.localeCompare(b));
 }
 
-// Weekly buckets stay readable up to ~4 months of range; beyond that a
-// lifetime/year view collapses into monthly buckets so the chart doesn't
-// render hundreds of cramped points.
 export function pickBucketGranularity(startDate, endDate) {
   if (!startDate || !endDate) return "week";
   const days = (endDate - startDate) / 86400000;

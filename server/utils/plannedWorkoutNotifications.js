@@ -1,13 +1,3 @@
-// Phase 13B — notification payload builders for planning actions
-// (reusing Phase 13A's notification system, per section 11). These are
-// NOT reminder-delivery notifications ("starts in 1 hour") — they fire
-// once, synchronously, at the moment the user actually takes a planning
-// action (create/reschedule/cancel), same "write-time, not scheduled"
-// shape every other server-triggered notification in this app already
-// follows. dedupeKey is scoped to the action + timestamp so editing the
-// same plan twice in a row still produces two distinct notifications
-// (unlike a PR or goal threshold, "I rescheduled this" is not an
-// idempotent fact to dedupe away — each reschedule is its own event).
 const { NOTIFICATION_TYPES, NOTIFICATION_CATEGORIES } = require("../constants/notificationTypes");
 
 const formatScheduledDate = (date) =>

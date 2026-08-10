@@ -1,9 +1,5 @@
 @import "../styles/design-tokens.css";
 
-/* Phase 14B, section 3 — Weekly Coach Report. A "premium" card: a
-   prominent grade badge up top, a compact stat grid below — same
-   surface/radius/shadow tokens every other card in this app already
-   uses, not a new visual language. */
 .coach-report {
   background: var(--go-surface);
   border: 1px solid var(--go-border-soft);

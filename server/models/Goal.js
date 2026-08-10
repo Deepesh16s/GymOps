@@ -53,16 +53,6 @@ const goalSchema = new mongoose.Schema(
       default: null,
     },
 
-    // Phase 8B — Cardio Goal configuration. Only meaningful when
-    // type === GOAL_TYPES.CARDIO. All three are optional/nullable so
-    // legacy Cardio Goals (created before Phase 8B, or created/edited
-    // without picking an activity/metric/period) continue to load and
-    // behave exactly as before — see isAutoCardioGoal in
-    // constants/goalTypes.js, the single place that decides whether a
-    // given Cardio Goal is treated as automatic. No enum constraint at
-    // the schema level here, mirroring customSessionType on the Workout
-    // model: validation of these values happens in goalController.js,
-    // not at the schema level.
     activityType: {
       type: String,
       default: null,
@@ -78,11 +68,6 @@ const goalSchema = new mongoose.Schema(
       default: null,
     },
 
-    // Only meaningful when period is one of DAILY_PERIODS (daily-weekly/
-    // daily-monthly/daily-lifetime) — the per-day metric threshold (e.g.
-    // 10,000 steps/day). `target` for those periods means something else
-    // (a day-count or streak length, not the raw metric), so this field
-    // exists separately rather than overloading `target`'s meaning.
     dailyTarget: {
       type: Number,
       default: null,
@@ -109,16 +94,7 @@ const goalSchema = new mongoose.Schema(
   }
 );
 
-// Mongoose 7+ removed callback-style ("next") pre/post middleware —
-// hooks must now be synchronous (no `next` param at all) or return a
-// Promise/be async. This hook does neither async work nor branching that
-// needs a callback, so it's just a plain synchronous function; Mongoose
-// treats it as complete as soon as it returns.
 goalSchema.pre("save", function () {
-  // Phase 8B: updateType can no longer be derived from `type` alone for
-  // Cardio Goal — isAutoCardioGoal checks this document's own
-  // activityType/metric/period to decide. Every other type is unchanged,
-  // still driven purely by AUTO_GOAL_TYPES membership.
   this.updateType =
     AUTO_GOAL_TYPES.includes(this.type) || isAutoCardioGoal(this)
       ? "AUTO"

@@ -3,13 +3,6 @@ import { MUSCLE_DOT_COLORS } from "../../constants/muscles";
 import { formatCardioPrLabel } from "../../utils/workoutUtils";
 import "./progression-charts.css";
 
-// One row of a Personal Records list — either the current heaviest set
-// for an exercise, or (in a chronological "recent records" view) a single
-// past record-broken event. Shared by Progression and Analytics, both of
-// which derive their record lists from the same strengthUtils.prHistory
-// (strength) or cardioProgressionEngine.cardioPrHistory (cardio, Phase
-// 12) merged in alongside it — same shared component either way, not a
-// second card design.
 function PersonalRecordRow({ record }) {
   if (record.isCardio) {
     return (

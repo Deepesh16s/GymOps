@@ -27,20 +27,10 @@ import SessionTimeline from "./SessionTimeline";
 
 const MAX_VISIBLE_MUSCLE_CHIPS = 3;
 
-// Cardio gets its own icon; every strength session type (Push/Pull/Legs/
-// Upper/Lower/Full Body/Arms/Other) shares Dumbbell — there's no single
-// lucide icon that meaningfully distinguishes "Legs" from "Arms", so this
-// only draws the distinction that's actually real: strength vs. cardio.
 function getSessionIcon(sessionType) {
   return sessionType === "Cardio" ? HeartPulse : Dumbbell;
 }
 
-// One premium session card: collapsed head (icon + title + PR/quality
-// badges, a compact "hero" stat block, chevron) + an expandable body
-// (PR callout, timing tiles, per-exercise breakdown, session summary
-// footer). Head and favorite toggle are two separate sibling buttons
-// (not nested) so the favorite star can sit inside the clickable header
-// region without invalid nested <button>s.
 function SessionCard({
   session,
   isExpanded,
@@ -59,10 +49,6 @@ function SessionCard({
 }) {
   const { exerciseCount, cardioCount, setCount, volume, totalReps, muscles } = session.stats;
 
-  // Phase 14B, section 6 — Session Intelligence. Only computed once this
-  // card is actually expanded (the body is always mounted, just CSS-
-  // collapsed, so gating on isExpanded avoids running this for every
-  // session in a long, mostly-collapsed list).
   const sessionIntelligence = useMemo(
     () => (isExpanded ? generateSessionIntelligence(workouts, session) : null),
     [isExpanded, workouts, session]
@@ -77,9 +63,6 @@ function SessionCard({
   const TypeIcon = getSessionIcon(session.sessionType);
   const prCount = session.prs?.length || 0;
   const hasPR = prCount > 0;
-  // Quality badge is intentionally singular — Highest Volume takes
-  // priority over Longest Session so a card never carries two
-  // superlative badges at once.
   const qualityBadge = isHighestVolume
     ? "Highest Volume"
     : isLongestSession
@@ -239,10 +222,6 @@ function SessionCard({
             </div>
           )}
 
-          {/* Timing lives here, inside Workout Details — not on the
-              Calendar, which stays a pure viewer. Only shown for real
-              sessions (a sessionId); legacy standalone workouts predate
-              session-level timing entirely. */}
           {session.sessionId && (
             <div className="session-timing">
               <div className="session-timing__grid">

@@ -25,6 +25,7 @@ function ForgotPassword() {
       await api.post("/auth/forgot-password", { email: email.trim() });
       setSubmitted(true);
     } catch (error) {
+      console.log(error);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -49,6 +50,7 @@ function ForgotPassword() {
               id="email"
               className="fp-input"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"

@@ -11,8 +11,6 @@
   background: var(--go-bg);
   font-family: "Inter", system-ui, sans-serif;
   color: var(--go-text);
-  /* Phase 15A — alias for design-tokens.css's --go-ease-decel (the exact
-     same cubic-bezier value dashboard.css's --dash-ease also aliased). */
   --prog-ease: var(--go-ease-decel);
 }
 
@@ -25,9 +23,6 @@
   gap: 24px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Hero                                                               */
-/* ---------------------------------------------------------------- */
 
 .progression-hero {
   position: relative;
@@ -91,13 +86,6 @@
   max-width: 440px;
 }
 
-/* Flagship pass — "Recent PR celebration". Same warning-gold accent +
-   pill-badge vocabulary Analytics' own "Latest PR" panel already
-   established (analytics-latest-pr__* in analytics.css) — a smaller,
-   hero-appropriate banner rather than a second, differently-styled
-   celebration. Only ever rendered when a real PR exists within the
-   recent window (see Progression.jsx's recentPr memo) — no fabricated
-   placeholder on a quiet week. */
 .progression-hero__pr {
   position: relative;
   z-index: 1;
@@ -146,9 +134,6 @@
   font-weight: 800;
 }
 
-/* ---------------------------------------------------------------- */
-/* Overview: body map / selected statistics (concise, no big chart)   */
-/* ---------------------------------------------------------------- */
 
 .progression-panel {
   background: var(--go-surface);
@@ -158,9 +143,6 @@
   box-shadow: var(--go-shadow-xs);
 }
 
-/* Deliberately below the type scale's caption (12px) step — a
-   consistent, all-caps "kicker" treatment for panel titles across both
-   Progression and Analytics, not an extra untracked size. */
 .progression-panel__label {
   font-size: 11px;
   font-weight: 700;
@@ -182,18 +164,12 @@
   flex-shrink: 0;
 }
 
-/* A full-width standalone panel now (no longer paired beside the
-   narrower Muscle Split map), so its tiles tile horizontally instead of
-   stacking into one tall, narrow column. */
 .progression-stats-rail {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Timeline hero — the page's centerpiece                             */
-/* ---------------------------------------------------------------- */
 
 .progression-timeline-hero {
   padding: 28px 30px 24px;
@@ -205,13 +181,6 @@
   transition: border-left-color var(--go-base);
 }
 
-/* Flagship pass — "more visual distinction between improving/stable/
-   declining": the SAME up/down/flat vocabulary TrendBadge already
-   colors its own text with (trend-badge--up/down/flat in
-   progression-charts.css), applied here as a left-edge accent on the
-   whole chart panel instead of only the small badge floating over it —
-   so the page's single most important chart visibly signals its own
-   direction at a glance, not just the number in the corner. */
 .progression-timeline-hero--up {
   border-left-color: var(--go-success);
 }
@@ -235,8 +204,6 @@
   margin-bottom: 18px;
 }
 
-/* Sits the metric selector (+ Moving average toggle for Overall/Muscle)
-   beside the hero's title instead of a whole separate controls row. */
 .progression-panel__label-row {
   display: flex;
   align-items: center;
@@ -266,9 +233,6 @@
   border-top: 1px solid var(--go-border-soft);
 }
 
-/* Phase 14B, section 5 — Exercise view's plateau/recovery/suggested-target
-   row. Reuses distribution-row__badge and trend-badge exactly as they're
-   already styled elsewhere; just a flex-wrap row, no new badge look. */
 .progression-intel-row {
   display: flex;
   flex-wrap: wrap;
@@ -277,9 +241,6 @@
   margin-top: 12px;
 }
 
-/* User feedback ⭐1 — standardizes confidence: each badge is now paired
-   with its own ConfidenceBadge, grouped so they wrap together as one
-   unit rather than the confidence badge drifting to its own line. */
 .progression-intel-row__item {
   display: inline-flex;
   align-items: center;
@@ -299,11 +260,6 @@
   margin-bottom: 10px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Insights grid — Analytics is now the only renderer of                */
-/* progression/progressionInsights.getInsights() output, but this class */
-/* stays here since Analytics already imports this page-shell file.     */
-/* ---------------------------------------------------------------- */
 
 .progression-insights-grid {
   display: grid;
@@ -311,11 +267,6 @@
   gap: 10px;
 }
 
-/* Ranked-distribution rows (.prog-exdist*) and Personal Record rows
-   (.prog-pr*) live in components/progression/progression-charts.css —
-   DistributionRow.jsx and PersonalRecordRow.jsx are shared components
-   (Progression + Analytics both render them), so their styles belong
-   alongside the other reusable chart component CSS, not this page file. */
 
 .progression-analytics-pointer {
   display: flex;
@@ -345,9 +296,6 @@
   opacity: 0.9;
 }
 
-/* ---------------------------------------------------------------- */
-/* Empty page state (no strength history at all)                     */
-/* ---------------------------------------------------------------- */
 
 .progression-empty-page {
   display: flex;
@@ -377,9 +325,28 @@
   color: var(--go-text);
 }
 
-/* ---------------------------------------------------------------- */
-/* Responsive                                                         */
-/* ---------------------------------------------------------------- */
+.progression-empty-page__btn {
+  margin-top: 6px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--go-primary) 30%, transparent);
+  color: var(--go-primary);
+  border-radius: 100px;
+  padding: 9px 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.progression-empty-page__btn:hover {
+  background: var(--go-primary-50);
+}
+
+.progression-empty-page__btn:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
 
 @media (max-width: 860px) {
   .progression-main {

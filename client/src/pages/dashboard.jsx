@@ -57,6 +57,7 @@ import { getStrengthCardioSplit } from "../intelligence/balanceEngine";
 import { generateTrainingBrief, generateWeeklyCoachReport, generateCoachPriority } from "../trainingIntelligence";
 import WeeklyCoachReport from "../components/WeeklyCoachReport";
 import ConfidenceBadge from "../components/ConfidenceBadge";
+import LoadErrorBanner from "../components/LoadErrorBanner";
 import RecoveryBreakdownDisclosure from "../components/RecoveryBreakdownDisclosure";
 import { getGoalAnalytics } from "../utils/goalAnalytics";
 import {
@@ -77,19 +78,12 @@ import { formatDurationLong, formatClockTime, formatRelativeTime } from "../util
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// Weekly Volume chart's trailing-window filter — same 7/30/365-day
-// semantics as MuscleBodyMap's MODE_OPTIONS, so "last 30 days" means the
-// same thing on every page instead of one page using calendar boundaries
-// and another using trailing windows.
 const VOLUME_RANGE_OPTIONS = [
   { key: "7d", label: "7D", days: 7 },
   { key: "30d", label: "30D", days: 30 },
   { key: "365d", label: "365D", days: 365 },
 ];
 
-// 7d/30d — one bar per day, trailing from today back (days - 1). Reuses
-// the same getWorkoutVolume/isCardioEntry primitives every other volume
-// stat on this page already reads from.
 function buildDailyVolumeSeries(workouts, days) {
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
@@ -118,10 +112,6 @@ function buildDailyVolumeSeries(workouts, days) {
   });
 }
 
-// 365d — reuses the Progression module's own trailing-window filter and
-// weekly/monthly bucketing engine (buildProgressionSeries auto-picks
-// "month" granularity past 120 days) instead of a new aggregation, so a
-// year of daily volume renders as ~12 readable bars rather than 365.
 function buildYearlyVolumeSeries(workouts) {
   const filtered = filterWorkoutsByTimeRange(workouts, "1y");
   return buildProgressionSeries(filtered, { granularity: "month" }).map((b) => ({
@@ -130,18 +120,11 @@ function buildYearlyVolumeSeries(workouts) {
   }));
 }
 
-// Same "YYYY-MM-DD, local time" convention Calendar.jsx's getLocalDateKey
-// uses — the daily-steps log is keyed by the user's own local day, not
-// UTC, so "today" here always matches what Calendar/goalMetrics.js mean
-// by "today" too.
 const getTodayDateKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-// Presentation-only: no new data fetched, just a friendlier read of the
-// clock and the already-stored user name (same localStorage value
-// ProfileDropdown already reads) instead of a static "Welcome back".
 function getTimeGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -149,11 +132,6 @@ function getTimeGreeting() {
   return "Good evening";
 }
 
-// Visual-delight pass — a small "premium dashboard" date line for the
-// hero eyebrow row (Apple Health/Linear-style "what day is it" context),
-// distinct from any stat the page already shows elsewhere. Same
-// {weekday, month, day} option shape Calendar.jsx's own formatLongDate
-// already established, not a new date-format convention.
 function getTodayLongLabel() {
   return new Date().toLocaleDateString(undefined, {
     weekday: "long",
@@ -171,12 +149,6 @@ function getFirstName() {
   }
 }
 
-// numericValue/formatValue are optional — when numericValue is a real
-// number, the card counts up to it (AnimatedNumber) instead of snapping
-// straight to `value`. Callers that only ever have a pre-formatted
-// string (e.g. a cardio activity name where there's no number to
-// animate) just omit numericValue and get the old plain-string
-// behavior, unchanged.
 function PrimaryCard({ title, value, numericValue, formatValue, sub, icon: Icon, accent, onClick }) {
   return (
     <div
@@ -224,13 +196,6 @@ function SecondaryCard({ title, value, sub, icon: Icon, children }) {
   );
 }
 
-// Steps are a passive all-day count the user sets once (from a phone/
-// watch reading), not something logged per workout — see
-// dailyStepsService.js. Renders a bare number when there's no matching
-// Daily Steps goal, or adds a progress bar + Goal/Remaining line when
-// one exists — same "no extra complexity when there's nothing to show"
-// pattern the rest of this page already follows (e.g. LastSessionCard's
-// empty state).
 function TodayStepsCard({
   steps,
   dailyGoalTarget,
@@ -333,11 +298,6 @@ function TodayStepsCard({
   );
 }
 
-// Priority 4 — each card is one entry from utils/dashboardInsights.js's
-// getDashboardInsights(); the icon/color mapping (a presentational
-// concern) lives here rather than in that pure data module, same
-// separation cardioProgressionEngine.js's data vs. chart-component
-// rendering already keeps.
 const INSIGHT_ICON_BY_KEY = {
   recentPR: Trophy,
   weeklyStreak: Flame,
@@ -359,12 +319,6 @@ function InsightCard({ insight }) {
   );
 }
 
-// Phase 12.5 — Today's Brief, now the hero's actual content (see the
-// hero JSX below): up to 4 prescriptive items (workout recommendation,
-// nearest goal, steps remaining, streak protection) from
-// utils/dashboardInsights.js's getTodaysBrief(). Rendered as a plain
-// checklist inside the hero card rather than a separate boxy-card grid
-// — "Good Evening" + "Today's Brief" now read as one cohesive block.
 const BRIEF_ICON_BY_KEY = {
   workoutRecommendation: Dumbbell,
   plannedWorkout: CalendarDays,
@@ -373,18 +327,9 @@ const BRIEF_ICON_BY_KEY = {
   streakNudge: Flame,
 };
 
-// Phase 13B — the plannedWorkout brief item is the one entry in this
-// list that can actually be acted on directly (every other item is
-// informational), so it alone gets a clickable "Start" affordance,
-// reusing the same startSessionFromPlan flow Calendar's "Start Planned
-// Workout" button already triggers.
 function BriefListItem({ item, onStartPlanned }) {
   const Icon = BRIEF_ICON_BY_KEY[item.key] || Zap;
   const isActionable = item.key === "plannedWorkout" && onStartPlanned;
-  // Phase 13D, Part A.4 — Reminder Explanation: collapsed by default,
-  // same "don't clutter" treatment as NotificationCenter's own "Why?"
-  // disclosure — this hero strip is meant to stay a compact glance, not
-  // grow extra always-visible lines.
   const [whyOpen, setWhyOpen] = useState(false);
   const hasExplanation = item.explanation?.length > 0;
 
@@ -442,20 +387,6 @@ function BriefListItem({ item, onStartPlanned }) {
   );
 }
 
-// User feedback — reads as one coherent coaching explanation ("Why
-// GymOps recommends Legs today" + a short checklist) rather than four
-// independent analytics cards each with their own heading. Collapsed by
-// default (progressive disclosure — Dashboard stays compact); every
-// checklist line is optional and simply absent when
-// trainingIntelligence/generateTrainingBrief.js's buildExplanationSections
-// had nothing real to say for it. `recommendedCategory` is the SAME
-// value the sections themselves were built from (never re-derived), so
-// the heading and the checklist can never disagree.
-//
-// Research references are hardcoded, verified sources (checked via web
-// search, not invented) describing the GENERAL training concepts these
-// engines draw loose inspiration from — explicitly not a claim that any
-// exact number here is drawn from a specific study.
 const RESEARCH_REFERENCES = [
   {
     name: "ACSM Position Stand",
@@ -470,9 +401,6 @@ const RESEARCH_REFERENCES = [
     url: "https://doi.org/10.1080/02640414.2016.1210197",
   },
   {
-    // No year — this is an evolving applied coaching framework spanning
-    // years of RP Strength content, not a single dated publication;
-    // showing one would fabricate a precision that isn't real.
     name: "RP Strength Volume Landmarks",
     year: null,
     description: "MEV / MAV / MRV training methodology",
@@ -564,11 +492,6 @@ function CoachExplanation({ sections, recommendedCategory, generatedAt }) {
   );
 }
 
-// User feedback ⭐2 — "Coach Priority": the single ranked signal across
-// Recovery/Goal/Plateau/Fatigue/Planner/Streak (trainingIntelligence's
-// generateCoachPriority), surfaced as a leading banner above the Today's
-// Focus tiles. Renders nothing when nothing qualifies — a quiet day
-// shouldn't manufacture a signal.
 const COACH_PRIORITY_ICON = {
   recovery: HeartPulse,
   goal: Target,
@@ -581,12 +504,6 @@ const COACH_PRIORITY_ICON = {
 function CoachPriorityBanner({ signal, onNavigate }) {
   if (!signal) return null;
   const Icon = COACH_PRIORITY_ICON[signal.category] || AlertTriangle;
-  // Some signals (e.g. a reused streak reminder) carry a navigationTarget
-  // meant for the Notification Center, where "/dashboard" is a genuine
-  // destination — but THIS banner already lives on the dashboard, so that
-  // exact target would be a dead click (navigating to the page already
-  // being viewed). Only render the click affordance when it actually
-  // goes somewhere else.
   const isClickable = signal.navigationTarget && signal.navigationTarget !== "/dashboard";
 
   const content = (
@@ -619,15 +536,6 @@ function CoachPriorityBanner({ signal, onNavigate }) {
   );
 }
 
-// Priority 8 — a compact "see progress without opening Goals" widget.
-// `goal.unit === "days"` identifies the two windowed Daily-style periods
-// (goalController.js forces that unit specifically for those, overriding
-// whatever metric-native unit the goal would otherwise have) — shown as
-// a plain day-count fraction rather than a percentage, since "5 / 7
-// days" is more legible than "71%" for a consistency goal. Every other
-// goal type falls back to percent, reusing goalAnalytics.getGoalAnalytics
-// (the same math Goals.jsx itself renders from) rather than
-// re-deriving progress.
 const formatGoalProgress = (goal, analytics) =>
   goal.unit === "days" ? `${goal.current} / ${goal.target} days` : `${analytics.percent}%`;
 
@@ -689,13 +597,6 @@ function CustomBarTooltip({ active, payload, label }) {
   );
 }
 
-// Last Session card. session is a buildSessionSummaries() entry — the
-// same shape/data already fetched for Recent Sessions (recentSessions[0]
-// is the latest one), reused here instead of the coarser
-// /dashboard/session-summary aggregate so every exercise's actual sets
-// (and every cardio entry's full metric breakdown) can be shown, not
-// just exercise-name chips. No new request, no backend change — this
-// is data the page already has.
 function LastSessionCard({ session, loading }) {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
@@ -772,10 +673,6 @@ function LastSessionCard({ session, loading }) {
         )}
       </div>
 
-      {/* Workout Session Editing & Time Tracking discovery moment #2 — a
-          quiet, easy-to-ignore nudge only shown here (the one place a
-          user is most likely to notice a wrong duration right after
-          logging), not a permanent fixture on every session everywhere. */}
       {session.sessionId && (
         <p className="last-session-card__timing-note">
           Timing doesn't match your actual workout?{" "}
@@ -867,14 +764,6 @@ function LastSessionCard({ session, loading }) {
   );
 }
 
-// Phase 9 — one Recent Sessions row. Reuses buildSessionSummaries'
-// output shape and getSessionStats (already computed as session.stats)
-// rather than recomputing volume/set-count/muscles itself.
-//
-// Phase 8A.1: session.workouts here are raw Workout documents (same
-// shape consumed by WorkoutHistory.jsx / calendar.jsx), so cardio
-// detection and formatting go through the centralized workoutUtils
-// helpers instead of reimplementing them locally.
 function RecentSessionRow({ session }) {
   const [expanded, setExpanded] = useState(false);
   const { stats } = session;
@@ -972,21 +861,17 @@ function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [showCardioModal, setShowCardioModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const workoutSession = useWorkoutSession();
 
   const [showStartModal, setShowStartModal] = useState(false);
   const [pendingAddModal, setPendingAddModal] = useState(false);
 
-  // Non-null while "Replace Exercise" is open for a specific live-session
-  // entry — reuses AddWorkoutModal in "replace" mode (see below) instead
-  // of a second exercise-picker component.
+  const [moreStatsOpen, setMoreStatsOpen] = useState(false);
+
   const [replacingEntryId, setReplacingEntryId] = useState(null);
 
-  // Set right after a successful finishWorkout() — WorkoutSession itself
-  // unmounts once workoutSession.active flips to false, so its local
-  // totals (volume/sets/prCount) are captured into this summary before
-  // that happens (see handleConfirmFinish -> handleFinishWorkout below).
   const [finishSummary, setFinishSummary] = useState(null);
 
   const [stats, setStats] = useState({
@@ -1008,32 +893,13 @@ function Dashboard() {
 
   const [volumeRange, setVolumeRange] = useState("7d");
 
-  // Raw workout documents (Muscle Body Map enhancement) — fetched once
-  // alongside the rest of the dashboard data, so the map's Week/Month/
-  // 90 Days/Lifetime toggle can be computed client-side (all 4 windows
-  // derived from this same array) instead of firing a new backend
-  // request per range switch.
   const [muscleWorkouts, setMuscleWorkouts] = useState([]);
 
-  // Phase 12 — one small additional fetch (goals), for the Active Cardio
-  // Goal widget below. Everything else cardio-related on this page is
-  // computed client-side from muscleWorkouts, already fetched above —
-  // no other new request.
   const [goals, setGoals] = useState([]);
 
-  // Phase 13B — planned workouts, fetched alongside goals/workouts for
-  // Today's Brief's planned-workout recognition and the
-  // ?startPlannedWorkoutId= deep link below. Same "fetch everything for
-  // this user" shape Calendar already uses, not a new date-ranged
-  // endpoint.
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
   const hasAppliedPlannedWorkoutDeepLink = useRef(false);
 
-  // Today's Steps widget state — a passive daily count, deliberately
-  // fetched/edited independently of muscleWorkouts (no workout is
-  // involved at all). todaySteps stays null until either a fetch
-  // resolves with no entry for today, or the user saves one — see
-  // TodayStepsCard's own "Log steps" placeholder for the null case.
   const todayDateKey = getTodayDateKey();
   const [todaySteps, setTodaySteps] = useState(null);
   const [stepsEditing, setStepsEditing] = useState(false);
@@ -1046,6 +912,7 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [summaryData, workoutsRes, goalsRes, dailyStepsRes, plannedWorkoutsRes] =
         await Promise.all([
@@ -1071,17 +938,6 @@ function Dashboard() {
 
       setMuscleWorkouts(workoutsRes.data);
 
-      // Phase 13C — the centralized reminder engine (reminders/
-      // reminderEngine.js) computes every reminder/insight candidate
-      // client-side from data already fetched above (workouts, goals,
-      // planned workouts), then hands them to the server for the same
-      // dedup + persistence path every notification already goes
-      // through. Fire-and-forget: a failure here must never affect
-      // anything else on this page. This is the "no background
-      // scheduler, check when the app is actually open" half of the
-      // engine's generation — PR/goal/streak/first-workout-after-break
-      // notifications are generated server-side at write time instead
-      // (see server/utils/notificationTriggers.js).
       const notificationCandidates = generateReminders({
         workouts: workoutsRes.data,
         goals: goalsRes.data,
@@ -1097,12 +953,6 @@ function Dashboard() {
         sessionsLast30Days: summary.data.sessionsLast30Days,
         lastSession: summary.data.lastSession,
         averageVolumeRecent: Math.round(summary.data.averageVolumeRecent || 0),
-        // Bug fix (Phase 9 follow-up): averageSessionDuration can be
-        // `null` (no recent session has a recorded duration) or a real
-        // number that may itself legitimately be 0. Coercing with
-        // `|| 0` here would make those two cases indistinguishable by
-        // the time they reach render — so we only round when a real
-        // value exists, and pass null straight through otherwise.
         averageSessionDuration:
           summary.data.averageSessionDuration != null
             ? Math.round(summary.data.averageSessionDuration)
@@ -1115,19 +965,14 @@ function Dashboard() {
         personalRecords: records.data,
       });
 
-      // sortSessions is the existing Workout History ordering utility —
-      // reused here rather than having the backend guess display order.
       setRecentSessions(
         sortSessions(buildSessionSummaries(recentSessionsRes.data), "newest")
       );
 
-      // Returned so callers that need the just-refetched raw workouts
-      // immediately (e.g. the Finish Workout summary's streak/badge
-      // computation) don't have to rely on muscleWorkouts state, which
-      // wouldn't reflect this update until the next render.
       return workoutsRes.data;
     } catch (err) {
       console.error("Dashboard Error:", err);
+      setLoadError(true);
       return muscleWorkouts;
     } finally {
       setLoading(false);
@@ -1184,11 +1029,6 @@ function Dashboard() {
     }
   };
 
-  // Phase 13B — shared by the Today's Brief "Start" action and the
-  // ?startPlannedWorkoutId= deep link below (Calendar's "Start Planned
-  // Workout" button navigates here with that param). Looks the plan up
-  // from the same plannedWorkouts state already fetched above rather
-  // than firing a second request.
   const handleStartPlannedWorkout = (plannedWorkoutId) => {
     if (workoutSession.active) return;
     const plan = plannedWorkouts.find((p) => p._id === plannedWorkoutId);
@@ -1196,11 +1036,6 @@ function Dashboard() {
     workoutSession.startSessionFromPlan(plan);
   };
 
-  // Deep link from Calendar's "Start Planned Workout" button
-  // (/dashboard?startPlannedWorkoutId=...). Waits for plannedWorkouts to
-  // load (fetchDashboardData runs once on mount), then applies once —
-  // same ref-guard pattern Calendar.jsx's own date deep link uses — and
-  // strips the param so a refresh doesn't re-trigger it.
   useEffect(() => {
     if (hasAppliedPlannedWorkoutDeepLink.current) return;
     const planId = searchParams.get("startPlannedWorkoutId");
@@ -1216,19 +1051,12 @@ function Dashboard() {
       },
       { replace: true }
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, loading, plannedWorkouts]);
 
   const handleFinishWorkout = async (localSummary) => {
     const success = await workoutSession.finishWorkout();
     if (success) {
       setShowModal(false);
-      // fetchDashboardData already refetches raw workouts, which is what
-      // the muscle map derives its breakdown from — no separate refetch
-      // needed. Its return value (not the muscleWorkouts state, which
-      // wouldn't reflect this update until the next render) is what
-      // Finish Workout summary badges/streak are computed from, so they
-      // already account for the session that just finished.
       const freshWorkouts = await fetchDashboardData();
 
       setFinishSummary({
@@ -1266,11 +1094,6 @@ function Dashboard() {
     }
   };
 
-  // Any Cardio Goal configured with metric "steps" carries the per-day
-  // threshold this widget's progress bar compares today's count
-  // against — independent of which window (week/month/lifetime) that
-  // goal happens to track consistency/streak over; "today's target" is
-  // the same dailyTarget value regardless.
   const dailyStepsGoal = goals.find(
     (g) => g.type === "Cardio Goal" && g.metric === "steps" && g.dailyTarget
   );
@@ -1286,25 +1109,11 @@ function Dashboard() {
       ? weeklyVolumeChartData
       : DAY_ORDER.map((d) => ({ day: d, volume: 0 }));
 
-  // Priority 4 — Insights (retrospective: "how am I doing"). Every
-  // entry is computed client-side from data already on the page; no new
-  // endpoint.
   const dashboardInsights = useMemo(
     () => getDashboardInsights(muscleWorkouts),
     [muscleWorkouts]
   );
 
-  // Phase 12.5 — Today's Brief (prescriptive: "what should I do
-  // today") — workout recommendation, goal progress, steps remaining,
-  // and streak protection, deliberately kept out of the Insights list
-  // above so the same fact never appears twice on the page. This is now
-  // the hero's actual content (see heroSubtitle above / the hero JSX
-  // below), not a separate section. dailyStepsGoal is computed further
-  // down (Cardio widgets block) but declared before this point in the
-  // function body, so it's safe to reference here.
-  // Phase 13B — today's still-Planned plan (if any), read via the same
-  // local-date-key convention Calendar.jsx's getLocalDateKey/getTodayDateKey
-  // use, so "today" agrees across pages regardless of timezone.
   const todaysPlannedWorkout = useMemo(() => {
     return (
       plannedWorkouts.find((p) => {
@@ -1318,14 +1127,6 @@ function Dashboard() {
     );
   }, [plannedWorkouts, todayDateKey]);
 
-  // Phase 14B — ONE composition call for the whole "Today's Focus"
-  // coaching summary: the hero's Today's Brief list (trainingBrief.brief,
-  // unchanged from before — generateTrainingBrief calls getTodaysBrief
-  // internally rather than this page calling it a second time) PLUS
-  // Recovery Score/Readiness/Weekly Grade/Training Balance/Fatigue/
-  // Recommended Workout, all read from this single memo. "Compose once,
-  // distribute everywhere" — every stat tile below reads from here, not
-  // from five separate engine calls.
   const trainingBrief = useMemo(
     () =>
       generateTrainingBrief(muscleWorkouts, goals, {
@@ -1339,26 +1140,16 @@ function Dashboard() {
 
   const weeklyCoachReport = useMemo(() => generateWeeklyCoachReport(muscleWorkouts), [muscleWorkouts]);
 
-  // User feedback ⭐2 — "Coach Priority": the single ranked read across
-  // Recovery/Goal/Plateau/Fatigue/Planner/Streak, composed ONCE here.
   const coachPriority = useMemo(
     () => generateCoachPriority(muscleWorkouts, { goals, plannedWorkouts }),
     [muscleWorkouts, goals, plannedWorkouts]
   );
 
-  // ------------------------------------------------------------------
-  // CARDIO WIDGETS — all computed client-side from muscleWorkouts/goals,
-  // already fetched above; no new endpoint. cardioWeekOverview reuses
-  // the same engine Analytics/Progression's cardio views already use.
-  // ------------------------------------------------------------------
   const cardioWeekOverview = useMemo(
     () => getCardioOverview(muscleWorkouts, { period: "week" }),
     [muscleWorkouts]
   );
 
-  // Same computeCurrentStreak function the overall streak card already
-  // uses — just pre-filtered to cardio-only entries, not a new streak
-  // algorithm.
   const cardioStreak = useMemo(
     () => computeCurrentStreak(muscleWorkouts.filter(isCardioEntry)),
     [muscleWorkouts]
@@ -1373,14 +1164,8 @@ function Dashboard() {
     }, null);
   }, [muscleWorkouts]);
 
-  // Phase 14B — reuses intelligence/balanceEngine.js's getStrengthCardioSplit
-  // (Module 7's own session-count-based Strength:Cardio split) instead of
-  // this page's own independent copy of the same arithmetic.
   const trainingBalance = useMemo(() => getStrengthCardioSplit(muscleWorkouts), [muscleWorkouts]);
 
-  // Nearest active (not yet completed) auto-tracked Cardio Goal — picked
-  // by highest current progress, so the widget surfaces whichever one
-  // the user is closest to finishing rather than an arbitrary first match.
   const activeCardioGoal = useMemo(() => {
     const candidates = goals
       .filter((g) => g.type === "Cardio Goal" && g.status !== "Completed")
@@ -1397,10 +1182,6 @@ function Dashboard() {
     return "—";
   })();
 
-  // Only a real number to count up from when the last session actually
-  // has a strength volume (a cardio-only session's "value" is an
-  // activity name, not a number) — PrimaryCard falls back to the plain
-  // lastSessionVolumeValue string above whenever this is null.
   const lastSessionVolumeNumeric =
     stats.lastSession && stats.lastSession.exerciseCount > 0 ? stats.lastSession.volume : null;
 
@@ -1416,13 +1197,6 @@ function Dashboard() {
     return "Previous Session";
   })();
 
-  // Priority 2 — "is this improving?": compares the two most recent
-  // strength sessions' volume (both read from the SAME client-computed
-  // recentSessions array, so it's an apples-to-apples comparison rather
-  // than mixing the backend's separately-computed stats.lastSession).
-  // Falls back to lastSessionVolumeSub above (cardio-count / duration /
-  // "Previous Session") whenever there isn't a real prior strength
-  // session to compare against.
   const lastSessionVolumeTrend = (() => {
     const [latest, previous] = recentSessions;
     if (!latest || !previous) return null;
@@ -1440,9 +1214,6 @@ function Dashboard() {
       }${lastSessionVolumeTrend.changePct}% vs previous`
     : lastSessionVolumeSub;
 
-  // Sessions this week vs the week before — both counted from the same
-  // buildSessionSummaries grouping already used elsewhere on this page,
-  // so "a session" means the same thing here as everywhere else.
   const weeklySessionTrend = (() => {
     const sessions = buildSessionSummaries(muscleWorkouts);
     const now = Date.now();
@@ -1455,19 +1226,9 @@ function Dashboard() {
     return thisWeek - lastWeek;
   })();
 
-  // "Longest Streak" fallback (Priority 2): a broken current streak (0)
-  // read alone is discouraging and, worse, throws away real history —
-  // showing the best-ever streak instead keeps the card meaningful.
-  // getLongestStreakEver is the exact function Finish Workout's own
-  // "new longest streak" badge already uses (liveWorkoutEngine.js).
   const longestStreakEver = getLongestStreakEver(muscleWorkouts);
   const showLongestStreakFallback = stats.currentStreak === 0 && longestStreakEver > 0;
 
-  // Bug fix (Phase 9 follow-up): previously checked `> 0`, which treated
-  // a genuinely-computed average of 0 minutes the same as "no data" and
-  // always rendered "—" for it. Now only `null` (true absence of any
-  // recorded duration among the last 5 sessions) falls back to "—" — a
-  // real average, including 0, is displayed as-is.
   const avgSessionDurationValue =
     stats.averageSessionDuration != null
       ? `${stats.averageSessionDuration} min`
@@ -1475,18 +1236,18 @@ function Dashboard() {
 
   const firstName = getFirstName();
 
-  // Phase 12.5 — Today's Brief now IS the hero's content (replacing the
-  // earlier static/pill-based subtitle entirely): a rule-engine-
-  // generated list (workout recommendation, goal/steps proximity,
-  // streak protection — see utils/dashboardInsights.js's
-  // getTodaysBrief) rendered directly under the greeting. The plain
-  // fallback line only shows when there's truly nothing to brief yet
-  // (a brand-new account with no history/goals at all).
   const heroSubtitle = loading ? "Loading your progress..." : "Ready to crush today's session?";
 
   return (
     <div className="dash-page">
       <main className="dash-main">
+        {loadError && (
+          <LoadErrorBanner
+            message="Couldn't load your dashboard. Check your connection and try again."
+            onRetry={fetchDashboardData}
+          />
+        )}
+
         <section className="hero-card">
           <div className="hero-card__left">
             <span className="hero-card__eyebrow">
@@ -1576,13 +1337,12 @@ function Dashboard() {
           />
         )}
 
-        {/* Phase 14B, section 2 — "Today's Focus": the cohesive coaching
-            summary the spec asks for, replacing what would otherwise be
-            isolated cards. Every tile reads from the ONE trainingBrief
-            composition above — no engine is called twice. Omits any tile
-            whose underlying value isn't available yet (a brand-new
-            account) rather than showing a fabricated number. */}
-        {!loading && (trainingBrief.recoveryScore != null || trainingBrief.weeklyGrade) && (
+        {!loading &&
+          (trainingBrief.recoveryScore != null ||
+            trainingBrief.weeklyGrade ||
+            trainingBrief.trainingBalance.available ||
+            trainingBrief.fatigueBand ||
+            trainingBrief.recommendedWorkout) && (
           <section className="section">
             <p className="section__label">Today's Focus</p>
             <CoachPriorityBanner signal={coachPriority.top} onNavigate={navigate} />
@@ -1792,7 +1552,7 @@ function Dashboard() {
 
         {!loading && dashboardInsights.length > 0 && (
           <section className="section">
-            <p className="section__label">Insights</p>
+            <p className="section__label">Quick Takeaways</p>
             <div className="insights-grid">
               {dashboardInsights.map((insight) => (
                 <InsightCard key={insight.key} insight={insight} />
@@ -1803,84 +1563,99 @@ function Dashboard() {
 
         {!loading && <GoalsWidget goals={goals} onViewAll={() => navigate("/goals")} />}
 
-        <section className="section">
-          <p className="section__label">Breakdown</p>
-          <div className="secondary-grid">
-            <SecondaryCard
-              title="Avg Volume (Last 5)"
-              value={
-                loading ? null : `${stats.averageVolumeRecent?.toLocaleString()} kg`
-              }
-              icon={BarChart2}
-            />
-            <SecondaryCard
-              title="Avg Session Duration (Last 5)"
-              value={loading ? null : avgSessionDurationValue}
-              icon={Timer}
-            />
-            <SecondaryCard
-              title="Top Muscle"
-              value={loading ? null : stats.topMuscle || "—"}
-              sub={stats.topMuscleCount ? `${stats.topMuscleCount} sets` : null}
-              icon={Zap}
-            />
-            <SecondaryCard
-              title="Top Exercise"
-              value={loading ? null : stats.topExercise || "—"}
-              sub={
-                stats.topExerciseCount
-                  ? `${stats.topExerciseCount}× performed`
-                  : null
-              }
-              icon={Trophy}
-            />
-            <SecondaryCard
-              title="Sessions (30d)"
-              value={loading ? null : stats.sessionsLast30Days}
-              icon={CalendarRange}
-            />
-          </div>
-        </section>
-
-        {!loading && cardioWeekOverview.hasCardioData && (
+        {!loading && (
           <section className="section">
-            <p className="section__label">Cardio</p>
-            <div className="secondary-grid">
-              <SecondaryCard
-                title="Weekly Cardio Distance"
-                value={`${cardioWeekOverview.periodDistance} km`}
-                sub={`${cardioWeekOverview.periodSessions} sessions this week`}
-                icon={MapPin}
+            <button
+              type="button"
+              className="more-stats-toggle"
+              onClick={() => setMoreStatsOpen((v) => !v)}
+              aria-expanded={moreStatsOpen}
+              aria-controls="dashboard-more-stats"
+            >
+              <p className="section__label" style={{ margin: 0 }}>More Stats</p>
+              <ChevronDown
+                size={16}
+                strokeWidth={2}
+                className={`more-stats-toggle__chevron ${moreStatsOpen ? "more-stats-toggle__chevron--open" : ""}`}
               />
-              <SecondaryCard
-                title="Weekly Cardio Duration"
-                value={`${cardioWeekOverview.periodDuration} min`}
-                icon={Timer}
-              />
-              <SecondaryCard title="Cardio Streak" value={`${cardioStreak}d`} icon={HeartPulse} />
-              <SecondaryCard
-                title="Latest Cardio Session"
-                value={latestCardioWorkout ? getCardioActivityLabel(latestCardioWorkout) : "—"}
-                sub={latestCardioWorkout ? formatSessionDate(latestCardioWorkout.date) : null}
-                icon={Activity}
-              />
-              {trainingBalance.available && (
-                <SecondaryCard
-                  title="Cardio vs Strength"
-                  value={`${trainingBalance.strengthPct}% / ${trainingBalance.cardioPct}%`}
-                  sub="Strength / Cardio sessions"
-                  icon={BarChart2}
-                />
-              )}
-              {activeCardioGoal && (
-                <SecondaryCard
-                  title={activeCardioGoal.goal.title}
-                  value={`${activeCardioGoal.goal.current}/${activeCardioGoal.goal.target} ${activeCardioGoal.goal.unit}`}
-                  sub={`${activeCardioGoal.analytics.percent}% complete`}
-                  icon={Target}
-                />
-              )}
-            </div>
+            </button>
+
+            {moreStatsOpen && (
+              <div id="dashboard-more-stats" className="more-stats-panel">
+                <div className="secondary-grid">
+                  <SecondaryCard
+                    title="Avg Volume (Last 5)"
+                    value={`${stats.averageVolumeRecent?.toLocaleString()} kg`}
+                    icon={BarChart2}
+                  />
+                  <SecondaryCard
+                    title="Avg Session Duration (Last 5)"
+                    value={avgSessionDurationValue}
+                    icon={Timer}
+                  />
+                  <SecondaryCard
+                    title="Top Muscle"
+                    value={stats.topMuscle || "—"}
+                    sub={stats.topMuscleCount ? `${stats.topMuscleCount} sets` : null}
+                    icon={Zap}
+                  />
+                  <SecondaryCard
+                    title="Top Exercise"
+                    value={stats.topExercise || "—"}
+                    sub={
+                      stats.topExerciseCount
+                        ? `${stats.topExerciseCount}× performed`
+                        : null
+                    }
+                    icon={Trophy}
+                  />
+                  <SecondaryCard
+                    title="Sessions (30d)"
+                    value={stats.sessionsLast30Days}
+                    icon={CalendarRange}
+                  />
+                </div>
+
+                {cardioWeekOverview.hasCardioData && (
+                  <div className="secondary-grid more-stats-panel__cardio">
+                    <SecondaryCard
+                      title="Weekly Cardio Distance"
+                      value={`${cardioWeekOverview.periodDistance} km`}
+                      sub={`${cardioWeekOverview.periodSessions} sessions this week`}
+                      icon={MapPin}
+                    />
+                    <SecondaryCard
+                      title="Weekly Cardio Duration"
+                      value={`${cardioWeekOverview.periodDuration} min`}
+                      icon={Timer}
+                    />
+                    <SecondaryCard title="Cardio Streak" value={`${cardioStreak}d`} icon={HeartPulse} />
+                    <SecondaryCard
+                      title="Latest Cardio Session"
+                      value={latestCardioWorkout ? getCardioActivityLabel(latestCardioWorkout) : "—"}
+                      sub={latestCardioWorkout ? formatSessionDate(latestCardioWorkout.date) : null}
+                      icon={Activity}
+                    />
+                    {trainingBalance.available && (
+                      <SecondaryCard
+                        title="Cardio vs Strength"
+                        value={`${trainingBalance.strengthPct}% / ${trainingBalance.cardioPct}%`}
+                        sub="Strength / Cardio sessions"
+                        icon={BarChart2}
+                      />
+                    )}
+                    {activeCardioGoal && (
+                      <SecondaryCard
+                        title={activeCardioGoal.goal.title}
+                        value={`${activeCardioGoal.goal.current}/${activeCardioGoal.goal.target} ${activeCardioGoal.goal.unit}`}
+                        sub={`${activeCardioGoal.analytics.percent}% complete`}
+                        icon={Target}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
 
@@ -1893,10 +1668,6 @@ function Dashboard() {
               </button>
             </div>
 
-            {/* Workout Session Editing & Time Tracking discovery moment #3
-                — one quiet line for the whole list, not repeated per row,
-                so scanning several past sessions doesn't mean seeing the
-                same hint several times over. */}
             {!loading && recentSessions.length > 0 && (
               <p className="activity-card__timing-hint">
                 Notice a workout's timing looks off? You can edit it anytime from Workouts.

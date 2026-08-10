@@ -7,11 +7,6 @@ import { buildExerciseSessionSeries } from "../progression/progressionEngine";
 import { EXERCISE_DEFAULT_METRIC, getMetricDef } from "../progression/progressionMetrics";
 import "./ExerciseHistoryDrawer.css";
 
-// Module 7 — no navigation away from the workout: opened from an
-// exercise card's header action, shows the same history/trend/best-set
-// data the Progression page already computes (buildExerciseSessionSeries,
-// getExerciseHistorySnapshot), reusing ExerciseSessionChart itself rather
-// than a second chart implementation.
 function ExerciseHistoryDrawer({ open, onClose, entry, historicalWorkouts = [], onUpdateNote }) {
   const exercise = entry?.exercise;
 
@@ -99,12 +94,4 @@ function ExerciseHistoryDrawer({ open, onClose, entry, historicalWorkouts = [], 
   );
 }
 
-// Memoized: WorkoutSession re-renders every second (its elapsed-time
-// clock), and without this, that tick would remount ExerciseSessionChart's
-// recharts internals every second for as long as the drawer stayed open —
-// wasteful, and apparently enough to crash in some cases. All the props
-// below are already referentially stable across those ticks (entry comes
-// from an Array.find on an unchanged array; the callbacks are
-// useCallback-wrapped in WorkoutSession), so this skips every re-render
-// that isn't a real change.
 export default memo(ExerciseHistoryDrawer);

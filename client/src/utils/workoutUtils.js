@@ -43,15 +43,6 @@ export function formatSetBreakdown(workout) {
     .join(", ");
 }
 
-/* ------------------------------------------------------------------ */
-/* Cardio rendering helpers (Phase 8A.1)                                */
-/*                                                                      */
-/* Single source of truth for turning a cardio Workout document into    */
-/* display strings. Every page (Workout History, Calendar, Dashboard)   */
-/* consumes these instead of re-deriving cardio display logic itself.   */
-/* Entirely metadata-driven via CARDIO_METRICS — no hardcoded labels,    */
-/* units, or per-activity branching here.                               */
-/* ------------------------------------------------------------------ */
 
 export function isCardioEntry(workout) {
   return workout?.entryType === "cardio";
@@ -61,24 +52,12 @@ export function getCardioActivityName(workout) {
   return workout?.cardio?.activityType || "Cardio";
 }
 
-// Phase 12 — activity name plus its optional variant refinement (e.g.
-// "Running · Treadmill Run"), the single shared label every cardio
-// display (CardioEntryCard, Workout Log, Session Timeline) reads from
-// instead of each re-deriving its own "does this have a variant" check.
-// Falls back to just the activity name when no variant was logged —
-// every existing consumer of getCardioActivityName keeps working
-// unchanged whether or not this is adopted alongside it.
 export function getCardioActivityLabel(workout) {
   const name = getCardioActivityName(workout);
   const variant = workout?.cardio?.variant;
   return variant ? `${name} · ${variant}` : name;
 }
 
-// Returns every metric actually present on workout.cardio.data, in
-// CARDIO_METRICS' declared order, as {key, label, unit, value, text}.
-// Only present metrics are included — never a placeholder for a missing
-// one. This is the single list every page's cardio rendering (Workout
-// History rows, Calendar rows, Dashboard's meta line) is built from.
 export function formatCardioSummary(workout) {
   const data = workout?.cardio?.data || {};
 
@@ -99,10 +78,6 @@ export function formatCardioSummary(workout) {
     });
 }
 
-// Priority order for picking the single most relevant metric where only
-// one fits (Dashboard's Recent Workouts row). Distance-based metrics are
-// most identifying for cardio, falling back through duration/calories
-// and the rest. Returns null only when no metrics are present at all.
 const CARDIO_METRIC_PRIORITY = [
   "distance",
   "duration",
@@ -127,12 +102,6 @@ export function getPrimaryCardioMetric(workout) {
   return summary[0].text;
 }
 
-// Phase 12 — one compact "headline" string for a cardio PR event (built
-// by cardioProgressionEngine.cardioPrHistory: {prTypes, values, ...}),
-// same distance-first priority order getPrimaryCardioMetric already
-// uses for a session's primary metric — the single formatting rule
-// SessionCard/SessionTimeline/PersonalRecordRow all reuse instead of
-// each re-deriving "which number to show" for a cardio record.
 export function formatCardioPrLabel(pr) {
   if (!pr) return "";
   for (const key of CARDIO_METRIC_PRIORITY) {
@@ -172,15 +141,6 @@ export function sortWorkouts(workouts, order = "newest") {
   return order === "newest" ? sorted.reverse() : sorted;
 }
 
-/* ------------------------------------------------------------------ */
-/* Session grouping (Workout History redesign)                         */
-/*                                                                      */
-/* Workout History renders ONE CARD = ONE WORKOUT SESSION. Workouts     */
-/* sharing the same sessionId belong to one session. Workouts without   */
-/* a sessionId (legacy documents) each become their own standalone      */
-/* session, exactly as before. Grouping happens entirely on the         */
-/* frontend — the API and controllers are untouched.                    */
-/* ------------------------------------------------------------------ */
 
 export function groupWorkoutsIntoSessions(workouts) {
   const sessionMap = new Map();
@@ -198,19 +158,9 @@ export function groupWorkoutsIntoSessions(workouts) {
           w.sessionDuration !== undefined && w.sessionDuration !== null
             ? w.sessionDuration
             : null,
-        // Workout Session Editing & Time Tracking — same "session-level
-        // metadata duplicated on every document" pattern as
-        // sessionDuration/sessionType above. Legacy workouts (and any
-        // session whose timing was never explicitly set) simply don't
-        // have these fields, so all three stay null/"AUTO".
         startedAt: w.startedAt || null,
         endedAt: w.endedAt || null,
         timingMode: w.timingMode || "AUTO",
-        // Session Type is session-level metadata — every workout in the
-        // group was written with the same values (see
-        // workoutController.createWorkoutSession), so it's safe to take
-        // it from whichever workout initializes this group. Legacy
-        // workouts simply don't have these fields, so both stay null.
         sessionType: w.sessionType || null,
         customSessionType: w.customSessionType || null,
         workouts: [],
@@ -221,10 +171,6 @@ export function groupWorkoutsIntoSessions(workouts) {
     const session = sessionMap.get(key);
     session.workouts.push(w);
 
-    // Use the EARLIEST workout timestamp in the session as the session
-    // date. A session represents when it started — using the latest
-    // timestamp could push a late-night workout into the next calendar
-    // day, which misrepresents the workout day.
     if (new Date(w.date) < new Date(session.date)) {
       session.date = w.date;
     }
@@ -251,30 +197,16 @@ export function groupWorkoutsIntoSessions(workouts) {
     }
   });
 
-  // Workouts are intentionally left in the order returned by the API
-  // (MongoDB insertion order), so the expanded session view shows
-  // exercises exactly in the order the user performed them. No sorting
-  // is applied here.
 
   return keyOrder.map((key) => sessionMap.get(key));
 }
 
-// Phase 8A.1: exerciseCount/cardioCount are now split so callers can
-// distinguish "how many strength exercises" from "how many cardio
-// entries" — needed for formatSessionEntryCountLabel below and for
-// hiding Sets/Volume stats on cardio-only sessions. setCount/volume/
-// muscles keep their prior meaning (strength-derived; cardio entries
-// have no workoutSets or exercise.muscleGroup to contribute).
 export function getSessionStats(session) {
   let setCount = 0;
   let volume = 0;
   let exerciseCount = 0;
   let cardioCount = 0;
   let totalReps = 0;
-  // Only ever a sum of calories the user actually logged on a cardio
-  // entry (CARDIO_METRICS.calories is optional, never required) — never
-  // an invented/estimated figure, since there's no body-weight field
-  // anywhere in this app to drive a MET-based formula for strength sets.
   let calories = 0;
   const muscles = new Set();
 
@@ -306,8 +238,6 @@ export function getSessionStats(session) {
   };
 }
 
-// Groups + attaches stats in one pass so callers only need one memoized
-// call to get everything a session card needs to render.
 export function buildSessionSummaries(workouts) {
   return groupWorkoutsIntoSessions(workouts).map((session) => ({
     ...session,
@@ -315,16 +245,6 @@ export function buildSessionSummaries(workouts) {
   }));
 }
 
-/* ------------------------------------------------------------------ */
-/* Session-level PR badges (Workout History 2.0)                       */
-/*                                                                      */
-/* Reuses strengthUtils.prHistory — the exact same "record broken"      */
-/* event stream Analytics' PR Timeline/Current Records/Recent Records   */
-/* are built from — instead of re-deriving PR detection here. A PR      */
-/* event's `date` is the literal `date` field of the workout document    */
-/* that set it, so matching on exercise name + exact timestamp reliably */
-/* maps each event back to the session it belongs to.                   */
-/* ------------------------------------------------------------------ */
 
 export function buildPRIndex(workouts) {
   const events = prHistory(workouts);
@@ -335,21 +255,6 @@ export function buildPRIndex(workouts) {
   return byKey;
 }
 
-// Attaches a `prs` array (possibly empty) to every session — every
-// prHistory event whose exercise+timestamp matches one of that session's
-// own workouts. A session with prs.length > 0 gets the PR badge.
-//
-// Phase 12: `cardioPrIndex` is an optional third parameter — a Map built
-// by cardioProgressionEngine.buildCardioPRIndex, keyed the same way
-// (`${activityType}|${timestamp}`) as `prIndex` is keyed by
-// `${exercise}|${timestamp}`. When a caller doesn't pass it (or passes
-// nothing), the cardio branch below is unchanged from before this phase
-// — a bare early `return` — so strength-only behavior is byte-identical
-// either way. Matched cardio events are tagged `isCardio: true` so they
-// share the same `session.prs` array (and therefore the same
-// `hasPR`/`prCount` badge logic) as strength PRs, distinguished only at
-// render time (SessionCard/SessionTimeline/PersonalRecordRow each get a
-// small `if (record.isCardio)` branch — see those files).
 export function attachSessionPRs(sessions, prIndex, cardioPrIndex) {
   return sessions.map((session) => {
     const prs = [];
@@ -371,13 +276,6 @@ export function attachSessionPRs(sessions, prIndex, cardioPrIndex) {
   });
 }
 
-// Session-level "quality" signal — a genuinely derivable superlative
-// (not an invented score): the single session (or tied sessions) with
-// the highest total strength volume, and the single session(s) with the
-// longest duration. Computed once over every session currently in view
-// so "your best session" doesn't shift depending on which filters are
-// active later at render time — callers should pass the FULL session
-// list here, not just the currently-filtered/visible one.
 export function getSessionRecordKeys(sessions) {
   let maxVolume = 0;
   let maxDuration = 0;
@@ -405,30 +303,7 @@ export function getSessionRecordKeys(sessions) {
   return { highestVolumeKeys, longestDurationKeys };
 }
 
-/* ------------------------------------------------------------------ */
-/* Session Timeline & Workout Journey (Phase 10B)                       */
-/*                                                                      */
-/* Everything below reuses prHistory/getSessionRecordKeys rather than    */
-/* re-deriving PR or duration logic — this file stays the single place  */
-/* that owns those computations.                                        */
-/* ------------------------------------------------------------------ */
 
-// Cross-references the SAME prHistory event stream attachSessionPRs
-// already consumed (no re-detection) to find, for each PR a session
-// already has attached, the record it replaced — lets the timeline show
-// "Previous best: 27.5kg x12" next to the new one. Takes the full
-// `workouts` array (not just one session's) because the prior record
-// usually lives in an earlier session.
-//
-// Phase 12: `cardioEvents` is an optional third parameter — the raw
-// array from cardioProgressionEngine.cardioPrHistory(workouts) (not a
-// Map; this function needs the chronological list to find each event's
-// predecessor, same as it already does for `events` above). Omitting it
-// leaves every existing line below untouched, so strength-only behavior
-// is unchanged. Cardio keys are prefixed ("cardio:...") purely so they
-// can safely share `previousByEventKey` with the unprefixed strength
-// keys without ever colliding, even in the unlikely case an activity
-// name and an exercise name were ever identical strings.
 export function attachPreviousBestToPRs(sessions, workouts, cardioEvents = []) {
   const events = prHistory(workouts);
   const lastByExercise = new Map();
@@ -461,13 +336,6 @@ export function attachPreviousBestToPRs(sessions, workouts, cardioEvents = []) {
   });
 }
 
-// Extends getSessionRecordKeys' existing superlative pattern with a few
-// more genuinely derivable milestones. Highest Volume / Longest Workout
-// are intentionally NOT repeated here — they already render as header
-// badges (Phase 10A), so re-showing them inside the timeline would just
-// be duplicate presentation of the same fact. Computed once over the
-// FULL session list for the same reason as getSessionRecordKeys: a
-// milestone shouldn't flicker depending on which filters are active.
 export function getSessionMilestones(sessions) {
   const milestones = new Map();
 
@@ -492,7 +360,6 @@ export function getSessionMilestones(sessions) {
       .forEach((s) => add(s.key, "Highest Exercise Count"));
   }
 
-  // First workout logged in each calendar month present in the history.
   const firstOfMonth = new Map();
   sessions.forEach((s) => {
     const d = new Date(s.date);
@@ -504,7 +371,6 @@ export function getSessionMilestones(sessions) {
   });
   firstOfMonth.forEach((s) => add(s.key, "First Workout of the Month"));
 
-  // First workout after a 10+ day gap since the previous one.
   const BREAK_THRESHOLD_DAYS = 10;
   const chronological = [...sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
   for (let i = 1; i < chronological.length; i++) {
@@ -519,17 +385,6 @@ export function getSessionMilestones(sessions) {
   return milestones;
 }
 
-// Builds the ordered "story" of a session: Workout Started -> each
-// exercise in the exact order it was performed (groupWorkoutsIntoSessions
-// already preserves this — nothing is re-sorted here) -> Workout
-// Finished. Individual exercises have no per-entry timestamp in the data
-// model (every workout in a session is written in one batch), so a
-// mid-session time is never fabricated as if it were precisely recorded
-// — instead, when the session has real startedAt/endedAt, each entry's
-// moment is interpolated evenly across that real span and only ever
-// surfaced as a relative delta ("4 min later"), never as a fake precise
-// clock reading. When timing is missing entirely (imported/legacy
-// sessions), the story still renders — just without time deltas.
 export function buildSessionTimeline(session) {
   const hasRealTiming = !!(session.startedAt && session.endedAt);
   const startMs = hasRealTiming ? new Date(session.startedAt).getTime() : null;
@@ -552,10 +407,6 @@ export function buildSessionTimeline(session) {
 
   entries.forEach((w, i) => {
     const isCardio = isCardioEntry(w);
-    // Phase 12: cardio entries now look up their own PR the same way
-    // strength entries always have — matched on activityType instead of
-    // exercise name, against the same session.prs array (see
-    // attachSessionPRs, which already tags cardio entries isCardio: true).
     const pr = isCardio
       ? session.prs?.find((p) => p.isCardio && p.activityType === w.cardio?.activityType) || null
       : session.prs?.find((p) => !p.isCardio && p.exercise === w.exercise?.name) || null;
@@ -592,14 +443,6 @@ export function buildSessionTimeline(session) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Session Summary aggregate (Workout History 2.0)                     */
-/*                                                                      */
-/* Every figure here is a plain average/max/count over sessions already */
-/* in view — nothing is estimated or invented. Reuses                   */
-/* computeMuscleBreakdown for "most trained muscle" instead of tallying */
-/* muscles a second time.                                               */
-/* ------------------------------------------------------------------ */
 
 export function computeHistorySummary(sessions) {
   const totalWorkouts = sessions.length;
@@ -665,12 +508,6 @@ export function computeHistorySummary(sessions) {
   };
 }
 
-// Turns {exerciseCount, cardioCount} into the label every session card
-// shows for entry counts, e.g. "2 Exercises • 1 Cardio", "2 Cardio", or
-// "3 Exercises" for a strength-only session (unchanged wording from
-// before this phase). The single place this string is built — Workout
-// History and Calendar both consume it rather than each writing their
-// own conditional.
 export function formatSessionEntryCountLabel({ exerciseCount, cardioCount }) {
   const parts = [];
 
@@ -689,10 +526,6 @@ export function formatSessionEntryCountLabel({ exerciseCount, cardioCount }) {
   return parts.join(" • ");
 }
 
-// Matches a session's own title ("Push Session", a custom "Other" name)
-// in addition to the existing per-workout exercise/cardio-activity match,
-// so one search box covers both "Search by workout title" and "Search by
-// exercise" instead of needing two separate inputs.
 export function filterSessionsBySearch(sessions, term) {
   const lower = term?.trim().toLowerCase();
   if (!lower) return sessions;
@@ -714,27 +547,12 @@ export function filterSessionsByMuscle(sessions, muscle) {
   );
 }
 
-// Filtering happens at the session level (not per-workout), matching the
-// one-card-per-session model — a session either matches the selected
-// type or its whole card is hidden.
 export function filterSessionsBySessionType(sessions, sessionType) {
   if (!sessionType || sessionType === "All") return sessions;
   return sessions.filter((s) => s.sessionType === sessionType);
 }
 
-/* ------------------------------------------------------------------ */
-/* Date Range filter (Workout History polish)                          */
-/*                                                                      */
-/* Filtering happens at the SESSION level, same as Muscle and Session   */
-/* Type above — a session is visible if its `session.date` (the same    */
-/* earliest-workout date already computed by groupWorkoutsIntoSessions) */
-/* falls inside the selected range. No new date field is introduced;    */
-/* this reuses the exact date each card already displays.               */
-/* ------------------------------------------------------------------ */
 
-// Local calendar-day boundaries (not UTC) so "Today" matches what the
-// user actually sees on their clock, consistent with formatSessionDate's
-// use of the browser's locale/timezone via toLocaleDateString.
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -747,11 +565,6 @@ function endOfDay(date) {
   return d;
 }
 
-// Resolves a DATE_RANGE_* key (plus optional custom bounds) into a
-// concrete [start, end] window. Returns null for "All" (no filtering) or
-// an incomplete Custom Range (both dates required before filtering
-// applies, so the card list doesn't collapse to nothing while the user
-// is still mid-pick).
 function resolveDateRangeWindow(rangeKey, customStart, customEnd) {
   const now = new Date();
 
@@ -806,10 +619,6 @@ export function filterSessionsByDateRange(
   });
 }
 
-// Half-open [min, max) minute bounds per duration bucket — "Under 30"
-// is [0, 30), "Over 90" is [90, Infinity). A session with no recorded
-// duration at all never matches any bucket (there's nothing honest to
-// compare), same treatment as the date-range filter's "All" fallback.
 function resolveDurationRangeBounds(rangeKey) {
   switch (rangeKey) {
     case DURATION_RANGE_UNDER_30:
@@ -837,9 +646,6 @@ export function filterSessionsByDuration(sessions, rangeKey) {
   );
 }
 
-// `prs` is attached by attachSessionPRs — sessions built without that
-// step (there are none left in this codebase, but defensively) simply
-// never match rather than throwing.
 export function filterSessionsByPROnly(sessions, onlyPR) {
   if (!onlyPR) return sessions;
   return sessions.filter((s) => (s.prs?.length || 0) > 0);
@@ -880,18 +686,6 @@ export function formatSessionDate(date) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Muscle breakdown (Muscle Body Map enhancement)                      */
-/*                                                                      */
-/* Single shared computation so the Dashboard's muscle map and any     */
-/* other consumer (e.g. Analytics) derive "sets/volume/last trained    */
-/* per muscle" the same way, instead of each recomputing it themselves */
-/* — the exact divergence bug already fixed once between Dashboard and */
-/* Analytics for the plain sets-distribution case. Pure: takes raw     */
-/* Workout documents + an optional cutoff Date, returns real numbers    */
-/* derived only from logged sets — nothing here is estimated or        */
-/* invented.                                                            */
-/* ------------------------------------------------------------------ */
 
 export function computeMuscleBreakdown(workouts, sinceDate) {
   const relevant = sinceDate
@@ -928,10 +722,6 @@ export function computeMuscleBreakdown(workouts, sinceDate) {
     if (!entry.lastTrained || workoutDate > entry.lastTrained) {
       entry.lastTrained = workoutDate;
     }
-    // Phase 14B.1 follow-up — tracked alongside lastTrained (same per-
-    // muscle walk, no second pass over workouts) so callers wanting "how
-    // many weeks of history" for a muscle (recoveryEngine's confidence
-    // reason) don't need to re-scan workouts themselves.
     if (!entry.firstTrained || workoutDate < entry.firstTrained) {
       entry.firstTrained = workoutDate;
     }
@@ -959,23 +749,12 @@ export function computeMuscleBreakdown(workouts, sinceDate) {
       lastTrained: entry.lastTrained,
       firstTrained: entry.firstTrained,
       sessionCount: entry.sessionIds.size,
-      // Most-logged-sets exercise for this muscle in the window.
       bestExercise: rankedExercises[0]?.[0] || null,
-      // Every exercise that contributed to this muscle in the window —
-      // lets a consumer cross-reference against personal-records data
-      // (a different, already-fetched source) to find whichever of
-      // these has the highest recorded PR, without this utility having
-      // to know anything about goals/PRs itself.
       exercises: rankedExercises.map(([name]) => name),
     };
   });
 }
 
-// Consecutive-day training streak ending today — mirrors the backend's
-// current-streak definition (server/utils/goalMetrics.js
-// computeCurrentStreak, backing GET /dashboard/current-streak) exactly,
-// so Analytics can show the same figure computed client-side from the
-// workouts it already fetched instead of firing a second request.
 export function computeCurrentStreak(workouts) {
   if (!workouts.length) return 0;
 
@@ -991,8 +770,6 @@ export function computeCurrentStreak(workouts) {
   return streak;
 }
 
-// e.g. "Pull Session", "Powerlifting Session" (for a custom "Other" name),
-// or "Session" for legacy sessions that predate Session Types entirely.
 export function getSessionTypeLabel(session) {
   const { sessionType, customSessionType } = session;
 

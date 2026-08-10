@@ -1,6 +1,3 @@
-// Phase 13B — Workout Planner. Frontend half of a deliberately
-// UNSHARED, mirrored pair; see server/constants/plannedWorkoutTypes.js
-// for the backend counterpart.
 
 export const PLANNED_STATUS = {
   PLANNED: "Planned",
@@ -37,24 +34,12 @@ export const WEEKDAY_OPTIONS = [
   { value: 6, label: "Sat" },
 ];
 
-// Section 4: editing/cancelling a recurring instance can apply to just
-// that one document, this-and-later instances, or the whole series.
 export const EDIT_SCOPE_OPTIONS = [
   { value: "only", label: "This workout only" },
   { value: "future", label: "This and future workouts" },
   { value: "series", label: "Entire series" },
 ];
 
-// Built-in templates (section 5) — pre-fill title/workoutType/
-// cardioActivityType/estimatedDuration only. Deliberately does NOT
-// auto-populate a specific exercise list: "Reuse existing exercises"
-// means reusing the same Exercise picker/model a real workout already
-// uses, not fabricating a fixed exercise selection per template — the
-// user adds specific exercises themselves for a "Detailed workout", or
-// leaves it as an "Empty workout" (both explicitly valid per section 3).
-// User-saved custom templates (also section 5) DO carry a real exercise
-// list — see WorkoutTemplate the user builds and saves from the planner
-// modal itself, a separate concern from this fixed built-in list.
 export const BUILT_IN_TEMPLATES = [
   { key: "push", label: "Push", workoutType: "Push", cardioActivityType: null, estimatedDuration: 60 },
   { key: "pull", label: "Pull", workoutType: "Pull", cardioActivityType: null, estimatedDuration: 60 },
@@ -67,9 +52,6 @@ export const BUILT_IN_TEMPLATES = [
   { key: "walking", label: "Walking", workoutType: "Cardio", cardioActivityType: "Walking", estimatedDuration: 30 },
 ];
 
-// Section 7 — calendar badge visual treatment per status. Kept as data
-// (a CSS class suffix), not inline logic, so Calendar.jsx and any future
-// consumer render the exact same badge for the exact same status.
 export const STATUS_BADGE_CLASS = {
   [PLANNED_STATUS.PLANNED]: "planned-badge--outlined",
   [PLANNED_STATUS.COMPLETED]: "planned-badge--filled",

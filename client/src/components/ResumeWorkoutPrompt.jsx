@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { RotateCcw, Trash2, Dumbbell } from "lucide-react";
+import ConfirmDialog from "./ConfirmDialog";
 import "./ResumeWorkoutPrompt.css";
 
 function formatElapsedLabel(startTime) {
@@ -10,11 +12,15 @@ function formatElapsedLabel(startTime) {
   return `${hours} hour${hours === 1 ? "" : "s"} ago`;
 }
 
-// Module 10 — a session that survived a refresh/tab-close (localStorage
-// already guarantees no data loss) gets an explicit choice on the next
-// visit instead of silently reappearing, so the user isn't dropped back
-// into an old, possibly-stale session without warning.
 function ResumeWorkoutPrompt({ startTime, onResume, onDiscard }) {
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  const handleCancelDiscardConfirm = () => setShowDiscardConfirm(false);
+  const handleConfirmDiscard = () => {
+    setShowDiscardConfirm(false);
+    onDiscard();
+  };
+
   return (
     <div className="resume-prompt">
       <div className="resume-prompt__icon">
@@ -28,7 +34,7 @@ function ResumeWorkoutPrompt({ startTime, onResume, onDiscard }) {
         <button
           type="button"
           className="resume-prompt__btn resume-prompt__btn--discard"
-          onClick={onDiscard}
+          onClick={() => setShowDiscardConfirm(true)}
         >
           <Trash2 size={14} strokeWidth={2} />
           Discard
@@ -42,6 +48,14 @@ function ResumeWorkoutPrompt({ startTime, onResume, onDiscard }) {
           Resume
         </button>
       </div>
+      <ConfirmDialog
+        open={showDiscardConfirm}
+        title="Discard Workout?"
+        body="This in-progress session will be discarded and can't be recovered."
+        confirmLabel="Discard"
+        onConfirm={handleConfirmDiscard}
+        onCancel={handleCancelDiscardConfirm}
+      />
     </div>
   );
 }

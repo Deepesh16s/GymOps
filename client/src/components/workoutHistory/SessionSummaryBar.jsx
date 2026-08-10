@@ -16,9 +16,6 @@ function SummaryStat({ icon: Icon, label, value }) {
   );
 }
 
-// Every figure here comes straight from workoutUtils.computeHistorySummary
-// — no formatting decision here invents a number, it only chooses whether
-// a metric is honestly available to show (nulls are simply omitted).
 function SessionSummaryBar({ summary }) {
   if (!summary || summary.totalWorkouts === 0) return null;
 

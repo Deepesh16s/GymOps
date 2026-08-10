@@ -47,10 +47,6 @@ function TimelineTooltip({ active, payload, label }) {
   );
 }
 
-// Every visible point here is a genuine new-record event (gap points
-// carry no dot at all) — a plain, uniform marker rather than a two-tier
-// "new vs. held" style, since buildRecordTimeline no longer emits
-// held-steady points at all (see its own comment for why).
 function RecordDot(props) {
   const { cx, cy, payload } = props;
   if (!payload?.hasData || payload.recordWeight == null) return null;
@@ -59,12 +55,6 @@ function RecordDot(props) {
   );
 }
 
-// PR "current record" timeline — consumes progressionEngine's
-// buildRecordTimeline (NOT the weekly/monthly buildProgressionSeries
-// used by ProgressChart): every record gets its own point at its exact
-// date, so two PRs set days apart within the same week still show as
-// two distinct steps instead of collapsing into one bucket. Gaps only
-// appear for genuine stretches with nothing logged at all.
 function TimelineChart({ series = [], loading = false, height = 220 }) {
   if (loading) return <ChartSkeleton height={height} />;
 
@@ -101,12 +91,6 @@ function TimelineChart({ series = [], loading = false, height = 220 }) {
           />
           <Tooltip content={<TimelineTooltip />} cursor={{ stroke: "var(--go-text-faint)", strokeWidth: 1 }} />
           <ReferenceLine y={0} stroke="var(--go-border-strong)" strokeWidth={1} />
-          {/* connectNulls: unlike ProgressChart's per-period metrics (where
-              a gap genuinely means zero volume/sets that period), a
-              personal record is a standing fact — it doesn't lapse just
-              because a week went untrained, so the line holds flat
-              straight through a gap instead of breaking. Hovering a held
-              stretch still surfaces "No workout logged" via the tooltip. */}
           <Line
             type="stepAfter"
             dataKey="recordWeight"

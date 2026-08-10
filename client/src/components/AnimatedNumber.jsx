@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-// Counts up (or down) from whatever was last displayed to `value` — 0 on
-// first mount, the previous value on any subsequent change — instead of
-// snapping straight to the new figure. Purely presentational: callers
-// still own the real number and how it's formatted; this just animates
-// the transition between two already-computed values.
 function AnimatedNumber({ value, format = (n) => String(n), duration = 700 }) {
   const [display, setDisplay] = useState(0);
   const startValueRef = useRef(0);

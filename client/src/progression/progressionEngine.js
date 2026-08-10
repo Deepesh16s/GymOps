@@ -1,9 +1,3 @@
-// The Progression Engine — the single place raw workout history is turned
-// into time-bucketed progression datasets. Every consumer (Progression
-// page today; Dashboard/Analytics/Goals/AI Coach as they migrate) calls
-// into this instead of re-deriving trends itself. Pure functions only: no
-// fetching, no React state — callers own the raw `workouts` array (from
-// services/workoutService.getWorkouts) and memoize as needed.
 import {
   buildSessionSummaries,
   groupWorkoutsIntoSessions,
@@ -39,8 +33,6 @@ function bucketKeyFor(date, granularity) {
   const diffToMon = day === 0 ? -6 : 1 - day;
   const monday = new Date(d);
   monday.setDate(monday.getDate() + diffToMon);
-  // Local Y-M-D (not toISOString, which converts to UTC and would shift
-  // the key a day earlier for any timezone ahead of UTC).
   return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(
     monday.getDate()
   ).padStart(2, "0")}`;
@@ -54,23 +46,13 @@ function bucketLabel(key, granularity) {
       year: "2-digit",
     });
   }
-  // Parse the "YYYY-MM-DD" key with explicit local components — passing
-  // it straight to `new Date(key)` would parse as UTC midnight and could
-  // display a day early in timezones ahead of UTC.
   const [y, m, d] = key.split("-").map(Number);
   const start = new Date(y, m - 1, d);
-  // Weekly buckets start on Monday (see bucketKeyFor) — the label shows
-  // the full Mon-Sun span rather than just the start date, so a reader
-  // doesn't have to guess whether "Jun 15" means one day or a whole week.
   const end = new Date(y, m - 1, d + 6);
   const fmt = (date) => date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-// Every bucket key (+label) from `start` to `end` at the given
-// granularity, in order — including periods with zero logged workouts.
-// This is what lets the chart draw an honest gap instead of jumping
-// straight from one real data point to the next.
 function enumerateBucketKeys(start, end, granularity) {
   const firstKey = bucketKeyFor(start, granularity);
   const [fy, fm, fd] = firstKey.split("-").map(Number);
@@ -80,8 +62,6 @@ function enumerateBucketKeys(start, end, granularity) {
   const endKey = bucketKeyFor(end, granularity);
   const keys = [];
 
-  // Guard against runaway loops on malformed dates — comfortably covers
-  // 30+ years of weekly buckets or centuries of monthly ones.
   for (let i = 0; i < 2000; i++) {
     const key = bucketKeyFor(cursor, granularity);
     keys.push({ key, label: bucketLabel(key, granularity) });
@@ -93,10 +73,6 @@ function enumerateBucketKeys(start, end, granularity) {
   return keys;
 }
 
-// Core bucketed time series: one point per week (or month, for long
-// ranges — see pickBucketGranularity) from the first workout in `workouts`
-// to the last, carrying every chartable metric so the Filter Bar can
-// switch metrics without recomputing buckets.
 export function buildProgressionSeries(workouts, { granularity } = {}) {
   const strengthWorkouts = workouts.filter((w) => !isCardioEntry(w));
   if (!strengthWorkouts.length) return [];
@@ -138,9 +114,6 @@ export function buildProgressionSeries(workouts, { granularity } = {}) {
     b.sessionIds.add(w.sessionId || `standalone:${w._id}`);
   });
 
-  // Session duration is session-level, not workout-level, and only some
-  // sessions have one recorded — attach via the shared session grouping
-  // rather than re-deriving "what counts as a session" here.
   buildSessionSummaries(workouts).forEach((s) => {
     if (s.stats.exerciseCount === 0 || s.sessionDuration == null) return;
     const key = bucketKeyFor(s.date, gran);
@@ -152,23 +125,9 @@ export function buildProgressionSeries(workouts, { granularity } = {}) {
     if (!buckets.has(key)) return;
     const b = buckets.get(key);
     b.prCount += 1;
-    // A single bucket can contain more than one new-record event (e.g.
-    // progressively heavier warm-up-to-top sets logged in one session);
-    // the chart plots the highest one actually achieved that period.
     b.prWeight = b.prWeight == null ? ev.weight : Math.max(b.prWeight, ev.weight);
   });
 
-  // Walk every period from the first workout to the last — including
-  // ones with nothing logged — so the chart can render an honest gap
-  // ("No workout logged") instead of silently skipping straight from one
-  // real data point to the next and implying continuous progress.
-  //
-  // recordWeight is the running "current record" (the Timeline's own
-  // ECG-style metric): it holds flat across every trained period until a
-  // new PR raises it, and only breaks (null) for a period with no
-  // workout logged at all — a PR you already hold doesn't lapse just
-  // because you skipped a week, unlike a period-specific metric such as
-  // volume or working weight.
   let runningBest = null;
   return enumerateBucketKeys(start, end, gran).map(({ key, label }) => {
     const b = buckets.get(key);
@@ -207,25 +166,11 @@ export function buildProgressionSeries(workouts, { granularity } = {}) {
       sessionDuration: b.durations.length
         ? Math.round(b.durations.reduce((s, d) => s + d, 0) / b.durations.length)
         : null,
-      // Total volume that period divided by how many sessions actually
-      // trained it — fixes the "more workouts = bigger number even at
-      // the same effort per session" distortion a raw volume trend has
-      // (2 sessions x 500kg reads identically to 4 sessions x 500kg
-      // here, where plain volume would show the second as "double").
       avgVolumePerSession: b.sessionIds.size > 0 ? Math.round(b.volume / b.sessionIds.size) : null,
     };
   });
 }
 
-// A dedicated series for the Timeline chart — buildProgressionSeries'
-// weekly/monthly buckets are the right resolution for continuous metrics
-// like volume, but wrong for discrete PR events: two records set three
-// days apart can land in the same week bucket and silently collapse into
-// a single point, hiding the earlier one entirely. Here every real record
-// gets its own point at its exact date; only genuine no-training periods
-// (reusing buildProgressionSeries' hasData signal) collapse to a single
-// gap marker, so an ECG-style break still shows for real inactivity
-// without sacrificing same-week PR detail.
 export function buildRecordTimeline(workouts) {
   const strengthWorkouts = workouts.filter((w) => !isCardioEntry(w));
   if (!strengthWorkouts.length) return [];
@@ -246,11 +191,6 @@ export function buildRecordTimeline(workouts) {
     });
 
   let runningBest = null;
-  // Tracked separately from `runningBest` (the cross-exercise max this
-  // timeline plots) — an event here is a new PR for its OWN exercise, not
-  // necessarily a new overall max (e.g. a Bicep Curl PR while Squat still
-  // holds the heaviest lift ever), so the delta shown must be "how much
-  // did THIS exercise improve", not "vs the heaviest lift overall".
   const bestByExercise = new Map();
   const eventPoints = prHistory(strengthWorkouts).map((ev) => {
     const previousBest = bestByExercise.has(ev.exercise) ? bestByExercise.get(ev.exercise) : null;
@@ -272,20 +212,6 @@ export function buildRecordTimeline(workouts) {
   return [...gapPoints, ...eventPoints].sort((a, b) => a.sortDate - b.sortDate);
 }
 
-// One point PER SESSION for a single exercise's Timeline chart — never
-// per-set (see buildExerciseSetTimeline's retirement: with hundreds of
-// sets over years the chart becomes unreadable and, worse, several
-// consecutive points sharing the same day label made recharts'
-// hover-matching resolve to the wrong point). Every metric a session
-// contributed is precomputed here so the chart can switch what it
-// plots without recomputing sessions. `workouts` is expected to already
-// be scoped to one exercise (Progression.jsx does this via
-// filterWorkoutsByExercise before calling in). isPR reuses the same ">"
-// comparison prHistory itself uses, walked per-session so "record"
-// means the same thing here as everywhere else in the app. Reuses
-// groupWorkoutsIntoSessions (not a re-derivation of "what counts as a
-// session") and bestSet/estimate1RM/calculateWorkingWeightAverage (not a
-// re-derivation of those either).
 export function buildExerciseSessionSeries(workouts) {
   const strengthWorkouts = workouts.filter((w) => !isCardioEntry(w));
   if (!strengthWorkouts.length) return [];
@@ -321,10 +247,6 @@ export function buildExerciseSessionSeries(workouts) {
   });
 }
 
-// Compares the first half of a series' average for `key` against the
-// second half — the basis for "improving / plateaued / declining" copy.
-// Returns null when there isn't enough data for the comparison to be
-// meaningful (fewer than 4 points), rather than a misleading trend.
 export function describeTrend(series, key) {
   const points = series.filter((p) => p[key] != null);
   if (points.length < 4) return null;
@@ -342,14 +264,6 @@ export function describeTrend(series, key) {
   return { direction, changePct };
 }
 
-// "vs last month"-style comparison — the trailing `windowSize` buckets'
-// average for `key` against the `windowSize` buckets immediately before
-// them. Deliberately distinct from describeTrend (whole-history first-
-// half vs second-half): this answers "how does my most recent stretch
-// compare to the one right before it", which is what a plain-language
-// "vs last month" verdict actually means. Same {direction, changePct}
-// shape as describeTrend, so it's a drop-in for TrendBadge. Returns null
-// when there isn't a full two windows' worth of trained buckets yet.
 export function compareRecentPeriods(series, key, windowSize = 4) {
   const points = series.filter((p) => p[key] != null);
   if (points.length < windowSize * 2) return null;
@@ -366,14 +280,6 @@ export function compareRecentPeriods(series, key, windowSize = 4) {
   return { direction, changePct };
 }
 
-// Session-count based comparison — as opposed to compareRecentPeriods'
-// calendar-bucket comparison (which needs enough distinct trained WEEKS),
-// this splits a chronological list of per-session values into first-half
-// vs second-half and compares averages. It unlocks with far fewer total
-// sessions than a weekly comparison would need, since it doesn't care how
-// those sessions are spread across calendar time — a lifter who trains
-// 7 times in a single busy fortnight sees a trend just as readily as one
-// who trains 7 times over 2 months.
 export function compareSessionHalves(values, minCount = 7) {
   const points = values.filter((v) => v != null);
   if (points.length < minCount) return null;
@@ -391,9 +297,6 @@ export function compareSessionHalves(values, minCount = 7) {
   return { direction, changePct };
 }
 
-// % of weeks in [startDate, endDate] that contained at least one strength
-// session. Returns null (hide gracefully) when the range is too short
-// (<2 weeks) for a percentage to mean anything.
 export function getConsistency(sessions, startDate, endDate) {
   if (!startDate || !endDate) return null;
   const totalWeeks = Math.max(1, Math.ceil((endDate - startDate) / (7 * 86400000)));
@@ -412,8 +315,6 @@ export function getConsistency(sessions, startDate, endDate) {
   };
 }
 
-// Per-exercise sets/volume breakdown within an already muscle-filtered
-// workout list — powers "Training Distribution" and "Best Exercise".
 export function getExerciseDistribution(workouts) {
   const byExercise = new Map();
   workouts.forEach((w) => {
@@ -443,9 +344,6 @@ function earliestDateOf(workouts) {
   return new Date(Math.min(...workouts.map((w) => entryDate(w).getTime())));
 }
 
-// Default landing dataset: the user's complete training history, no
-// muscle/exercise pre-selected. Answers "how has my training evolved,
-// where did I improve, where did it plateau".
 export function getOverallProgression(workouts, { rangeKey = "lifetime" } = {}) {
   const filtered = filterWorkoutsByTimeRange(workouts, rangeKey);
   const strengthWorkouts = filtered.filter((w) => !isCardioEntry(w));
@@ -540,18 +438,6 @@ export function getExerciseProgression(workouts, exerciseName, { rangeKey = "lif
   };
 }
 
-// "Projected Milestone" — extrapolates a metric's recent trend (ordinary
-// least-squares over the series' trained points) to estimate when it will
-// cross the next round-number target above its current value. Bucket
-// index is used as the regression's x-axis rather than calendar date
-// since buildProgressionSeries' buckets are evenly spaced within one
-// call (all weekly, or all monthly) — same assumption describeTrend
-// already leans on. This is a plain linear projection of a noisy trend,
-// not a guarantee: callers must always present it as an estimate (e.g.
-// "Projected", never "Will"), the same honesty bar estimate1RM's
-// "Estimated" label already sets for this app. Returns null whenever
-// there isn't enough history, the trend isn't actually improving, or the
-// projection doesn't resolve to a real future point.
 export function projectMilestone(series, metricKey, { roundTo = 5 } = {}) {
   const points = series
     .map((p, i) => ({ i, value: p[metricKey] }))
@@ -569,7 +455,7 @@ export function projectMilestone(series, metricKey, { roundTo = 5 } = {}) {
 
   const slope = (n * sumXY - sumX * sumY) / denom;
   const intercept = (sumY - slope * sumX) / n;
-  if (slope <= 0) return null; // flat or declining — nothing honest to project
+  if (slope <= 0) return null;
 
   const last = points[points.length - 1];
   const target = Math.ceil((last.value + 0.01) / roundTo) * roundTo;
@@ -577,15 +463,9 @@ export function projectMilestone(series, metricKey, { roundTo = 5 } = {}) {
   const bucketsAhead = targetIndex - last.i;
   if (!Number.isFinite(bucketsAhead) || bucketsAhead <= 0) return null;
 
-  // Bucket key format ("YYYY-MM-DD" vs "YYYY-MM") is how every other
-  // consumer of this series (e.g. the chart subtitle) already tells
-  // weekly from monthly buckets — reused here rather than threading
-  // granularity through as a separate parameter.
   const isMonthly = series[0]?.key?.length === 7;
   const daysPerBucket = isMonthly ? 30 : 7;
   const daysAhead = Math.round(bucketsAhead * daysPerBucket);
-  // Cap the horizon at 2 years out — beyond that a linear projection off
-  // a handful of noisy training-log points is just noise wearing a date.
   if (daysAhead > 730) return null;
 
   const projectedDate = new Date();

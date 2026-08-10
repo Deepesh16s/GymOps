@@ -3,10 +3,6 @@ import { formatDate } from "../../utils/dateUtils";
 import MetricCard from "./MetricCard";
 import "./progression-charts.css";
 
-// The Overall Progress Summary strip shown at the top of the Progression
-// page's default (no muscle/exercise selected) view — first workout to
-// latest, plus the headline totals. Every figure comes straight from
-// progressionEngine.getOverallProgression(); nothing is computed here.
 function ProgressSummary({ summary, trend, loading }) {
   const rangeLabel =
     summary?.firstWorkoutDate && summary?.latestWorkoutDate

@@ -1,8 +1,5 @@
 import TrendChart from "./TrendChart";
 
-// Muscle-context preset over TrendChart — supplies the title/subtitle
-// convention for a muscle progression view. No chart logic lives here;
-// it only shapes copy around the shared TrendChart/ProgressChart pair.
 function MuscleTrendChart({ muscle, metricDef, series, trend, showMovingAverage, loading }) {
   return (
     <TrendChart

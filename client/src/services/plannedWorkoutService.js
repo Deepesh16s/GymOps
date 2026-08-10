@@ -1,7 +1,5 @@
 import api from "./api";
 
-// Phase 13B — thin wrapper around /api/planned-workouts, same pattern as
-// goalService.js/dailyStepsService.js/notificationService.js.
 export const getPlannedWorkouts = () => api.get("/planned-workouts");
 
 export const createPlannedWorkout = (payload) => api.post("/planned-workouts", payload);

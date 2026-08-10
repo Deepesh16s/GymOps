@@ -34,10 +34,10 @@ import { CARDIO_ACTIVITY_TYPES } from "../constants/cardioMetadata";
 import { getGoalAnalytics } from "../utils/goalAnalytics";
 import { generateGoalReminders } from "../reminders/goalReminders";
 import GoalCard from "../components/GoalCard";
+import LoadErrorBanner from "../components/LoadErrorBanner";
+import ConfirmDialog from "../components/ConfirmDialog";
+import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 
-// Catch-all for any goal whose type predates this redesign (e.g. the old
-// "Weekly Workout" / "Monthly Volume" types) so existing goals don't just
-// disappear from the page. Not selectable when creating a goal.
 const OTHER_CATEGORY = {
   key: "other",
   label: "Other Goals",
@@ -59,10 +59,6 @@ const getTypesForCategory = (categoryKey) => {
   return cat ? cat.types : [];
 };
 
-// Groups goals into the 4 fixed categories, plus an "Other" bucket for
-// legacy types. Empty categories are skipped entirely. This is the
-// DEFAULT view — see isFilterOrSortActive below for when it's bypassed
-// in favor of a single flattened, filtered/sorted list.
 const groupGoalsByCategory = (goals) => {
   const knownTypes = getKnownTypes();
 
@@ -79,9 +75,6 @@ const groupGoalsByCategory = (goals) => {
   return [...known, other].filter((cat) => cat.goals.length > 0);
 };
 
-// Status filter options. Only real goal.status values now — Ahead/On
-// Track/Behind were removed after the health badge was disabled for
-// every goal type (see usesHealthBadge in goalAnalytics.js).
 const STATUS_FILTER_OPTIONS = ["All", "In Progress", "Completed"];
 
 const DEFAULT_SORT_KEY = "recent";
@@ -99,7 +92,7 @@ const sortGoalEntries = (entries, sortKey) => {
   } else if (sortKey === "deadline") {
     sorted.sort((a, b) => {
       if (!a.goal.deadline && !b.goal.deadline) return 0;
-      if (!a.goal.deadline) return 1; // no-deadline goals sort last
+      if (!a.goal.deadline) return 1;
       if (!b.goal.deadline) return -1;
       return new Date(a.goal.deadline) - new Date(b.goal.deadline);
     });
@@ -114,8 +107,6 @@ const sortGoalEntries = (entries, sortKey) => {
   return sorted;
 };
 
-// Converts an ISO date string from the API into the "YYYY-MM-DD" shape
-// <input type="date"> requires.
 const toDateInputValue = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -135,11 +126,6 @@ function GoalStatCard({ label, value, icon: Icon }) {
   );
 }
 
-// Aggregate stats row. Purely derived client-side from the already-
-// fetched goals list via goalsWithAnalytics below; no new endpoint, no
-// extra query, same pattern as Dashboard.jsx's PrimaryCard/SecondaryCard
-// grid. Ahead/Behind cards were removed along with the health badge —
-// see usesHealthBadge in goalAnalytics.js.
 function GoalStatsHeader({ stats }) {
   return (
     <div className="goal-stats-header">
@@ -197,8 +183,6 @@ function EmptyState({ onAdd }) {
   );
 }
 
-// Phase 8C — distinct from the "no goals at all" EmptyState above: goals
-// exist, but the current status filter matches none of them.
 function FilteredEmptyState({ onClear }) {
   return (
     <div className="goals-empty goals-empty--filtered">
@@ -224,17 +208,9 @@ const getInitialFormData = (type) => ({
   cardioUnit: "Minutes",
   current: "",
   deadline: "",
-  // Phase 12 — Cardio Goal auto-configuration. Defaults to manual (the
-  // pre-Phase-12 behavior) so an existing manual Cardio Goal edited
-  // through this form doesn't silently switch modes unless the user
-  // opts in.
   cardioManual: true,
   activityType: "",
   metric: "",
-  // Post-Phase-12: the form never shows all 7 GOAL_PERIODS values as one
-  // flat list — goalStyle (5 options) + dailyTrackOver (only asked when
-  // goalStyle is "daily") compose into the real `period` value via
-  // composePeriod. See constants/goalTypes.js for the full rationale.
   goalStyle: "",
   dailyTrackOver: "",
   dailyTarget: "",
@@ -244,25 +220,15 @@ function Goals() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  // Phase 13C.1 — Deep Links: "Goal notification -> Goals -> scroll to
-  // that goal" (?focusGoal=<goalId>). goalCardRefs is populated by
-  // GoalCard itself via the cardRef callback prop passed from both
-  // render sites below (flat list and category-grouped).
   const goalCardRefs = useRef({});
   const hasAppliedGoalDeepLink = useRef(false);
   const [highlightedGoalId, setHighlightedGoalId] = useState(null);
 
-  // Phase 8C — filter/sort state. Per product decision, an active
-  // filter or a non-default sort switches the page from the default
-  // category-grouped view to a single flattened list.
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortKey, setSortKey] = useState(DEFAULT_SORT_KEY);
 
-  // Phase 8C — computed ONCE per goals-array change and reused
-  // everywhere: the stats header, the status filter, sorting, and every
-  // GoalCard's expanded panel all read from this instead of each calling
-  // getGoalAnalytics independently.
   const goalsWithAnalytics = useMemo(
     () => goals.map((goal) => ({ goal, analytics: getGoalAnalytics(goal) })),
     [goals]
@@ -273,21 +239,11 @@ function Goals() {
     [goalsWithAnalytics]
   );
 
-  // Phase 13C, section 14 — "Goals show reminder badges": reuses
-  // reminders/goalReminders.js EXACTLY (the same generator that feeds the
-  // Notification Center), not a second progress-threshold check. A goal
-  // gets a badge whenever the engine actually generated a reminder for
-  // it (goalProgressReminder/goalExpiringToday/milestoneAlmostComplete).
   const goalReminderIds = useMemo(() => {
     const reminders = generateGoalReminders(goals);
     return new Set(reminders.map((r) => r.metadata?.goalId).filter(Boolean));
   }, [goals]);
 
-  // Deep link from a Goal notification (?focusGoal=<goalId>) — waits for
-  // goals to load, scrolls the matching card into view, briefly
-  // highlights it, then strips the param so a refresh doesn't re-trigger
-  // it. Same ref-guard pattern Calendar.jsx's/WorkoutHistory.jsx's own
-  // deep links already use.
   useEffect(() => {
     if (hasAppliedGoalDeepLink.current) return;
     const goalId = searchParams.get("focusGoal");
@@ -331,9 +287,6 @@ function Goals() {
   const filteredSortedEntries = useMemo(() => {
     let entries = goalsWithAnalytics;
     if (statusFilter !== "All") {
-      // Health badge is disabled for every goal type now (see
-      // usesHealthBadge in goalAnalytics.js), so the only statuses left
-      // to filter by are the real, reliable goal.status values.
       entries = entries.filter(({ goal }) => goal.status === statusFilter);
     }
     return sortGoalEntries(entries, sortKey);
@@ -342,7 +295,16 @@ function Goals() {
   const categorizedGoals = useMemo(() => groupGoalsByCategory(goals), [goals]);
 
   const [showModal, setShowModal] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
+
+  const closeGoalModal = () => {
+    setShowModal(false);
+    setEditingGoal(null);
+  };
+
+  useModalEscapeAndFocus(showModal, closeGoalModal);
 
   const [selectedCategory, setSelectedCategory] = useState(DEFAULT_CATEGORY_KEY);
   const [formData, setFormData] = useState(getInitialFormData(DEFAULT_TYPE));
@@ -350,11 +312,13 @@ function Goals() {
   const [exercises, setExercises] = useState([]);
 
   const fetchGoals = async () => {
+    setLoadError(false);
     try {
       const res = await getGoals();
       setGoals(res.data);
     } catch (error) {
       console.log(error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -382,12 +346,6 @@ function Goals() {
   });
 
   const availableTypes = getTypesForCategory(selectedCategory);
-  // Phase 12: Weight Goal is always manual, same as before. Cardio Goal
-  // is manual only while the user hasn't opted into auto-configuration
-  // (the "Track manually instead" checkbox) — MANUAL_TYPES itself still
-  // includes Cardio Goal for backward compatibility (see goalTypes.js's
-  // own comment), but this page needs the per-instance distinction to
-  // show the right fields.
   const isManual =
     formData.type === "Weight Goal" ||
     (formData.type === "Cardio Goal" && formData.cardioManual);
@@ -395,9 +353,6 @@ function Goals() {
   const composedPeriod = isCardioAutoConfigured
     ? composePeriod(formData.goalStyle, formData.dailyTrackOver)
     : null;
-  // DAILY_WEEKLY/DAILY_MONTHLY's `target` is server-auto-computed (days
-  // in the window) — the shared Target input below is hidden for these
-  // two and replaced with a plain hint line instead.
   const targetIsAutoComputed =
     composedPeriod === GOAL_PERIODS.DAILY_WEEKLY || composedPeriod === GOAL_PERIODS.DAILY_MONTHLY;
 
@@ -405,10 +360,12 @@ function Goals() {
     setEditingGoal(null);
     setSelectedCategory(DEFAULT_CATEGORY_KEY);
     setFormData(getInitialFormData(DEFAULT_TYPE));
+    setModalError("");
     setShowModal(true);
   };
 
   const handleEditGoal = (goal) => {
+    setModalError("");
     setEditingGoal(goal);
     setSelectedCategory(getCategoryKeyForType(goal.type));
     const isConfiguredCardio =
@@ -435,8 +392,18 @@ function Goals() {
     setShowModal(true);
   };
 
-  const handleDeleteGoal = async (goal) => {
-    if (!window.confirm("Delete this goal?")) return;
+  const [goalPendingDelete, setGoalPendingDelete] = useState(null);
+
+  const handleDeleteGoal = (goal) => {
+    setGoalPendingDelete(goal);
+  };
+
+  const handleCancelDeleteGoal = () => setGoalPendingDelete(null);
+
+  const handleConfirmDeleteGoal = async () => {
+    const goal = goalPendingDelete;
+    if (!goal) return;
+    setGoalPendingDelete(null);
 
     try {
       await deleteGoal(goal._id);
@@ -475,10 +442,6 @@ function Goals() {
     }));
   };
 
-  // Pre-fills a Milestone-style Cardio Goal from one of the quick presets
-  // (First 5K, Marathon, ...) — still fully editable afterward, e.g.
-  // swapping activityType to Cycling reuses the same mechanism for a
-  // "first century ride" goal.
   const applyMilestonePreset = (preset) => {
     setFormData((prev) => ({
       ...prev,
@@ -492,10 +455,6 @@ function Goals() {
     }));
   };
 
-  // Days-in-window for DAILY_WEEKLY/DAILY_MONTHLY — display-only (the
-  // server is authoritative and overrides `target` with its own copy of
-  // this same math), used purely so the "Target is auto-set to N days"
-  // hint shows the right number before the goal is saved.
   const getAutoDailyTargetDaysForDisplay = (trackOver) => {
     if (trackOver === DAILY_TRACK_OVER.MONTH) {
       const now = new Date();
@@ -514,9 +473,6 @@ function Goals() {
         ...prev,
         goalStyle: newStyle,
         dailyTrackOver: nextTrackOver,
-        // A "next session" challenge can't use the Sessions pseudo-metric
-        // (a single session always trivially counts as 1) — reset it
-        // rather than let an invalid combination reach submit.
         metric: newStyle === GOAL_STYLES.NEXT_SESSION && prev.metric === CARDIO_SESSION_METRIC ? "" : prev.metric,
         target: autoTarget ? String(getAutoDailyTargetDaysForDisplay(nextTrackOver)) : prev.target,
       };
@@ -548,10 +504,6 @@ function Goals() {
       type: formData.type,
       target: formData.target,
       unit,
-      // Phase 8C: the backend has always accepted `deadline` (see
-      // goalController.createGoal's `deadline: deadline || null`), but
-      // the form never sent it. This is the fix — same field, no
-      // backend change needed.
       deadline: formData.deadline || null,
     };
 
@@ -559,10 +511,6 @@ function Goals() {
       payload.exercise = formData.exercise;
     }
 
-    // Phase 12 — only sent when the user opted into auto-configuration;
-    // an unconfigured/manual Cardio Goal sends none of these three, same
-    // as every Cardio Goal did before this phase (isAutoCardioGoal then
-    // evaluates false server-side and it stays manual).
     if (isCardioAutoConfigured) {
       payload.activityType = formData.activityType;
       payload.metric = formData.metric;
@@ -581,9 +529,10 @@ function Goals() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setModalError("");
 
     if (formData.type === "Strength PR" && !formData.exercise) {
-      alert("Please select an exercise for a Strength PR goal");
+      setModalError("Please select an exercise for a Strength PR goal");
       return;
     }
 
@@ -591,23 +540,24 @@ function Goals() {
       isCardioAutoConfigured &&
       (!formData.activityType || !formData.metric || !formData.goalStyle)
     ) {
-      alert("Please select an activity, metric, and goal style for an auto-tracked Cardio Goal");
+      setModalError("Please select an activity, metric, and goal style for an auto-tracked Cardio Goal");
       return;
     }
 
     if (isCardioAutoConfigured && formData.goalStyle === GOAL_STYLES.DAILY) {
       if (!formData.dailyTrackOver) {
-        alert("Please select what to track the daily goal over (Week, Month, or Lifetime)");
+        setModalError("Please select what to track the daily goal over (Week, Month, or Lifetime)");
         return;
       }
       if (!formData.dailyTarget || Number(formData.dailyTarget) <= 0) {
-        alert("Please enter a daily target greater than 0");
+        setModalError("Please enter a daily target greater than 0");
         return;
       }
     }
 
     const payload = buildPayload();
 
+    setSaving(true);
     try {
       if (editingGoal) {
         const res = await updateGoal(editingGoal._id, payload);
@@ -632,7 +582,9 @@ function Goals() {
       setShowModal(false);
     } catch (error) {
       console.log(error);
-      alert(error.response?.data?.message || "Failed to save goal");
+      setModalError(error.response?.data?.message || "Failed to save goal");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -644,6 +596,12 @@ function Goals() {
   return (
     <div className="goals-page">
       <main className="goals-main">
+        {loadError && (
+          <LoadErrorBanner
+            message="Couldn't load your goals. Check your connection and try again."
+            onRetry={fetchGoals}
+          />
+        )}
 
         <section className="goals-header">
           <div>
@@ -750,7 +708,6 @@ function Goals() {
                 required
               />
 
-              {/* Dropdown 1: Goal Category */}
               <select
                 name="category"
                 value={selectedCategory}
@@ -763,7 +720,6 @@ function Goals() {
                 ))}
               </select>
 
-              {/* Dropdown 2: Goal Type, filtered by selected category */}
               <select
                 name="type"
                 value={formData.type}
@@ -776,7 +732,6 @@ function Goals() {
                 ))}
               </select>
 
-              {/* Strength PR only: exercise picker */}
               {formData.type === "Strength PR" && (
                 <select
                   name="exercise"
@@ -815,7 +770,6 @@ function Goals() {
                 />
               )}
 
-              {/* Strength PR only: weight unit */}
               {formData.type === "Strength PR" && (
                 <select
                   name="weightUnit"
@@ -830,10 +784,6 @@ function Goals() {
                 </select>
               )}
 
-              {/* Cardio Goal only (Phase 12): auto-track from logged
-                  cardio workouts (activity + metric + period) by
-                  default, or fall back to the pre-Phase-12 manual
-                  free-text unit + typed-in progress. */}
               {formData.type === "Cardio Goal" && (
                 <>
                   <label className="goal-field-label goal-field-label--checkbox">
@@ -883,10 +833,6 @@ function Goals() {
                         ))}
                       </select>
 
-                      {/* Goal Style — 5 options, never the 7 raw `period`
-                          values (Weekly/Monthly/Daily/Milestone/Next
-                          Session). "Daily" alone asks a follow-up
-                          question below (Track Over). */}
                       <select
                         name="goalStyle"
                         value={formData.goalStyle}
@@ -951,7 +897,6 @@ function Goals() {
                 </>
               )}
 
-              {/* Manual types only (Cardio Goal, Weight Goal): log progress */}
               {isManual && (
                 <input
                   type="number"
@@ -966,9 +911,6 @@ function Goals() {
                 />
               )}
 
-              {/* Phase 8C: deadline, generic to every goal type — the
-                  backend field already existed; this is the missing UI
-                  for it, and what makes the new analytics meaningful. */}
               <label className="goal-field-label">
                 Deadline (optional)
                 <input
@@ -979,28 +921,37 @@ function Goals() {
                 />
               </label>
 
+              {modalError && <p className="modal-error">{modalError}</p>}
+
               <div className="modal-buttons">
                 <button
                   type="button"
                   className="modal-btn modal-btn--cancel"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingGoal(null);
-                  }}
+                  onClick={closeGoalModal}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="modal-btn modal-btn--submit"
+                  disabled={saving}
                 >
-                  {editingGoal ? "Update Goal" : "Create Goal"}
+                  {saving ? "Saving..." : editingGoal ? "Update Goal" : "Create Goal"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={goalPendingDelete !== null}
+        title="Delete Goal?"
+        body={goalPendingDelete ? `"${goalPendingDelete.title}" will be permanently deleted.` : ""}
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDeleteGoal}
+        onCancel={handleCancelDeleteGoal}
+      />
     </div>
   );
 }

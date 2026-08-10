@@ -1,12 +1,3 @@
-// Phase 13C — tiny date helpers shared across the reminders/ engine's
-// sibling generator files (see reminderEngine.js for the orchestrator).
-// Deliberately local to this folder rather than imported from
-// workoutUtils.js/dashboardInsights.js/goalAnalytics.js, each of which
-// already has its own private copy of the same few lines — see
-// goalAnalytics.js's header comment for why this codebase treats that as
-// the right call for six lines of date math rather than a cross-domain
-// dependency. This file exists only because every generator IN THIS
-// FOLDER needs the exact same helpers, not to bridge to another domain.
 export const MS_PER_DAY = 86400000;
 
 export const dayKey = (date) => {

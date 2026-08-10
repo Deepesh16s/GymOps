@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// Generic pause/resume/skip/restart countdown. Uses the same
-// setInterval + Date.now() diffing idiom WorkoutSession's elapsed-time
-// clock already uses for its up-counter, so drift behaves identically —
-// but this counts down and supports pausing, which that one-way clock
-// never needed.
 function useCountdown(initialSeconds) {
   const [totalSeconds, setTotalSeconds] = useState(initialSeconds);
   const [remainingMs, setRemainingMs] = useState(initialSeconds * 1000);
@@ -31,7 +26,6 @@ function useCountdown(initialSeconds) {
     endTimeRef.current = Date.now() + duration * 1000;
     setRemainingMs(duration * 1000);
     setIsRunning(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pause = useCallback(() => {

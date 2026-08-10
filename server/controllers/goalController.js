@@ -19,18 +19,7 @@ const {
 const { detectGoalNotificationPayloads } = require("../utils/notificationTriggers");
 const { createNotificationsIfNew } = require("../utils/notificationService");
 
-// Phase 8B: validates a Cardio Goal's activityType/metric/period. Shared
-// by createGoal and updateGoal so the validation rule lives in exactly
-// one place. Only called when the caller believes the goal SHOULD be
-// automatic (i.e. at least one of the three fields was supplied) —
-// omitting all three is legitimate (legacy manual behavior) and never
-// reaches this function.
 const validateCardioGoalConfig = ({ activityType, metric, period, dailyTarget }) => {
-  // Reject a partial configuration up front with one clear message,
-  // rather than letting whichever field happens to be missing surface
-  // its own field-specific error first — an automatic Cardio Goal is
-  // all-or-nothing, so "you're missing one of three" should read as one
-  // rule, not three separate checks that happen to fail in sequence.
   if (!activityType || !metric || !period) {
     const err = new Error(
       "Cardio Goal requires activityType, metric, and period together."
@@ -63,9 +52,6 @@ const validateCardioGoalConfig = ({ activityType, metric, period, dailyTarget })
     throw err;
   }
 
-  // A "next session" challenge is scoped to one logged workout — the
-  // "sessions" pseudo-metric (count of distinct sessions) is meaningless
-  // there, since a single session always trivially counts as 1.
   if (period === GOAL_PERIODS.NEXT_SESSION && metric === CARDIO_SESSION_METRIC) {
     const err = new Error(
       "Next Session goals need a real metric (distance, duration, etc.), not Sessions."
@@ -89,24 +75,12 @@ const validateCardioGoalConfig = ({ activityType, metric, period, dailyTarget })
   }
 };
 
-// DAILY_WEEKLY/DAILY_MONTHLY/DAILY_LIFETIME all represent a day-count or
-// streak-length, never the metric's own unit — "days" regardless of
-// whether the underlying metric is distance/duration/steps. Enforced
-// server-side (overriding whatever the client sends) so this can't drift
-// out of sync with what current/target actually mean for these periods.
 const resolveCardioGoalUnit = (period, requestedUnit) =>
   DAILY_PERIODS.includes(period) ? "days" : requestedUnit;
 
-// Shared by createGoal and updateGoal so "current >= target ? Completed
-// : In Progress" exists in exactly one place instead of twice.
 const buildGoalStatus = (current, target) =>
   Number(current) >= Number(target) ? "Completed" : "In Progress";
 
-// Fields a client is allowed to change via updateGoal. Deliberately
-// excludes `user`, `status`, `updateType`, `lastUpdated`, and any other
-// schema field — updateGoal used to spread the entire req.body into
-// findByIdAndUpdate, which let a request overwrite `user` and reassign
-// a goal to a different account. Whitelisting closes that hole.
 const ALLOWED_GOAL_UPDATE_FIELDS = [
   "title",
   "type",
@@ -140,6 +114,14 @@ exports.createGoal = async (req, res) => {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
+    if (!Number.isFinite(Number(target)) || Number(target) <= 0) {
+      return res.status(400).json({ message: "Target must be a positive number" });
+    }
+
+    if (deadline && Number.isNaN(new Date(deadline).getTime())) {
+      return res.status(400).json({ message: "Deadline is not a valid date" });
+    }
+
     let exerciseDoc = null;
 
     if (type === GOAL_TYPES.STRENGTH_PR) {
@@ -157,8 +139,6 @@ exports.createGoal = async (req, res) => {
     let goalMetric = null;
     let goalPeriod = null;
     let goalDailyTarget = null;
-    // Overridable target/unit for Cardio Goal only — stays `target`/`unit`
-    // from req.body for every other type, unchanged from before.
     let resolvedTarget = target;
     let resolvedUnit = unit;
 
@@ -194,16 +174,9 @@ exports.createGoal = async (req, res) => {
       type === GOAL_TYPES.SESSION_VOLUME ||
       type === GOAL_TYPES.SESSION_DURATION
     ) {
-      // All three read the MOST RECENTLY FINISHED session, per product
-      // decision — not a lifetime best.
       const sessionWorkouts = await getLatestSessionWorkouts(req.user._id);
 
       if (type === GOAL_TYPES.SESSION_EXERCISE) {
-        // Goes through getSessionExerciseCount (the same helper
-        // updateGoals.js's global recalculation uses via
-        // getLatestSessionMetrics) instead of raw sessionWorkouts.length,
-        // so cardio entries in a mixed session are not counted as
-        // "exercises" — one shared computation, not two.
         current = metrics.getSessionExerciseCount(sessionWorkouts);
       } else if (type === GOAL_TYPES.SESSION_VOLUME) {
         current = metrics.sumVolume(sessionWorkouts);
@@ -214,12 +187,6 @@ exports.createGoal = async (req, res) => {
       const allWorkouts = await Workout.find({ user: req.user._id }).select("date createdAt");
       current = metrics.computeCurrentStreak(allWorkouts);
     } else if (type === GOAL_TYPES.CARDIO) {
-      // Phase 8B: a Cardio Goal is automatic only when a full
-      // configuration is supplied. Providing none of the three fields is
-      // still valid and produces the same manual goal Cardio Goals have
-      // always been — current comes from req.body.current, exactly like
-      // Weight Goal below. This is what keeps the API backward
-      // compatible for any existing client still posting the old shape.
       const hasAnyCardioConfig =
         activityType !== undefined || metric !== undefined || period !== undefined;
 
@@ -247,9 +214,6 @@ exports.createGoal = async (req, res) => {
             : 0;
       }
     } else if (MANUAL_GOAL_TYPES.includes(type)) {
-      // Weight Goal — Cardio Goal is fully handled above, so this branch
-      // is effectively Weight-Goal-only now, but kept generic in case
-      // another manual type is added later.
       current =
         req.body.current !== undefined && req.body.current !== null && req.body.current !== ""
           ? Number(req.body.current)
@@ -325,18 +289,11 @@ exports.updateGoal = async (req, res) => {
       updates.exercise = exerciseDoc._id;
     }
 
-    // Phase 8B: mirrors willBeStrengthPR above — determines whether the
-    // resulting goal (after this update is applied) will be a Cardio
-    // Goal, regardless of whether `type` itself is part of this request.
     const willBeCardio =
       updates.type === GOAL_TYPES.CARDIO ||
       (updates.type === undefined && goal.type === GOAL_TYPES.CARDIO);
 
     if (willBeCardio) {
-      // Merge incoming updates over the existing goal's config so a
-      // partial edit (e.g. only changing `period`) is validated and
-      // recomputed against the FULL resulting configuration, not just
-      // the changed field in isolation.
       const mergedActivityType =
         updates.activityType !== undefined ? updates.activityType : goal.activityType;
       const mergedMetric =
@@ -370,11 +327,6 @@ exports.updateGoal = async (req, res) => {
           updates.unit = resolveCardioGoalUnit(mergedPeriod, updates.unit ?? goal.unit);
         }
 
-        // Recompute immediately whenever the configuration actually
-        // changed (or a previously-unconfigured manual Cardio Goal just
-        // became configured), rather than waiting for the next workout
-        // save — same computeCardioGoalCurrent the global recalculation
-        // pass is built on, called once here instead of duplicated.
         const configChanged =
           mergedActivityType !== goal.activityType ||
           mergedMetric !== goal.metric ||
@@ -391,17 +343,21 @@ exports.updateGoal = async (req, res) => {
           });
         }
       }
-      // else: still an unconfigured (legacy manual) Cardio Goal —
-      // updates.current, if provided in this request, passes through
-      // untouched below, exactly like Weight Goal always has.
     }
 
-    // Manual types (Cardio Goal when unconfigured / Weight Goal) are
-    // edited via this same endpoint — `current` passes through untouched
-    // here, same as any other field, unless the Cardio Goal branch above
-    // already overwrote it with a fresh auto-computed value.
     const mergedCurrent = updates.current !== undefined ? Number(updates.current) : goal.current;
     const mergedTarget = updates.target !== undefined ? Number(updates.target) : goal.target;
+
+    if (!Number.isFinite(mergedTarget) || mergedTarget <= 0) {
+      return res.status(400).json({ message: "Target must be a positive number" });
+    }
+    if (!Number.isFinite(mergedCurrent) || mergedCurrent < 0) {
+      return res.status(400).json({ message: "Current progress must be a non-negative number" });
+    }
+    if (updates.deadline && Number.isNaN(new Date(updates.deadline).getTime())) {
+      return res.status(400).json({ message: "Deadline is not a valid date" });
+    }
+
     updates.status = buildGoalStatus(mergedCurrent, mergedTarget);
 
     const updatedGoal = await Goal.findByIdAndUpdate(req.params.id, updates, {
@@ -409,10 +365,6 @@ exports.updateGoal = async (req, res) => {
       runValidators: true,
     }).populate("exercise", "name muscleGroup");
 
-    // Phase 13A — a manual edit (Weight Goal, or a Cardio Goal's
-    // auto-recompute above) can also cross completion/80%/90% right
-    // here, not just during the automatic recalculation pipeline. Best-
-    // effort: never blocks the goal update response.
     try {
       const payloads = detectGoalNotificationPayloads(goal, mergedCurrent, mergedTarget);
       if (payloads.length) await createNotificationsIfNew(req.user._id, payloads);

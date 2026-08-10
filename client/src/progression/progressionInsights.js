@@ -1,7 +1,3 @@
-// Insight generation — every insight here is derived strictly from data
-// already computed by progressionEngine/strengthUtils. When there isn't
-// enough history for a particular insight to be meaningful, it is omitted
-// with a plain-language reason instead of guessed at.
 import { buildSessionSummaries } from "../utils/workoutUtils";
 import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
 import { getAvailableMuscles, getAvailableExercises } from "./progressionFilters";
@@ -36,16 +32,13 @@ function computeMostImprovedMuscle(workouts, muscles) {
     label: "Most Improved Muscle",
     available: true,
     value: best.muscle,
-    // Exposed alongside `detail`'s prose so callers that need to rank or
-    // compare insights by magnitude (e.g. picking a "biggest win" to
-    // feature) don't have to parse the percentage back out of the string.
     changePct: best.changePct,
     detail: `Training volume up ${best.changePct}% comparing the first half of its history to the second.`,
   };
 }
 
 function computeFastestImprovingExercise(workouts) {
-  const exercises = getAvailableExercises(workouts).slice(0, 25); // bound cost on very large libraries
+  const exercises = getAvailableExercises(workouts).slice(0, 25);
   let best = null;
   exercises.forEach((exercise) => {
     const progression = getExerciseProgression(workouts, exercise);
@@ -156,9 +149,6 @@ function computeTrainingImbalance(workouts, muscles) {
     label: "Training Imbalance",
     available: true,
     value: `${most.cat} is dominant`,
-    // Not "balanced" and how wide the gap is — lets a caller (e.g.
-    // Analytics' "Attention" callout) decide whether this insight is
-    // worth surfacing as a warning without re-parsing `detail`'s prose.
     balanced: false,
     gap: Math.round(gap),
     least: least.cat,
@@ -167,11 +157,6 @@ function computeTrainingImbalance(workouts, muscles) {
   };
 }
 
-// Longest run of consecutive CALENDAR DAYS containing at least one
-// strength session — day granularity to match the "day streak" the
-// Dashboard/Hero already show (workoutUtils.computeCurrentStreak, which
-// is the same definition scoped to the run ending today). This is that
-// same day-based streak's best-ever length, not just its current one.
 function computeLongestStreak(sessions) {
   if (sessions.length < 2) {
     return {

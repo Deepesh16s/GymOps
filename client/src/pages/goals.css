@@ -64,12 +64,6 @@
   color: var(--go-text-muted);
 }
 
-/* Phase 15A — .cta-btn's base/hover/active/disabled/focus-visible styles
-   now live in client/src/styles/buttons.css (loaded globally via
-   index.css) — this used to be an independent definition here, drifted
-   from dashboard.css's (smaller padding, single-layer hover shadow with
-   no glow ring). Only this page's own mobile breakpoint override
-   remains local (see the 720px media query below). */
 
 .goals-stub-note {
   display: inline-flex;
@@ -206,10 +200,6 @@
   transition: box-shadow 0.3s ease, outline-color 0.3s ease;
 }
 
-/* Phase 13C.1 — Deep Links: brief highlight when arriving here via a
-   Goal notification's "scroll to that goal" action, so the scroll
-   destination is obvious even after motion settles. Fades on its own
-   (Goals.jsx clears isHighlighted ~2s later) — not a persistent state. */
 .goal-card--highlighted {
   outline: 2px solid var(--go-primary);
   outline-offset: 2px;
@@ -237,10 +227,6 @@
   margin-bottom: 6px;
 }
 
-/* Phase 13C, section 14 — small inline flag when the reminder engine
-   has an active reminder for this goal (see GoalCard.jsx). Deliberately
-   quiet (not a full pill) so it reads as a supplementary hint next to
-   the title, not competing with the health/status badge on the right. */
 .goal-card__reminder-badge {
   display: inline-flex;
   align-items: center;
@@ -510,7 +496,6 @@
   .go-card,
   .achievement-card,
   .progress-fill {
-    /* .cta-btn's own reduced-motion rule lives in styles/buttons.css now. */
     transition: none;
   }
 }
@@ -574,6 +559,19 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--go-primary) 18%, transparent);
 }
 
+.modal-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-danger-50);
+  color: var(--go-danger-dark);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 .modal-buttons {
   display: flex;
   justify-content: flex-end;
@@ -614,13 +612,7 @@
   box-shadow: var(--go-shadow-md);
 }
 
-/* ==========================================================
-   Phase 8C — Goal Analytics & UX Enhancements
-   ========================================================== */
 
-/* Expandable goal card head — additive properties only; layout
-   (display/align-items/justify-content/gap) stays exactly as defined
-   in .goal-card__head above. */
 .goal-card__head {
   cursor: pointer;
   border-radius: 12px;
@@ -654,17 +646,12 @@
     0 12px 32px color-mix(in srgb, var(--go-primary) 10%, transparent);
 }
 
-/* Additive properties on the existing .goal-badge base rule (icon +
-   label layout) — none of the properties already defined above are
-   changed. */
 .goal-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-/* New health badge variants — Ahead / On Track. Completed and Behind
-   already exist above and are untouched. */
 .goal-badge--ahead {
   color: var(--go-success-dark);
   background: color-mix(in srgb, var(--go-success-light) 30%, transparent);
@@ -677,13 +664,10 @@
   border: 1px solid color-mix(in srgb, var(--go-primary) 20%, transparent);
 }
 
-/* New progress bar variant — Ahead of schedule. --behind/--completed
-   already exist above and are untouched. */
 .progress-track--ahead .progress-fill {
   background: linear-gradient(90deg, var(--go-success-light), var(--go-success));
 }
 
-/* Analytics panel inside an expanded goal card */
 .goal-analytics-panel {
   display: flex;
   flex-direction: column;
@@ -745,9 +729,6 @@
   color: var(--go-primary);
 }
 
-/* Deadline field label inside the create/edit modal — the only new
-   labeled field; existing inputs stay label-less, matching the
-   original form's minimal style. */
 .goal-field-label {
   display: flex;
   flex-direction: column;
@@ -768,9 +749,6 @@
   flex-shrink: 0;
 }
 
-/* Shown in place of the Target input for Daily goals tracked over a
-   week/month, whose target is server-auto-computed (days in the
-   window) rather than user-entered. */
 .goal-field-hint {
   font-size: 12.5px;
   color: var(--go-text-muted);
@@ -805,7 +783,6 @@
   color: var(--go-primary-dark, var(--go-primary));
 }
 
-/* Statistics header */
 .goal-stats-header {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -835,7 +812,6 @@
   letter-spacing: -0.02em;
 }
 
-/* Filter / sort bar */
 .goal-filters-bar {
   display: flex;
   align-items: center;
@@ -871,9 +847,6 @@
   background: color-mix(in srgb, var(--go-primary) 16%, transparent);
 }
 
-/* Filtered (no-match) empty state — a lighter-weight variant of the
-   existing .goals-empty block above, for "goals exist but none match
-   the current filters" rather than "no goals at all". */
 .goals-empty--filtered {
   padding: 40px 16px;
 }

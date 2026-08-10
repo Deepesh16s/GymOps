@@ -65,6 +65,7 @@ import PersonalRecordRow from "../components/progression/PersonalRecordRow";
 import PanelEmptyState from "../components/progression/PanelEmptyState";
 import TrainingHeatmap from "../components/progression/TrainingHeatmap";
 import ConfidenceBadge from "../components/ConfidenceBadge";
+import LoadErrorBanner from "../components/LoadErrorBanner";
 import {
   TIME_RANGE_OPTIONS,
   DEFAULT_TIME_RANGE,
@@ -85,19 +86,11 @@ import {
   getInsights,
 } from "../progression";
 
-// Training Overview's chart control is a bucket-granularity toggle, not a
-// date-range filter — a date-range chip often didn't visibly change the
-// chart at all (the bucket window is anchored to the user's actual first/
-// last workout, not the requested range), which read as broken. Weekly
-// vs monthly bucketing, by contrast, always visibly changes the chart.
 const CHART_GRANULARITY_OPTIONS = [
   { key: "week", label: "Weekly" },
   { key: "month", label: "Monthly" },
 ];
 
-// The page used to be one continuous scroll long enough for 3 pages worth
-// of content; splitting it into tabs (same route, no new nav entry) keeps
-// each view short without turning every section into its own page.
 const ANALYTICS_TABS = [
   { key: "overview", label: "Overview" },
   { key: "strength", label: "Strength" },
@@ -118,11 +111,6 @@ function formatRelativeDays(days) {
   return `${months} month${months === 1 ? "" : "s"}`;
 }
 
-// Simple, disclosed heuristic (not a precise science) for the Muscle
-// Balance badges — "most/least of a fixed 4-way split" reads faster as a
-// label than as a raw percentage. Thresholds are deliberately generous
-// (a perfectly even split would be 25% each) since Core/Legs naturally
-// run lower than Push/Pull even in well-rounded training.
 function pplBadge(pct) {
   if (pct >= 45) return { label: "Overtrained", tone: "danger" };
   if (pct <= 10) return { label: "Needs Work", tone: "warning" };
@@ -133,20 +121,20 @@ function Analytics() {
   const navigate = useNavigate();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setLoadError(false);
       try {
-        // Analytics summarizes the user's ENTIRE fitness history, not a
-        // recent slice — same lifetime-first fetch ceiling Progression
-        // uses (500 is the Dashboard/Workout History convention, which
-        // would silently truncate a long-tenured user's early history).
         const res = await getWorkouts(5000);
         if (!cancelled) setWorkouts(res.data);
       } catch (err) {
         console.error("Analytics fetch error:", err);
+        if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -154,7 +142,7 @@ function Analytics() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryTrigger]);
 
   const allSessions = useMemo(() => buildSessionSummaries(workouts), [workouts]);
   const strengthSessions = useMemo(
@@ -162,14 +150,8 @@ function Analytics() {
     [allSessions]
   );
   const recordEvents = useMemo(() => prHistory(workouts), [workouts]);
-  // Phase 12 — same chronological PR-event pattern as recordEvents
-  // above, computed by the cardio engine's own cardioPrHistory rather
-  // than re-deriving PR detection here.
   const cardioRecordEvents = useMemo(() => cardioPrHistory(workouts), [workouts]);
 
-  // Every consumer below (hero stats, trend charts, muscle/exercise
-  // breakdowns, insights) is built from the shared Progression Engine or
-  // strengthUtils — nothing here re-derives volume/PR/trend math itself.
   const overall = useMemo(() => getOverallProgression(workouts), [workouts]);
   const availableMuscles = useMemo(() => getAvailableMuscles(workouts), [workouts]);
   const insightsData = useMemo(() => getInsights(workouts), [workouts]);
@@ -204,10 +186,6 @@ function Analytics() {
     }).length;
   }, [recordEvents]);
 
-  // "vs last month" verdict — the Hero's single headline comparison.
-  // Distinct from overall.trend (whole-history first-half-vs-second-half):
-  // this is specifically the most recent ~4 buckets against the ~4
-  // immediately before them, which is what "vs last month" plainly means.
   const volumeVsLastPeriod = useMemo(
     () => compareRecentPeriods(overall.series, "volume", 4),
     [overall]
@@ -216,9 +194,6 @@ function Analytics() {
     () => compareRecentPeriods(overall.series, "estOneRM", 4),
     [overall]
   );
-  // Frequency and prCount already exist per-bucket on the same series —
-  // reused here as honest proxies for "Consistency" and "PR Rate" trend
-  // rather than inventing separate metrics for the Overall Progress strip.
   const consistencyVsLastPeriod = useMemo(
     () => compareRecentPeriods(overall.series, "frequency", 4),
     [overall]
@@ -228,14 +203,6 @@ function Analytics() {
     [overall]
   );
 
-  // compareRecentPeriods needs 8 trained CALENDAR WEEKS, which a lifter
-  // who trains frequently within a short span (e.g. 20+ sessions in a
-  // month) can fail for a long time despite clearly having enough data.
-  // This session-count fallback (compareSessionHalves) compares the
-  // first half of the user's actual logged sessions against the second
-  // half, unlocking with as few as 7 sessions regardless of calendar
-  // spread — used only when the calendar-based comparison isn't
-  // available yet.
   const chronoSessions = useMemo(
     () =>
       [...allSessions]
@@ -259,10 +226,6 @@ function Analytics() {
       }),
     [chronoSessions]
   );
-  // Days between consecutive sessions, negated — a SHRINKING gap (more
-  // frequent training) is the improvement, so negating lets
-  // compareSessionHalves' "bigger average = up" convention read a
-  // shorter recent gap as "consistency trending up".
   const sessionGapsInverted = useMemo(
     () =>
       chronoSessions.slice(1).map((s, i) => -((new Date(s.date) - new Date(chronoSessions[i].date)) / 86400000)),
@@ -289,44 +252,19 @@ function Analytics() {
     return "You're holding a steady pace compared to last month.";
   }, [volumeTrend]);
 
-  // Once neither the calendar-based nor the session-count-based
-  // comparison is available yet, tell the reader exactly how many more
-  // sessions (the faster of the two paths to unlock) are needed.
   const sessionsUntilProgressUnlocks = Math.max(0, 7 - chronoSessions.length);
 
-  // Lifetime muscle breakdown — powers only the Hero's "Most Trained
-  // Muscle" stat, which (like the rest of the Hero) always summarizes
-  // the complete fitness history regardless of the section-level time
-  // filters below.
   const muscleBreakdown = useMemo(() => computeMuscleBreakdown(workouts), [workouts]);
   const muscleBySets = useMemo(
     () => [...muscleBreakdown].sort((a, b) => b.sets - a.sets),
     [muscleBreakdown]
   );
   const leastTrainedMuscle = muscleBySets.length > 1 ? muscleBySets[muscleBySets.length - 1] : null;
-  // Lifetime Push/Pull split for the "Recovery & Balance" KPI card —
-  // same categorization as the Muscle Balance section below, just scoped
-  // to complete history like the rest of the Hero/KPI row.
-  // Phase 14A, Module 7 — reuses the ONE shared Push/Pull/Legs/Core
-  // split (intelligence/balanceEngine.js) instead of this page's own
-  // independent copy of the same arithmetic (this page previously had
-  // TWO separate copies of it — see overviewPplPct below, also
-  // refactored).
   const lifetimePplPct = useMemo(
     () => summarizeMuscleGroupSplit(muscleBySets, { metric: "sets" }).pct,
     [muscleBySets]
   );
 
-  // Training Score — a single 0-100 rollup of four things already
-  // computed above (consistency, progressive overload, muscle balance,
-  // PR frequency), so a reader gets one number to watch improve instead
-  // of reading four separate metrics every time. Each component is
-  // mapped onto a 0-100 scale independently, then averaged; nothing here
-  // is fabricated, every input traces back to a real figure shown
-  // elsewhere on this page.
-  // Named, per-factor breakdown of the Training Score — same clamp/average
-  // math as before, but kept labeled so the Hero can show exactly which
-  // real numbers produced the final score instead of just the average.
   const trainingScoreBreakdown = useMemo(() => {
     const clamp = (v) => Math.max(0, Math.min(100, v));
     const pplValues = Object.values(lifetimePplPct);
@@ -383,10 +321,6 @@ function Analytics() {
       ? "Fair"
       : "Needs Work";
 
-  // Directional read on the score, not a fabricated point delta — the
-  // average of the same real vs-last-period changes already shown in
-  // Overall Progress, so "trending up/down" always traces back to real
-  // numbers a reader can find elsewhere on the page.
   const trainingScoreTrend = useMemo(() => {
     const deltas = [volumeTrend, strengthTrend, consistencyTrend, prRateTrend]
       .filter(Boolean)
@@ -401,10 +335,6 @@ function Analytics() {
     ? insightsData.insights.find((i) => i.key === "mostImprovedMuscle")
     : null;
 
-  // Training Overview charts let the reader pick the bucket granularity
-  // directly (Weekly vs Monthly, labeled "Jan"/"Feb"/... in monthly mode)
-  // instead of filtering by date range — always lifetime history, just
-  // bucketed coarser or finer.
   const [chartGranularity, setChartGranularity] = useState("week");
   const chartSeries = useMemo(
     () => buildProgressionSeries(workouts, { granularity: chartGranularity }),
@@ -413,7 +343,6 @@ function Analytics() {
   const chartVolumeTrend = useMemo(() => describeTrend(chartSeries, "volume"), [chartSeries]);
   const chartFrequencyTrend = useMemo(() => describeTrend(chartSeries, "frequency"), [chartSeries]);
 
-  // Muscle Balance gets its own time-range scope (default lifetime).
   const [overviewRange, setOverviewRange] = useState(DEFAULT_TIME_RANGE);
   const overviewWorkouts = useMemo(
     () => filterWorkoutsByTimeRange(workouts, overviewRange),
@@ -431,36 +360,19 @@ function Analytics() {
     () => overviewMuscleBySets.reduce((s, m) => s + m.sets, 0) || 1,
     [overviewMuscleBySets]
   );
-  // Push/Pull/Legs/Core split — the same standard training-split
-  // categorization MuscleBodyMap already applies on Dashboard, reused
-  // here as plain percentages rather than re-rendering that interactive
-  // body-map widget a second time on this page.
   const overviewPplPct = useMemo(
     () => summarizeMuscleGroupSplit(overviewMuscleBySets, { metric: "sets" }).pct,
     [overviewMuscleBySets]
   );
   const topMuscles = overviewMuscleBySets.slice(0, 2);
-  // Only called out once there's enough breadth of trained muscles that
-  // the bottom ones are meaningfully under-trained, not just "the only
-  // other muscle you happened to also do".
   const neglectedMuscles = overviewMuscleBySets.length > 4 ? overviewMuscleBySets.slice(-2).reverse() : [];
 
-  // Detailed Breakdown rows expand in place to show that muscle's
-  // exercises instead of navigating away — computed on demand for
-  // whichever single muscle is expanded rather than eagerly for all of
-  // them.
   const [expandedBreakdownMuscle, setExpandedBreakdownMuscle] = useState(null);
   const expandedBreakdownExercises = useMemo(() => {
     if (!expandedBreakdownMuscle) return [];
     return getExerciseDistribution(filterWorkoutsByMuscle(overviewWorkouts, expandedBreakdownMuscle));
   }, [expandedBreakdownMuscle, overviewWorkouts]);
 
-  // Exercise Distribution is scoped to one muscle at a time — mixing
-  // every muscle's exercises into one ranked list mostly just reflected
-  // whichever muscle had the most sets, rather than saying anything about
-  // exercise choice within a muscle. Defaults to the most-trained muscle
-  // in the current range. Lives inside Advanced Analytics (a drill-down),
-  // not the top-level Muscle Balance summary.
   const [exerciseMuscleFilter, setExerciseMuscleFilter] = useState("");
   useEffect(() => {
     if (!exerciseMuscleFilter && overviewMuscleBySets.length) {
@@ -472,8 +384,6 @@ function Analytics() {
     [overviewWorkouts, exerciseMuscleFilter]
   );
 
-  // Advanced Analytics gets its own independent time-range scope (default
-  // lifetime) — separate state from Muscle Balance's above.
   const [advancedRange, setAdvancedRange] = useState(DEFAULT_TIME_RANGE);
   const [activeTab, setActiveTab] = useState("overview");
   const advancedWorkouts = useMemo(
@@ -502,35 +412,18 @@ function Analytics() {
       .map((e) => ({ ...e, volumePct: (e.volume / total) * 100 }));
   }, [advancedExerciseDistribution]);
 
-  // Exercise Intelligence needs one exercise selected at a time — state
-  // declared here (rather than down in the "TRAINING INTELLIGENCE" block
-  // below, which is only where its useMemo lives) because this default-
-  // selection effect needs it immediately below and a variable can't be
-  // read before its own declaration executes.
   const [intelligenceExercise, setIntelligenceExercise] = useState("");
 
-  // Exercise Intelligence's default pick — first exercise actually present
-  // in the current advancedRange, same "nothing force-listed" convention
-  // getAvailableMuscles/getAvailableCardioActivities already established.
   useEffect(() => {
     if (!intelligenceExercise && advancedExerciseDistribution.length) {
       setIntelligenceExercise(advancedExerciseDistribution[0].exercise);
     }
   }, [advancedExerciseDistribution, intelligenceExercise]);
 
-  // ------------------------------------------------------------------
-  // CARDIO — same time-range-scoped pattern as Muscle Balance/Advanced
-  // above, fed by cardioProgressionEngine instead of re-deriving any of
-  // this. No new workout fetch: `workouts` is the same array every other
-  // tab already reads.
-  // ------------------------------------------------------------------
   const [cardioRange, setCardioRange] = useState(DEFAULT_TIME_RANGE);
   const availableCardioActivities = useMemo(() => getAvailableCardioActivities(workouts), [workouts]);
   const [selectedCardioActivity, setSelectedCardioActivity] = useState("");
 
-  // Defaults to the first activity actually present in the user's data
-  // once it's known — never fabricated, matches getAvailableMuscles'
-  // own "nothing force-listed" convention.
   useEffect(() => {
     if (!selectedCardioActivity && availableCardioActivities.length) {
       setSelectedCardioActivity(availableCardioActivities[0]);
@@ -551,18 +444,11 @@ function Analytics() {
   const cardioWeekOverview = useMemo(() => getCardioOverview(workouts, { period: "week" }), [workouts]);
   const cardioMonthOverview = useMemo(() => getCardioOverview(workouts, { period: "month" }), [workouts]);
   const cardioDistribution = useMemo(() => getCardioDistribution(workouts), [workouts]);
-  // Phase 12 — optional drill-down within the selected activity (e.g.
-  // Running -> Outdoor 12km, Treadmill 8km). Gracefully empty when no
-  // variant has ever been logged for this activity, so the section
-  // below simply doesn't render rather than showing an empty list.
   const cardioVariantDistribution = useMemo(
     () => (selectedCardioActivity ? getCardioVariantDistribution(workouts, selectedCardioActivity) : []),
     [workouts, selectedCardioActivity]
   );
 
-  // Weekly consistency for cardio, reusing the exact same getConsistency
-  // function strength already uses (see `consistency` above) — just fed
-  // cardio-only sessions instead of strength ones.
   const cardioSessionsOnly = useMemo(
     () => allSessions.filter((s) => s.stats.cardioCount > 0),
     [allSessions]
@@ -573,9 +459,6 @@ function Analytics() {
     return getConsistency(cardioSessionsOnly, new Date(Math.min(...times)), new Date(Math.max(...times)));
   }, [cardioSessionsOnly]);
 
-  // Cardio Goal completion rate — the one Cardio stat that needs goals,
-  // which nothing on this page fetches otherwise. One small independent
-  // fetch (see the effect below), not folded into the workouts Promise.
   const [goals, setGoals] = useState([]);
   useEffect(() => {
     getGoals()
@@ -591,11 +474,6 @@ function Analytics() {
 
   const hasCardioData = cardioWeekOverview.hasCardioData;
 
-  // "What's Getting Stronger" leaderboard — Exercise Performance sorted by
-  // estimated-1RM trend (not volume), so it actually answers "what's
-  // improving fastest" rather than "what do I do the most of". Exercises
-  // without enough history for a trend sort to the bottom and get an
-  // honest "not enough history" note instead of a silent blank.
   const strengthLeaderboard = useMemo(() => {
     const withTrend = exerciseByVolume.slice(0, 8).map((e) => ({
       exercise: e.exercise,
@@ -610,14 +488,6 @@ function Analytics() {
       .slice(0, 5);
   }, [exerciseByVolume, workouts, advancedRange]);
 
-  // Projected PR Forecaster — extrapolates each exercise's estimated-1RM
-  // trend (progressionEngine.projectMilestone, a plain linear regression
-  // over already-computed series data) to guess when it'll cross the
-  // next round-number milestone. Scoped to lifetime history regardless of
-  // advancedRange, since a short recent window rarely has enough trained
-  // points for a regression to mean anything. Only the single best (soonest)
-  // projection is shown — a spotlight, not a list — and the whole panel is
-  // omitted when nothing qualifies rather than showing an empty section.
   const topProjectedMilestone = useMemo(() => {
     const projections = exerciseByVolume
       .slice(0, 8)
@@ -630,28 +500,11 @@ function Analytics() {
     return projections.sort((a, b) => a.projection.daysAhead - b.projection.daysAhead)[0];
   }, [exerciseByVolume, workouts]);
 
-  // Per-muscle Plateau Detection, scoped to advancedRange like the rest
-  // of Advanced Analytics. Omitted from the page entirely when nothing
-  // qualifies rather than showing an empty-state hint that just wastes
-  // vertical space every time training is going well.
-  //
-  // Phase 14A, Module 3 — this used to be computed inline here; it's now
-  // intelligence/plateauEngine.js's getMusclePlateaus (byte-identical
-  // algorithm, extracted into a reusable engine so Module 6's Deload
-  // Detection can also read plateau status without a second copy of this
-  // check).
   const plateauedMuscles = useMemo(
     () => getMusclePlateaus(workouts, availableMuscles, { rangeKey: advancedRange }),
     [workouts, availableMuscles, advancedRange]
   );
 
-  // ------------------------------------------------------------------
-  // TRAINING INTELLIGENCE — Phase 14B, section 4. This tab composes
-  // Phase 14A's intelligence/ engines directly; every value below is
-  // exactly one engine call, never recomputed here. plateauedMuscles
-  // (above) is reused as-is for this tab's own Plateaus section rather
-  // than calling getMusclePlateaus a second time.
-  // ------------------------------------------------------------------
   const muscleRecoveryScores = useMemo(() => getMuscleRecoveryScores(workouts), [workouts]);
   const fatigueLevel = useMemo(() => getFatigueLevel(workouts), [workouts]);
   const trainingBalanceReport = useMemo(() => getTrainingBalance(workouts), [workouts]);
@@ -667,10 +520,6 @@ function Analytics() {
   );
   const musclePriorities = useMemo(() => getMusclePriorities(workouts), [workouts]);
 
-  // Exercise Intelligence's `intelligenceExercise` state + default-
-  // selection effect are declared earlier (right after
-  // advancedExerciseDistribution) — only the engine call itself lives
-  // here alongside its sibling Training Intelligence engine calls.
   const exerciseIntelligence = useMemo(
     () =>
       intelligenceExercise
@@ -679,18 +528,12 @@ function Analytics() {
     [workouts, intelligenceExercise, advancedRange]
   );
 
-  // Current record per exercise (latest prHistory event, deduped) — the
-  // "Current Records" list, grouped by muscle. Recent Records reuses the
-  // same prHistory output undeduped, newest first, for genuine PR
-  // *history*.
   const personalRecordsLatest = useMemo(() => {
     const latestByExercise = new Map();
     recordEvents.forEach((ev) => latestByExercise.set(ev.exercise, ev));
     return Array.from(latestByExercise.values()).sort((a, b) => b.weight - a.weight);
   }, [recordEvents]);
 
-  // Phase 12 — same "latest event per key" dedup as personalRecordsLatest
-  // above, keyed by activityType instead of exercise name.
   const personalCardioRecordsLatest = useMemo(() => {
     const latestByActivity = new Map();
     cardioRecordEvents.forEach((ev) => latestByActivity.set(ev.activityType, { ...ev, isCardio: true }));
@@ -708,21 +551,11 @@ function Analytics() {
       .map(([muscle, records]) => ({ muscle, records }))
       .sort((a, b) => b.records[0].weight - a.records[0].weight);
 
-    // Cardio has no muscle group, so its current records get their own
-    // pseudo-group appended at the end rather than forced into the
-    // muscle-sorted list above (which sorts by `.weight`, a field cardio
-    // records don't have) — only added when cardio records actually
-    // exist, so a strength-only history renders this identically to
-    // before.
     return personalCardioRecordsLatest.length
       ? [...strengthGroups, { muscle: "Cardio", records: personalCardioRecordsLatest }]
       : strengthGroups;
   }, [personalRecordsLatest, personalCardioRecordsLatest]);
 
-  // Current Records can run to dozens of exercises across every muscle
-  // group — a plain substring search over the exercise name so a specific
-  // lift can be found without scanning every group. Cardio records have
-  // no `exercise` field, so the search matches on `activityType` instead.
   const [prSearch, setPrSearch] = useState("");
   const filteredCurrentRecordsByMuscle = useMemo(() => {
     const term = prSearch.trim().toLowerCase();
@@ -737,10 +570,6 @@ function Analytics() {
       .filter(({ records }) => records.length > 0);
   }, [currentRecordsByMuscle, prSearch]);
 
-  // Merges the two chronological PR-event streams (strength + cardio,
-  // each already sorted ascending by their own engine) before taking the
-  // 10 most recent overall — a strength-only history produces the exact
-  // same output as before since cardioRecordEvents is simply empty.
   const recentRecords = useMemo(() => {
     const cardioEvents = cardioRecordEvents.map((ev) => ({ ...ev, isCardio: true }));
     const merged = [...recordEvents, ...cardioEvents].sort(
@@ -751,9 +580,6 @@ function Analytics() {
   const recordTimeline = useMemo(() => buildRecordTimeline(workouts), [workouts]);
   const mostRecentPr = recordEvents.length ? recordEvents[recordEvents.length - 1] : null;
 
-  // The PR immediately before the current one for that same exercise —
-  // prHistory's events are already strictly increasing per exercise, so
-  // the prior occurrence of the same name IS the previous record.
   const latestPrPrevious = useMemo(() => {
     if (!mostRecentPr) return null;
     for (let i = recordEvents.length - 2; i >= 0; i--) {
@@ -766,16 +592,9 @@ function Analytics() {
     ? [...personalRecordsLatest].sort((a, b) => b.weight - a.weight)[0]
     : null;
 
-  // A small celebratory moment — the just-logged PR isn't merely a new
-  // record for its own exercise (every entry in recordEvents already is),
-  // it's the heaviest weight logged across every exercise, ever.
   const isLifetimePr =
     !!mostRecentPr && !!heaviestLiftEver && heaviestLiftEver.exercise === mostRecentPr.exercise;
 
-  // Intelligent Insights — feature the most useful 1-3 up top (a "biggest
-  // win", something worth "attention", and a consistency read), then the
-  // rest below at lower visual priority, instead of six equally-weighted
-  // cards competing for attention.
   const improvedInsight = insightsData.available
     ? insightsData.insights.find((i) => i.key === "mostImprovedMuscle")
     : null;
@@ -831,6 +650,9 @@ function Analytics() {
             </div>
             <h1>Progress Analytics</h1>
             <p>Log a few workouts and your complete training story will show up here.</p>
+            <button type="button" className="progression-empty-page__btn" onClick={() => navigate("/dashboard")}>
+              Go to Dashboard
+            </button>
           </div>
         </main>
       </div>
@@ -840,6 +662,13 @@ function Analytics() {
   return (
     <div className="progression-page analytics-page">
       <main className="progression-main">
+        {loadError && (
+          <LoadErrorBanner
+            message="Couldn't load your analytics. Check your connection and try again."
+            onRetry={() => setRetryTrigger((t) => t + 1)}
+          />
+        )}
+
         <section className="progression-hero analytics-hero--split">
           <div className="analytics-hero__top">
             <div>
@@ -907,8 +736,6 @@ function Analytics() {
           </div>
         </section>
 
-        {/* OVERALL PROGRESS — answers "am I getting stronger?", placed
-            directly under the hero with no gap between the two cards. */}
         <section className="analytics-hero__progress analytics-hero__progress--standalone">
           <p className="progression-panel__label">Overall Progress</p>
           <div className="analytics-progress-grid">
@@ -949,8 +776,6 @@ function Analytics() {
           </div>
         </section>
 
-        {/* TABS — the page used to be one continuous scroll long enough
-            for 3 pages; each tab now only renders its own section. */}
         <div className="analytics-tabs" role="tablist" aria-label="Analytics sections">
           {ANALYTICS_TABS.map((tab) => (
             <button
@@ -968,8 +793,6 @@ function Analytics() {
 
         {activeTab === "overview" && (
         <>
-        {/* KEY KPIS — three merged, dashboard-style cards instead of nine
-            single tiles */}
         <div className="analytics-hero__grid">
           <StatGroupCard
             title="Training"
@@ -1032,10 +855,6 @@ function Analytics() {
           ) : (
             <>
               <div className="analytics-featured-insights">
-                {/* Attention (a real warning, e.g. training imbalance) is
-                    the single most actionable insight when present, so it
-                    gets the full-width, larger treatment — Biggest Win and
-                    Consistency are good-to-know, not urgent. */}
                 {attentionInsight && (
                   <div className="analytics-featured-insight analytics-featured-insight--warning analytics-featured-insight--large">
                     <div className="analytics-featured-insight__icon">
@@ -1094,9 +913,8 @@ function Analytics() {
 
         {activeTab === "strength" && (
         <>
-        {/* TRAINING OVERVIEW — what happened, at a glance */}
         <section className="analytics-section">
-          <p className="analytics-section__label">Training Overview</p>
+          <p className="analytics-section__label">Strength Overview</p>
 
           <div className="analytics-panels-grid-2">
             <BarTrendChart
@@ -1137,9 +955,6 @@ function Analytics() {
           </div>
         </section>
 
-        {/* WHAT'S GETTING STRONGER — leaderboard, moved up from the old
-            Advanced Analytics drill-down since it's core strength content,
-            not a power-user extra. */}
         <section className="analytics-section">
           <div className="analytics-section__head">
             <p className="analytics-section__label">What's Getting Stronger</p>
@@ -1221,7 +1036,6 @@ function Analytics() {
 
         {activeTab === "muscles" && (
         <>
-        {/* MUSCLE BALANCE — "am I balanced?", answered immediately */}
         <section className="analytics-section">
           <div className="analytics-section__head">
             <p className="analytics-section__label">Muscle Balance</p>
@@ -1342,9 +1156,6 @@ function Analytics() {
           )}
         </section>
 
-        {/* EXERCISE DISTRIBUTION + VOLUME PER MUSCLE — moved up from the
-            old Advanced Analytics drill-down since both are muscle-centric,
-            not power-user extras. */}
         <section className="analytics-section">
           <div className="analytics-section__head">
             <p className="prog-exdist__hint" style={{ margin: 0 }}>
@@ -1436,9 +1247,6 @@ function Analytics() {
           </section>
         ) : (
           <>
-          {/* CARDIO OVERVIEW — weekly/monthly totals, favorite activity,
-              goal completion rate. Same MetricCard tile every other tab
-              already uses. */}
           <section className="analytics-section">
             <p className="analytics-section__label">Cardio Overview</p>
             <div className="progression-stats-rail">
@@ -1473,8 +1281,6 @@ function Analytics() {
             </div>
           </section>
 
-          {/* ACTIVITY TREND — per-activity distance/duration/pace, same
-              CardioSessionChart the Progression cardio mode reuses. */}
           <section className="analytics-section">
             <div className="analytics-section__head analytics-section__head--wrap">
               <p className="analytics-section__label">Activity Trend</p>
@@ -1527,8 +1333,6 @@ function Analytics() {
             </div>
           </section>
 
-          {/* ACTIVITY DISTRIBUTION — reuses DistributionRow, same ranked-
-              bar shape every other distribution list on this page uses. */}
           <section className="analytics-section">
             <p className="analytics-section__label">Activity Distribution</p>
             <div className="progression-panel">
@@ -1546,11 +1350,6 @@ function Analytics() {
             </div>
           </section>
 
-          {/* Phase 12 — optional variant drill-down (e.g. Running ->
-              Outdoor 12km, Treadmill 8km). Only renders when the
-              selected activity actually has logged variants — an
-              activity with no variant data (or no variants defined at
-              all, like Elliptical) simply omits this section. */}
           {cardioVariantDistribution.length > 0 && (
             <section className="analytics-section">
               <p className="analytics-section__label">{selectedCardioActivity} by Variant</p>
@@ -1576,11 +1375,7 @@ function Analytics() {
 
         {activeTab === "intelligence" && (
         <>
-        {/* Phase 14B, section 4 — Training Intelligence tab. Every
-            section below reuses a Phase 14A engine directly; nothing here
-            is recomputed. */}
 
-        {/* RECOVERY — Module 1 */}
         <section className="analytics-section">
           <p className="analytics-section__label">Recovery</p>
           <div className="progression-panel">
@@ -1613,7 +1408,6 @@ function Analytics() {
           </div>
         </section>
 
-        {/* FATIGUE — Module 5 */}
         <section className="analytics-section">
           <p className="analytics-section__label">Fatigue</p>
           <div className="progression-panel">
@@ -1640,9 +1434,6 @@ function Analytics() {
           </div>
         </section>
 
-        {/* PLATEAUS — Module 3, reuses the plateauedMuscles memo the
-            Strength tab already computed above rather than calling
-            getMusclePlateaus a second time. */}
         <section className="analytics-section">
           <p className="analytics-section__label">Plateaus</p>
           <div className="progression-panel">
@@ -1676,12 +1467,6 @@ function Analytics() {
           </div>
         </section>
 
-        {/* BALANCE — Module 7 + Phase 14B section 11 (Push:Pull,
-            Upper:Lower, Strength:Cardio). Compound:Isolation is
-            deliberately omitted — no exercise in this app's data model
-            carries a compound/isolation classification (see
-            balanceEngine.js's own comment); inventing a name-matching
-            heuristic would be fabricated intelligence. */}
         <section className="analytics-section">
           <p className="analytics-section__label">Training Balance</p>
           <div className="progression-panel">
@@ -1774,9 +1559,8 @@ function Analytics() {
           </div>
         </section>
 
-        {/* WEEKLY GRADE — Module 10 */}
         <section className="analytics-section">
-          <p className="analytics-section__label">Weekly Grade</p>
+          <p className="analytics-section__label">Weekly Summary</p>
           <div className="progression-panel">
             {weeklyGrade.grade == null ? (
               <PanelEmptyState icon={Trophy} message="Log more workouts this week to unlock a weekly grade." />
@@ -1812,15 +1596,14 @@ function Analytics() {
           </div>
         </section>
 
-        {/* VOLUME LANDMARKS — Module 8 */}
         <section className="analytics-section">
           <div className="analytics-section__head">
-            <p className="analytics-section__label">Volume Landmarks</p>
+            <p className="analytics-section__label">Volume Guidelines</p>
             <select
               className="progression-filterbar__select"
               value={advancedRange}
               onChange={(e) => setAdvancedRange(e.target.value)}
-              aria-label="Select time range for Volume Landmarks"
+              aria-label="Select time range for Volume Guidelines"
             >
               {TIME_RANGE_OPTIONS.map((opt) => (
                 <option key={opt.key} value={opt.key}>
@@ -1843,7 +1626,7 @@ function Analytics() {
                       <p className="analytics-pr-group__label" style={{ marginBottom: 0 }}>
                         {l.muscle}
                       </p>
-                      <ConfidenceBadge level={l.confidence} reason={l.confidenceReason} label="Volume landmark" />
+                      <ConfidenceBadge level={l.confidence} reason={l.confidenceReason} label="Volume guideline" />
                     </div>
                     <div className="progression-stats-rail">
                       <MetricCard label="Maintenance" value={`${l.maintenance} kg`} icon={Gauge} />
@@ -1858,15 +1641,14 @@ function Analytics() {
           </div>
         </section>
 
-        {/* EXERCISE INTELLIGENCE — Module 9 */}
         <section className="analytics-section">
           <div className="analytics-section__head">
-            <p className="analytics-section__label">Exercise Intelligence</p>
+            <p className="analytics-section__label">Exercise Breakdown</p>
             <select
               className="progression-filterbar__select"
               value={intelligenceExercise}
               onChange={(e) => setIntelligenceExercise(e.target.value)}
-              aria-label="Select exercise for Exercise Intelligence"
+              aria-label="Select exercise for Exercise Breakdown"
             >
               {advancedExerciseDistribution.map((e) => (
                 <option key={e.exercise} value={e.exercise}>
@@ -1913,9 +1695,8 @@ function Analytics() {
           </div>
         </section>
 
-        {/* MUSCLE PRIORITY — Module 11 */}
         <section className="analytics-section">
-          <p className="analytics-section__label">Muscle Priority</p>
+          <p className="analytics-section__label">Muscle Focus</p>
           <div className="progression-panel">
             {!musclePriorities.available ? (
               <PanelEmptyState message={musclePriorities.reason} />
@@ -1954,7 +1735,6 @@ function Analytics() {
 
         {activeTab === "records" && (
         <>
-        {/* PERSONAL RECORDS — "what did I just achieve?" first */}
         <section className="analytics-section">
           <p className="analytics-section__label">Personal Records</p>
 
@@ -2053,12 +1833,8 @@ function Analytics() {
 
         {activeTab === "advanced" && (
         <>
-        {/* ADVANCED ANALYTICS — power-user drill-down; the leaderboard,
-            milestone and plateau panels now live in the Strength tab, and
-            Exercise Distribution / Volume per Muscle live in Muscles, so
-            this tab is just the detailed per-exercise volume ranking. */}
         <section className="analytics-section">
-          <p className="analytics-section__label">Advanced Analytics</p>
+          <p className="analytics-section__label">Exercise Volume Ranking</p>
           <div className="analytics-section__head">
             <p className="prog-exdist__hint" style={{ margin: 0 }}>
               Time range for this section
@@ -2067,7 +1843,7 @@ function Analytics() {
               className="progression-filterbar__select"
               value={advancedRange}
               onChange={(e) => setAdvancedRange(e.target.value)}
-              aria-label="Select time range for Advanced Analytics"
+              aria-label="Select time range for Exercise Volume Ranking"
             >
               {TIME_RANGE_OPTIONS.map((opt) => (
                 <option key={opt.key} value={opt.key}>

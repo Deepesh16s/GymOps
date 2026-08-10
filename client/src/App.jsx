@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -6,47 +7,56 @@ import RequireAuth from "./components/RequireAuth";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Login from "./pages/login";
 import Register from "./pages/register";
-import Dashboard from "./pages/dashboard";
-import Profile from "./pages/Profile";
-import WorkoutHistory from "./pages/WorkoutHistory";
-import Progression from "./pages/Progression";
-import Analytics from "./pages/Analytics";
-import CalendarPage from "./pages/Calendar";
-import Goals from "./pages/goals";
-import Guide from "./pages/Guide";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+
+const Dashboard = lazy(() => import("./pages/dashboard"));
+const Profile = lazy(() => import("./pages/Profile"));
+const WorkoutHistory = lazy(() => import("./pages/WorkoutHistory"));
+const Progression = lazy(() => import("./pages/Progression"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const CalendarPage = lazy(() => import("./pages/Calendar"));
+const Goals = lazy(() => import("./pages/Goals"));
+const Guide = lazy(() => import("./pages/Guide"));
+
+function RouteLoading() {
+  return (
+    <div className="route-loading" role="status" aria-label="Loading page">
+      <div className="route-loading__spinner" />
+    </div>
+  );
+}
 
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Auth pages — intentionally outside the app shell, no navbar */}
-            <Route path="/" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Suspense fallback={<RouteLoading />}>
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-            {/* Every authenticated page shares this one layout */}
-            <Route
-              element={
-                <RequireAuth>
-                  <Layout />
-                </RequireAuth>
-              }
-            >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/workouts" element={<WorkoutHistory />} />
-              <Route path="/progression" element={<Progression />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/goals" element={<Goals />} />
-              <Route path="/guide" element={<Guide />} />
-            </Route>
-          </Routes>
+              <Route
+                element={
+                  <RequireAuth>
+                    <Layout />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/workouts" element={<WorkoutHistory />} />
+                <Route path="/progression" element={<Progression />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/goals" element={<Goals />} />
+                <Route path="/guide" element={<Guide />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </ThemeProvider>
     </ErrorBoundary>

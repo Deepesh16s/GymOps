@@ -15,10 +15,6 @@ const {
 } = require("../utils/plannedWorkoutNotifications");
 const { createNotificationIfNew } = require("../utils/notificationService");
 
-// Shared by createPlannedWorkout/updatePlannedWorkout — every exercise
-// referenced must actually belong to the requesting user, same
-// ownership check workoutController.js's createWorkoutSession already
-// runs for real logged exercises.
 const assertExercisesOwned = async (userId, exercises) => {
   if (!exercises || !exercises.length) return;
   const ids = [...new Set(exercises.map((e) => String(e.exercise)))];
@@ -71,10 +67,6 @@ exports.createPlannedWorkout = async (req, res) => {
   }
 };
 
-// GET /api/planned-workouts — mirrors dashboard/calendar-workouts'
-// fetch-everything-for-this-user shape (the client already buckets by
-// day locally for the real Calendar; the planner reuses that same
-// pattern rather than a paginated/date-ranged endpoint).
 exports.getPlannedWorkouts = async (req, res) => {
   try {
     await flipOverdueToMissed(req.user._id);
@@ -90,7 +82,6 @@ exports.getPlannedWorkouts = async (req, res) => {
   }
 };
 
-// PUT /api/planned-workouts/:id?editScope=only|future|series
 exports.updatePlannedWorkout = async (req, res) => {
   try {
     const instance = await findOwnedOr404(req.user._id, req.params.id, res);
@@ -113,10 +104,6 @@ exports.updatePlannedWorkout = async (req, res) => {
   }
 };
 
-// PUT /api/planned-workouts/:id/reschedule — moves a single instance to
-// a new date/time and, if it had drifted into "Missed", brings it back
-// to "Planned". Deliberately "only"-scoped always: rescheduling one
-// occurrence of a recurring series should never drag its siblings along.
 exports.reschedulePlannedWorkout = async (req, res) => {
   try {
     const instance = await findOwnedOr404(req.user._id, req.params.id, res);
@@ -148,10 +135,6 @@ exports.reschedulePlannedWorkout = async (req, res) => {
   }
 };
 
-// PUT /api/planned-workouts/:id/complete — manual completion (section 9:
-// a missed plan the user says they actually did, with no real logged
-// session to link). Distinct from the automatic completion path in
-// workoutConversion.js, which links a real completedSessionId.
 exports.markPlannedWorkoutComplete = async (req, res) => {
   try {
     const instance = await findOwnedOr404(req.user._id, req.params.id, res);
@@ -166,10 +149,6 @@ exports.markPlannedWorkoutComplete = async (req, res) => {
   }
 };
 
-// POST /api/planned-workouts/:id/duplicate — always a standalone plan
-// (recurrenceGroupId null), even if the source was part of a series:
-// duplicating is an explicit one-off action, not "add another to this
-// series" (that's what editing the series' recurrence rule is for).
 exports.duplicatePlannedWorkout = async (req, res) => {
   try {
     const source = await findOwnedOr404(req.user._id, req.params.id, res);
@@ -203,7 +182,6 @@ exports.duplicatePlannedWorkout = async (req, res) => {
   }
 };
 
-// PUT /api/planned-workouts/:id/cancel?editScope=only|future|series
 exports.cancelPlannedWorkout = async (req, res) => {
   try {
     const instance = await findOwnedOr404(req.user._id, req.params.id, res);
@@ -228,11 +206,6 @@ exports.cancelPlannedWorkout = async (req, res) => {
   }
 };
 
-// DELETE /api/planned-workouts/:id?editScope=only|future|series — a real
-// delete (distinct from cancel's soft status change), explicitly
-// user-triggered (section 9: "do not silently delete missed plans" is
-// about the SYSTEM never auto-deleting, not about disallowing a user's
-// own explicit delete action).
 exports.deletePlannedWorkout = async (req, res) => {
   try {
     const instance = await findOwnedOr404(req.user._id, req.params.id, res);

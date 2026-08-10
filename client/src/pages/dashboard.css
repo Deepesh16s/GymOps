@@ -15,13 +15,6 @@
   color: var(--go-text);
   position: relative;
   overflow-x: hidden;
-  /* Shared "premium" ease-out used across every card's hover lift, so
-     hero, primary/secondary cards, charts, and activity cards all move
-     with the same feel instead of each having its own timing curve.
-     Phase 15A — now an alias for design-tokens.css's --go-ease-decel
-     (the exact same cubic-bezier value, confirmed also independently
-     hand-typed as progression.css's --prog-ease) rather than a second,
-     locally-duplicated literal. */
   --dash-ease: var(--go-ease-decel);
 }
 
@@ -72,9 +65,6 @@
   padding: 40px 48px;
   display: flex;
   justify-content: space-between;
-  /* flex-start (not center) — Today's Brief (Phase 12.5) can add a fair
-     amount of vertical content under the greeting now, so the button on
-     the right should anchor to the top rather than float mid-column. */
   align-items: flex-start;
   gap: 32px;
   box-shadow:
@@ -103,9 +93,6 @@
   animation: pulse-dot 2.4s ease-in-out infinite;
 }
 
-/* Visual-delight pass — small date context next to "Live dashboard",
-   same eyebrow row, deliberately muted (--go-text-faint) so it reads as
-   supplementary context rather than competing with the live indicator. */
 .hero-card__eyebrow-sep {
   color: var(--go-text-faint);
 }
@@ -144,14 +131,6 @@
   flex-shrink: 0;
 }
 
-/* Phase 12.5 — Today's Brief. This IS the hero's content now (replacing
-   the old pill row entirely): a plain checklist directly under the
-   greeting, one line per rule-engine output (workout recommendation,
-   goal/steps proximity, streak protection — see
-   utils/dashboardInsights.js's getTodaysBrief). Kept as a quiet text
-   list rather than another row of boxed cards, so "Good Evening" and
-   the brief read as one cohesive block instead of two competing
-   surfaces stacked on top of each other. */
 .hero-brief-label {
   margin-top: 16px;
   font-size: 11px;
@@ -196,7 +175,6 @@
   font-weight: 700;
 }
 
-/* Phase 13D, Part A.4 — Reminder Explanation, collapsed by default. */
 .hero-brief-item__why-btn {
   all: unset;
   font-size: 12px;
@@ -220,9 +198,6 @@
   line-height: 1.5;
 }
 
-/* User feedback ⭐2 — "Coach Priority" leading banner. Severity tone
-   mirrors the reminder-priority vocabulary this app already uses
-   (critical/high/medium/low), not a new color language. */
 .coach-priority-banner {
   all: unset;
   display: flex;
@@ -237,9 +212,6 @@
   cursor: default;
 }
 
-/* Only the clickable variant (a real, different navigation target)
-   invites a click — the plain <div> fallback (see dashboard.jsx's
-   CoachPriorityBanner) stays visually identical minus the affordance. */
 .coach-priority-banner--clickable {
   cursor: pointer;
 }
@@ -302,9 +274,6 @@
   color: var(--go-text-muted);
 }
 
-/* Phase 14B, section 9 — "Today's Focus" section-level Why? disclosure.
-   Same collapsed-by-default pattern as .hero-brief-item__why-btn above,
-   just placed under the stat tile grid instead of inline with one item. */
 .coach-why {
   margin-top: 10px;
 }
@@ -323,10 +292,6 @@
   outline: none;
 }
 
-/* User feedback — one coherent coaching explanation (a single heading +
-   a short checklist) instead of four separate analytics cards. Same
-   surface/border language every other Dashboard card already uses — no
-   new visual system, just a different internal layout. */
 .coach-explanation {
   margin-top: 8px;
   padding: 12px 14px;
@@ -493,11 +458,6 @@
   color: #c2410c;
 }
 
-/* Phase 13B — the plannedWorkout brief item is the one clickable entry
-   in this list (every other item is informational), so it gets a
-   pointer cursor, a hover affordance, and a small "Start" chip that
-   makes the click target obvious without turning the whole list into a
-   button grid. */
 .hero-brief-item--actionable {
   cursor: pointer;
   border-radius: 10px;
@@ -534,11 +494,6 @@
   }
 }
 
-/* Phase 15A — .cta-btn's base/hover/active/disabled/focus-visible styles
-   now live in client/src/styles/buttons.css (loaded globally via
-   index.css), consolidated from what used to be independent, drifted
-   definitions here and in goals.css. Only this page's own mobile
-   breakpoint override remains local (see the 480px media query below). */
 
 .primary-grid {
   display: grid;
@@ -615,10 +570,6 @@
   transition: transform 0.28s var(--dash-ease);
 }
 
-/* Tiny polish: the stat icon tilts a few degrees on hover instead of
-   staying perfectly static — same rotate treatment applied to every
-   other icon-bearing card below (.secondary-card, .insight-card,
-   .today-steps-card, .goals-widget doesn't have one). */
 .primary-card:hover .primary-card__icon {
   transform: rotate(-6deg) scale(1.05);
 }
@@ -657,23 +608,8 @@
   color: var(--go-primary);
 }
 
-/* Element+class selector (not just `.charts-row`) is deliberate: this
-   page is a single-page app where every route's CSS file loads
-   globally regardless of the active route (App.jsx statically imports
-   every page). goals.css independently defines its own `.section`
-   rule (also `display: flex`) — with equal class-only specificity, a
-   plain `.charts-row` rule can lose that cascade tie depending on
-   which page's CSS module Vite happens to load first, silently
-   collapsing this grid back to flex. The extra element-type selector
-   raises specificity just enough to always win, regardless of load
-   order. */
 section.charts-row {
   display: grid;
-  /* Stacked, full-width — the Muscle Split card now carries enough
-     content (mode toggle, front/back bodies, side list, summary panel,
-     legend) to deserve the full dash-main width rather than being
-     squeezed into half a row next to the bar chart. Muscle Split first,
-     Weekly Volume below it. */
   grid-template-columns: 1fr;
   gap: 20px;
   align-items: start;
@@ -785,12 +721,47 @@ section.charts-row {
 
 .secondary-grid {
   display: grid;
-  /* Auto-fit instead of a fixed 5-column count + a breakpoint ladder to
-     override it: cards reflow fluidly at any width down to ~180px each,
-     so the grid adapts continuously instead of jumping between a few
-     hand-picked column counts. */
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
+}
+
+.more-stats-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.more-stats-toggle__chevron {
+  color: var(--go-text-faint);
+  transition: transform 0.15s ease;
+}
+
+.more-stats-toggle__chevron--open {
+  transform: rotate(180deg);
+}
+
+.more-stats-panel {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.more-stats-panel__cardio {
+  padding-top: 14px;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-stats-toggle__chevron {
+    transition: none;
+  }
 }
 
 .secondary-card {
@@ -856,8 +827,6 @@ section.charts-row {
   color: var(--go-text-faint);
 }
 
-/* User feedback ⭐1 — standardized confidence badges/⭐5 — score
-   explainability, both slotted into SecondaryCard's new `children`. */
 .secondary-card > .confidence-badge {
   margin-top: 8px;
 }
@@ -866,12 +835,6 @@ section.charts-row {
   margin-top: 4px;
 }
 
-/* Today's Steps (Priority 3) — "one of the most interactive cards":
-   a wide, prominent card (not squeezed into the generic secondary-card
-   grid) with a big circular icon badge, a large tap-to-edit number, and
-   a thicker animated bar. Users check this many times a day, so it gets
-   its own visual treatment rather than reusing .secondary-card's
-   compact/uniform sizing. */
 .today-steps-section__grid {
   grid-template-columns: minmax(280px, 420px);
 }
@@ -971,8 +934,6 @@ section.charts-row {
   transition: width 0.5s var(--dash-ease);
 }
 
-/* Alive, not static — a gentle pulse once the day's count is close
-   (90%+) but not yet at the goal, so hitting it feels like an event. */
 .today-steps-card__bar--pulse .today-steps-card__bar-fill {
   animation: steps-bar-pulse 1.6s ease-in-out infinite;
 }
@@ -1039,10 +1000,6 @@ section.charts-row {
   color: white;
 }
 
-/* Priority 4 — Insights. Each card is one entry from
-   utils/dashboardInsights.js, colored by `tone` (success/streak/warning/
-   goal) so the row reads at a glance without requiring the copy to be
-   parsed first. */
 .insights-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1120,9 +1077,6 @@ section.charts-row {
   color: var(--go-text-muted);
 }
 
-/* Priority 8 — Goals widget: up to 3 nearest-to-complete active goals,
-   each a title/percent row + a mini bar, so progress is visible without
-   opening /goals at all. */
 .goals-widget-head {
   display: flex;
   align-items: center;
@@ -1563,9 +1517,6 @@ section.charts-row {
     justify-content: center;
   }
 
-  /* Narrowest phones — drop the date context rather than let the
-     eyebrow row wrap awkwardly or overflow; "Live dashboard" + the
-     pulse dot still communicate the same "this is live" idea alone. */
   .hero-card__eyebrow-sep,
   .hero-card__date {
     display: none;
@@ -1655,13 +1606,6 @@ section.charts-row {
   background: color-mix(in srgb, var(--go-success) 14%, transparent);
 }
 
-/* ============================================================ */
-/* Start Workout Modal                                          */
-/*                                                                */
-/* Overlay + centered card, matching the finish-confirm pattern  */
-/* used by WorkoutSession (session-card finish confirmation) —   */
-/* fixed overlay, blurred backdrop, small elevated card.         */
-/* ============================================================ */
 
 .start-workout-modal-overlay {
   position: fixed;
@@ -1823,9 +1767,6 @@ section.charts-row {
   cursor: not-allowed;
   box-shadow: none;
 }
-/* ============================================================ */
-/* Phase 9 — Overview card sub-label                             */
-/* ============================================================ */
 
 .primary-card__sub {
   display: block;
@@ -1835,9 +1776,6 @@ section.charts-row {
   color: var(--go-text-faint);
 }
 
-/* ============================================================ */
-/* Phase 9 — Last Session Card                                   */
-/* ============================================================ */
 
 .last-session-card {
   background: color-mix(in srgb, var(--go-surface) 82%, transparent);
@@ -1914,10 +1852,6 @@ section.charts-row {
   opacity: 0.55;
 }
 
-/* Workout Session Editing & Time Tracking — deliberately quiet (small,
-   faint, no icon/background) so it reads as a footnote under the
-   duration, not a permanent call-to-action competing with the actual
-   session stats below it. */
 .last-session-card__timing-note {
   font-size: 11.5px;
   color: var(--go-text-faint);
@@ -1944,10 +1878,6 @@ section.charts-row {
   color: var(--go-primary-light);
 }
 
-/* Full per-exercise/per-set breakdown (replaces the old name-only chip
-   list) — same visual language as WorkoutHistory's expanded session
-   rows (name + set/metric breakdown + meta line), reused here for
-   consistency rather than inventing a new pattern. */
 .last-session-card__detail-list {
   display: flex;
   flex-direction: column;
@@ -2070,9 +2000,6 @@ section.charts-row {
   transform: rotate(180deg);
 }
 
-/* ============================================================ */
-/* Phase 9 — Recent Session Row                                  */
-/* ============================================================ */
 
 .recent-session-row {
   border-radius: 14px;

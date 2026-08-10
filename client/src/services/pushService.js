@@ -1,10 +1,5 @@
 import api from "./api";
 
-// Phase 13D, Part B — thin wrapper around /api/push, same pattern as
-// every other service file in this app (notificationService.js,
-// goalService.js, ...).
-export const getPushSubscriptions = () => api.get("/push/subscriptions");
-
 export const registerPushSubscription = (subscription) =>
   api.post("/push/subscriptions", { subscription });
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { CheckCircle2, AlertTriangle, TrendingUp } from "lucide-react";
 
 const EXERCISE_IMAGES = {

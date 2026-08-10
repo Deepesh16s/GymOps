@@ -2,11 +2,6 @@ import { TrendBadge } from "./TrendChart";
 import ProgressBarChart from "./ProgressBarChart";
 import "./progression-charts.css";
 
-// Bar-chart sibling of TrendChart — same title/subtitle/trend-badge
-// shell, wrapping ProgressBarChart instead of the area-based
-// ProgressChart. Analytics' Training Overview uses this so its per-period
-// summaries read as bars, staying visually distinct from Progression's
-// own continuous trend-line explorer for the same underlying series.
 function BarTrendChart({
   title,
   subtitle,

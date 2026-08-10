@@ -3,10 +3,6 @@ import api from "../services/api";
 
 const STORAGE_KEY = "gymops_active_workout_session";
 const SUCCESS_MESSAGE_DURATION = 4500;
-// Workout Session Editing & Time Tracking discovery moment #1: for the
-// first few workouts saved after this feature shipped, the success
-// message also mentions where to fix the timing if it's wrong — after
-// that it stops appearing, so it doesn't become permanent banner clutter.
 const TIMING_TIP_SHOWN_COUNT_KEY = "gymops_timing_tip_shown_count";
 const TIMING_TIP_MAX_SHOWS = 3;
 
@@ -22,10 +18,6 @@ const getDefaultSession = () => ({
   sessionType: null,
   customSessionType: null,
   sessionNote: null,
-  // Phase 13B — set only when this session was started via "Start
-  // Planned Workout" rather than "New Workout"; threaded through to
-  // POST /workouts/session so the server can link the plan to the real
-  // session it produced (see workoutController.js).
   plannedWorkoutId: null,
 });
 
@@ -36,11 +28,6 @@ const loadSession = () => {
 
     const parsed = JSON.parse(raw);
 
-    // Backward-compatible migration (Phase 8A): sessions saved before the
-    // exercises -> entries rename stored the array under `exercises`.
-    // If `entries` is already present, use it as-is. Otherwise, if the
-    // legacy `exercises` key exists, migrate it into `entries`. No other
-    // migration logic is applied.
     let entries;
     if (Array.isArray(parsed.entries)) {
       entries = parsed.entries;
@@ -73,9 +60,6 @@ const saveSession = (session) => {
   }
 };
 
-// Mirrors the minutes-label formatting used in WorkoutSession's finish
-// confirmation, kept local to the hook since it's the only other place
-// that needs a duration string (the post-save success message).
 const formatMinutesLabel = (ms) => {
   const minutes = Math.floor(Math.max(0, ms) / 60000);
   return minutes < 1 ? "<1 min" : `${minutes} min`;
@@ -89,12 +73,6 @@ function useWorkoutSession() {
   const isSavingRef = useRef(false);
   const successTimeoutRef = useRef(null);
 
-  // Transient, never persisted: true only for a session started in THIS
-  // tab (startSession sets it), false when a session was instead
-  // hydrated from localStorage on mount — i.e. it survived a refresh or
-  // the browser being closed. Dashboard uses this to decide whether to
-  // silently show the live session card (justStarted) or ask "Resume
-  // Workout?" first (an active session that wasn't just started here).
   const [justStarted, setJustStarted] = useState(false);
 
   useEffect(() => {
@@ -115,10 +93,6 @@ function useWorkoutSession() {
     setSaveSuccess("");
   }, []);
 
-  // sessionType/customSessionType are collected up front (via the Start
-  // Workout modal) and passed in here, rather than being editable mid
-  // session — they're session metadata decided at the moment the
-  // session starts, same as startTime.
   const startSession = useCallback((sessionType, customSessionType) => {
     setSession({
       active: true,
@@ -134,13 +108,6 @@ function useWorkoutSession() {
     clearSaveSuccess();
   }, [clearSaveSuccess]);
 
-  // Phase 13B — "Start Planned Workout": auto-populates type, notes, and
-  // (when the plan itemized any) exercises with no sets yet — the same
-  // "pending first set" shape ExerciseSessionCard already renders for
-  // any freshly-added exercise, so a plan's exercises show up ready to
-  // log real weight/reps, not with invented placeholder numbers.
-  // plannedWorkoutId rides along in session state so finishWorkout can
-  // tell the server which plan this session completes.
   const startSessionFromPlan = useCallback(
     (plannedWorkout) => {
       const entries =
@@ -184,9 +151,6 @@ function useWorkoutSession() {
     [clearSaveSuccess]
   );
 
-  // Called when the user explicitly chooses "Resume" on the Resume
-  // Workout prompt — just clears the prompt condition, no session data
-  // changes.
   const confirmResume = useCallback(() => {
     setJustStarted(true);
   }, []);
@@ -228,9 +192,6 @@ function useWorkoutSession() {
     }));
   }, []);
 
-  // Adds a cardio entry to the active session. `cardio` is the
-  // {activityType, data} shape returned by AddCardioModal, already
-  // shaped to match what the backend expects for a cardio entry.
   const addCardioEntry = useCallback(({ cardio }) => {
     const entry = {
       id: generateId(),
@@ -325,8 +286,6 @@ function useWorkoutSession() {
     });
   }, []);
 
-  // Swaps an entry with its immediate neighbor in the exercise list.
-  // direction: "up" | "down". A no-op at either end of the list.
   const reorderEntry = useCallback((id, direction) => {
     setSession((prev) => {
       const index = prev.entries.findIndex((entry) => entry.id === id);
@@ -345,9 +304,6 @@ function useWorkoutSession() {
     });
   }, []);
 
-  // Inserts a copy of an entry (same exercise/cardio activity, no sets
-  // yet) directly after the original — for logging the same exercise
-  // again later in the workout (e.g. supersets, a repeated circuit).
   const duplicateEntry = useCallback((id) => {
     setSession((prev) => {
       const index = prev.entries.findIndex((entry) => entry.id === id);
@@ -371,10 +327,6 @@ function useWorkoutSession() {
     });
   }, []);
 
-  // Swaps out the exercise a strength entry is logging against — e.g. the
-  // wrong one was picked from the exercise list. Sets logged so far are
-  // cleared rather than carried over, since they were performed against
-  // the old exercise and would misattribute volume/PRs to the new one.
   const replaceEntryExercise = useCallback((id, exercise) => {
     setSession((prev) => ({
       ...prev,
@@ -422,13 +374,8 @@ function useWorkoutSession() {
       0
     );
 
-    // One sessionId per Finish Workout action, shared by every workout
-    // document this session produces. Never generated for a discarded
-    // session — discardSession never calls this function.
     const sessionId = generateId();
 
-    // Captured once so the elapsed-time math and the startedAt/endedAt
-    // sent to the backend agree exactly with each other.
     const finishTime = Date.now();
     const elapsedMs = session.startTime ? finishTime - session.startTime : 0;
     const sessionDurationMinutes = Math.max(0, Math.round(elapsedMs / 60000));
@@ -437,22 +384,11 @@ function useWorkoutSession() {
       : null;
 
     try {
-      // API-boundary translation (Phase 8A): the backend contract for
-      // POST /workouts/session is UNCHANGED — it still expects the
-      // payload key `exercises`. Only the in-memory/localStorage
-      // session state is called `entries` now. Each entry is mapped
-      // back into the exact shape the existing endpoint expects,
-      // branching on entryType so cardio entries send
-      // {entryType, cardio} instead of {exercise, workoutSets}.
       const payload = {
         sessionId,
         sessionDuration: sessionDurationMinutes,
         sessionType: session.sessionType,
         customSessionType: session.customSessionType,
-        // Real timing captured by the live workout timer, so the session
-        // shows an accurate start/end time by default (Workout Session
-        // Editing & Time Tracking) — no manual edit required unless it's
-        // wrong (e.g. phone died mid-workout).
         startedAt: session.startTime
           ? new Date(session.startTime).toISOString()
           : null,
@@ -480,13 +416,6 @@ function useWorkoutSession() {
 
       const res = await api.post("/workouts/session", payload);
 
-      // Phase 13A — instant notification feedback: the session-save
-      // response already carries whatever PR/milestone/goal-completion
-      // notifications the server generated for this save, so the bell
-      // can show them immediately instead of waiting for its next poll.
-      // Same custom-event pattern ProfileDropdown already uses
-      // (gymops:user-updated) for cross-component updates without a
-      // shared store.
       if (res.data?.notifications?.length) {
         window.dispatchEvent(
           new CustomEvent("gymops:notifications-created", {
@@ -499,8 +428,6 @@ function useWorkoutSession() {
       setSession(getDefaultSession());
       setJustStarted(false);
 
-      // Message generalizes to describe whichever mix of strength/cardio
-      // entries was actually saved, rather than assuming strength-only.
       const messageParts = [];
       if (strengthEntries.length) {
         messageParts.push(

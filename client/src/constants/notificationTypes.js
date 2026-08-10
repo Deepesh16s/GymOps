@@ -1,7 +1,3 @@
-// Phase 13A — frontend half of a deliberately UNSHARED, mirrored pair;
-// see server/constants/notificationTypes.js for the backend
-// counterpart. Same separation cardioMetadata.js already established:
-// not imported across the frontend/backend boundary.
 import {
   Trophy,
   PartyPopper,
@@ -32,11 +28,6 @@ export const NOTIFICATION_CATEGORIES = {
   INSIGHTS: "insights",
 };
 
-// Panel filter bar (section 4). "Achievements" is the user-facing label
-// for the "progress" category — Goal Completed notifications are
-// grouped under it too (same placement the spec's own category examples
-// use), rather than a separate "Goals" filter, so a goal completion
-// doesn't have to pick between two competing filters.
 export const NOTIFICATION_FILTERS = [
   { key: "all", label: "All" },
   { key: "unread", label: "Unread" },
@@ -46,13 +37,6 @@ export const NOTIFICATION_FILTERS = [
   { key: NOTIFICATION_CATEGORIES.INSIGHTS, label: "Insights" },
 ];
 
-// A Notification document's `icon` field is a plain string (the backend
-// never imports a UI library) — this is the lookup that turns it into
-// an actual component, the exact pattern cardioMetadata.js's
-// CARDIO_ACTIVITY_ICONS already established. `Bell` is the fallback for
-// any icon name this build doesn't recognize (e.g. an older client
-// after a new notification type ships), so an unrecognized type never
-// renders visibly broken.
 const NOTIFICATION_ICON_MAP = {
   Trophy,
   PartyPopper,
@@ -77,15 +61,6 @@ const NOTIFICATION_ICON_MAP = {
 
 export const getNotificationIcon = (iconName) => NOTIFICATION_ICON_MAP[iconName] || Bell;
 
-// Left-accent / icon-badge tint, one step more specific than category —
-// every card in "progress" looked identically green before this, which
-// read as monotonous. Keyed by `type` (PR/streak/highest-volume/longest-
-// workout all read as one "achievement" feel; goal completion/threshold
-// gets its own cyan regardless of whether the goal happens to be a
-// Cardio Goal; recovery gets its own teal instead of blending into
-// achievements). Falls back to a category-level tone for any type this
-// build doesn't recognize yet (e.g. an older client after a new
-// notification type ships) — see getNotificationTone below.
 const TYPE_TONE = {
   personalRecord: "achievement",
   streakMilestone: "achievement",
@@ -97,13 +72,10 @@ const TYPE_TONE = {
   newLongestRun: "cardio",
   weeklyVolumeIncreased: "insight",
   muscleGroupNeglected: "insight",
-  // Phase 13B — planning actions all read as "reminder" tone (amber),
-  // distinct from achievements/goals/insights.
   workoutScheduled: "reminder",
   workoutRescheduled: "reminder",
   recurringScheduleCreated: "reminder",
   workoutCancelled: "reminder",
-  // Phase 13C — reminder engine types.
   workoutToday: "reminder",
   workoutStartingSoon: "reminder",
   workoutOverdue: "reminder",
@@ -120,20 +92,12 @@ const TYPE_TONE = {
   plannerOverlap: "reminder",
   plannerSeriesEndingSoon: "reminder",
   firstWorkoutAfterBreak: "achievement",
-  // Phase 14B, section 8 — intelligence-driven reminders. recoveryScoreIncreased
-  // gets its own "recovery" tone (matches recoveryComplete) rather than
-  // blending into the flat "insight" tone the other three share.
   plateauDetected: "insight",
   weeklyGradeImproved: "insight",
   recoveryScoreIncreased: "recovery",
   volumeLandmarkAchieved: "insight",
 };
 
-// Phase 13C, section 9 — mirrors server/constants/notificationTypes.js's
-// TYPE_PRIORITY exactly (see that file's header comment on why this pair
-// stays unshared-but-mirrored). muscleGroupNeglected is absent here too
-// — its priority is severity-dependent, stamped by the generator that
-// builds it (client/src/reminders/neglectReminders.js).
 export const TYPE_PRIORITY = {
   workoutOverdue: "critical",
   streakProtection: "critical",
@@ -168,16 +132,12 @@ export const TYPE_PRIORITY = {
   recurringScheduleCreated: "low",
   workoutCancelled: "low",
 
-  // Phase 14B, section 8.
   plateauDetected: "medium",
   weeklyGradeImproved: "low",
   recoveryScoreIncreased: "low",
   volumeLandmarkAchieved: "low",
 };
 
-// Numeric sort weight, highest first — NotificationCenter sorts by this,
-// then by recency within the same tier (section 9: "Notification Center
-// should sort automatically").
 const PRIORITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
 
 export function getNotificationPriority(notification) {
@@ -188,11 +148,6 @@ export function getPriorityRank(priority) {
   return PRIORITY_RANK[priority] ?? PRIORITY_RANK.medium;
 }
 
-// Phase 13C, section 13 — the 7 user-toggleable reminder categories
-// (distinct from NOTIFICATION_CATEGORIES above, which drive the panel's
-// filter tabs). Every reminder-engine-generated type maps to exactly
-// one of these; achievement/goal-completion types that already existed
-// pre-13C map here too so their toggle actually governs them.
 export const REMINDER_PREFERENCE_CATEGORIES = {
   WORKOUT: "workout",
   RECOVERY: "recovery",
@@ -244,9 +199,6 @@ const TYPE_PREFERENCE_CATEGORY = {
   streakMilestone: "streak",
   streakProtection: "streak",
   cardioStreakExpiring: "streak",
-  // Phase 14B, section 8 — same "negative/actionable insight -> recovery
-  // toggle, positive insight -> achievement toggle" split
-  // muscleGroupNeglected/weeklyVolumeIncreased already established.
   plateauDetected: "recovery",
   recoveryScoreIncreased: "recovery",
   weeklyGradeImproved: "achievement",

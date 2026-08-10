@@ -43,6 +43,12 @@ exports.registerUser = async (req, res) => {
       });
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({
+        message: "Please enter a valid email address",
+      });
+    }
+
     if (password.length < 6) {
       return res.status(400).json({
         message: "Password must be at least 6 characters",

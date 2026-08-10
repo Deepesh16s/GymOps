@@ -14,11 +14,6 @@ import { movingAverage } from "../../utils/strengthUtils";
 import { ChartSkeleton, ChartEmptyState } from "./ChartStates";
 import "./progression-charts.css";
 
-// Only a real (hasData) point ever gets a mark. Without this, a period
-// that's isolated between two gaps (trained one week, nothing logged the
-// weeks immediately before/after) has no line segment to belong to and
-// would render completely invisible with a plain dot=false — a real
-// data point silently vanishing is worse than an always-off dot.
 function ValueDot(props) {
   const { cx, cy, payload } = props;
   if (!payload?.hasData) return null;
@@ -33,10 +28,6 @@ function ChartTooltip({ active, payload, label, metricDef }) {
   const raw = payload.find((p) => p.dataKey === "value");
   const ma = payload.find((p) => p.dataKey === "valueMa");
 
-  // ECG-style read: a period with no logged workout at all is a
-  // different story than a trained period where this particular metric
-  // just has nothing to show (e.g. no new PR that week) — each gets its
-  // own plain-language line instead of a blank/zero value.
   if (!point?.hasData) {
     return (
       <div className="progress-chart__tooltip">
@@ -77,11 +68,6 @@ function ChartTooltip({ active, payload, label, metricDef }) {
   );
 }
 
-// Generic single-metric progression chart — the base every other
-// Progression chart (TrendChart, MuscleTrendChart, ExerciseTrendChart)
-// composes. Presentation only: it never computes trends or metrics
-// itself, only renders whatever `series`/`metricDef` it's handed by the
-// Progression Engine.
 function ProgressChart({
   series = [],
   metricKey,
@@ -151,10 +137,6 @@ function ProgressChart({
             content={<ChartTooltip metricDef={metricDef} />}
             cursor={{ stroke: "var(--go-text-faint)", strokeWidth: 1, strokeDasharray: "0" }}
           />
-          {/* Idle baseline, always present for the chart's full width —
-              paired with connectNulls={false} below, this is what makes a
-              gap read as "flatlined, nothing logged" (ECG monitor style)
-              rather than a broken line floating in empty space. */}
           <ReferenceLine y={0} stroke="var(--go-border-strong)" strokeWidth={1} />
           <Area
             type="linear"

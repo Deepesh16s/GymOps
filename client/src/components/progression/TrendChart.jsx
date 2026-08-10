@@ -2,9 +2,6 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import ProgressChart from "./ProgressChart";
 import "./progression-charts.css";
 
-// Exported (not just used internally) so MetricCard and other Progression
-// components can render the same up/down/plateau badge instead of each
-// redefining their own icon+color mapping.
 export function TrendBadge({ trend }) {
   if (!trend) return null;
   const Icon = trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
@@ -21,10 +18,6 @@ export function TrendBadge({ trend }) {
   );
 }
 
-// Adds title/subtitle chrome + a trend badge (up/down/plateau) around the
-// generic ProgressChart. This is the composite every section of the
-// Progression page actually renders — Overall, Muscle, and Exercise views
-// all use this same shell, just with different data/labels passed in.
 function TrendChart({
   title,
   subtitle,

@@ -25,12 +25,6 @@ function EventIcon({ event }) {
   return event.isCardio ? <Activity size={13} strokeWidth={2} /> : <Dumbbell size={13} strokeWidth={2} />;
 }
 
-// The chronological "story" of one session — Workout Started, each
-// exercise in the order it was performed (with its own set-by-set
-// journey and a PR callout where earned), Workout Finished. Replaces
-// Phase 10A's flat exercise list; the same per-exercise mini-tiles and
-// OverflowMenu delete from that phase are reused here unchanged, just
-// arranged along a timeline instead of a plain stack.
 function SessionTimeline({ session, milestones, deletingWorkoutId, onDeleteWorkout }) {
   const events = useMemo(() => buildSessionTimeline(session), [session]);
 

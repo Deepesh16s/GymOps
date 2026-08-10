@@ -1,4 +1,5 @@
 const Exercise = require("../models/Exercise");
+const Goal = require("../models/Goal");
 const { MUSCLES } = require("../constants/muscles");
 
 exports.createExercise = async (req, res) => {
@@ -11,9 +12,6 @@ exports.createExercise = async (req, res) => {
       });
     }
 
-    // Legacy "Legs" (and any other unrecognized value) is intentionally
-    // rejected here — it's only ever accepted on already-existing
-    // documents, never as a choice for newly created exercises.
     if (!MUSCLES.includes(muscleGroup)) {
       return res.status(400).json({
         message: "Invalid muscle group",
@@ -119,18 +117,9 @@ exports.updateExercise = async (req, res) => {
       });
     }
 
-    // Only name/muscleGroup are editable here — previously the entire
-    // req.body (including createdBy/isDefault) was passed straight into
-    // findByIdAndUpdate, which let a request reassign an exercise's
-    // ownership. Whitelisting closes that hole.
     const updates = {};
     if (req.body.name !== undefined) {
       updates.name = req.body.name.trim();
-      // findByIdAndUpdate is a query-level operation, so the model's
-      // pre("validate") hook (which derives normalizedName from name)
-      // never runs here — it only fires on .save()/.create(). Without
-      // this, normalizedName goes stale after a rename, causing false
-      // "Exercise already exists" collisions against the renamed doc.
       updates.normalizedName = req.body.name.trim().toLowerCase();
     }
     if (req.body.muscleGroup !== undefined) {
@@ -186,6 +175,13 @@ exports.deleteExercise = async (req, res) => {
     if (exercise.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: "You can delete only your own exercises",
+      });
+    }
+
+    const linkedGoal = await Goal.findOne({ exercise: exercise._id });
+    if (linkedGoal) {
+      return res.status(409).json({
+        message: `This exercise is used by the goal "${linkedGoal.title}". Remove or edit that goal first.`,
       });
     }
 

@@ -36,12 +36,6 @@ function BarTooltip({ active, payload, label, metricDef }) {
   );
 }
 
-// Bar-chart sibling of ProgressChart — same series/metricDef contract
-// (progressionEngine.buildProgressionSeries output), rendered as discrete
-// per-period bars instead of a continuous area. Used where "how much per
-// period" reads better as bars (Analytics' Training Overview) than as the
-// continuous trend line Progression's own Advanced Analytics already
-// renders for the same underlying series.
 function ProgressBarChart({
   series = [],
   metricKey,

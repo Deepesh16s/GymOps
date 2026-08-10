@@ -1,0 +1,12 @@
+.mcp.json
+
+# OS / editor junk (client/ and server/ each have their own .gitignore
+# for node_modules, dist, and .env — this one only covers the repo root)
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+.playwright-mcp/
+/*.png

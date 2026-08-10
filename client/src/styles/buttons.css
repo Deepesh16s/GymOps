@@ -1,18 +1,5 @@
 @import "./design-tokens.css";
 
-/* Phase 15A — canonical Primary CTA button. Previously defined
-   independently in both pages/dashboard.css and pages/goals.css with
-   real drift between them (different padding, and goals.css's hover
-   lacked dashboard.css's glow-ring shadow layer) — components/
-   WorkoutSession.css also assumed this class's base styles existed
-   from whichever page happened to host it, without ever defining them
-   itself. This is now the ONE place `.cta-btn` is defined; imported
-   here (via design-tokens.css, which every page/component CSS file
-   already imports first) so no per-file import list needed to change.
-   Page-specific mobile-breakpoint overrides (dashboard.css/goals.css
-   still each set `.cta-btn { width: 100%; }` at their own breakpoint)
-   are left in place — that's a legitimate per-page layout choice, not
-   duplicated visual identity. */
 .cta-btn {
   display: inline-flex;
   align-items: center;
@@ -34,7 +21,6 @@
 .cta-btn:hover {
   background: var(--go-primary-dark);
   transform: translateY(-3px);
-  /* Lift shadow plus a soft outer glow ring — subtle, not neon. */
   box-shadow:
     0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent),
     0 0 0 6px color-mix(in srgb, var(--go-primary) 16%, transparent);
