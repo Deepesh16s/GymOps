@@ -20,6 +20,10 @@ const pushRoutes = require("./routes/pushRoutes");
 
 const app = express();
 
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
+
 connectDB();
 
 app.use(helmet({ contentSecurityPolicy: false }));
