@@ -98,7 +98,7 @@ function PushSettings() {
 
       {permission === "denied" && (
         <p className="push-settings__hint">
-          Blocked in your browser's own settings. GymOps can't ask again — change it there if you'd
+          Blocked in your browser's own settings. LiftLore can't ask again — change it there if you'd
           like to re-enable push.
         </p>
       )}

@@ -70,7 +70,7 @@ function Register() {
       <div className="register-left">
         <img
           src={hero}
-          alt="GymOps"
+          alt="LiftLore"
         />
 
         <div className="hero-overlay"></div>
@@ -89,7 +89,7 @@ function Register() {
               </svg>
             </div>
 
-            <h1>GymOps</h1>
+            <h1>LiftLore</h1>
           </div>
 
           <p>
@@ -129,7 +129,7 @@ function Register() {
               </svg>
             </div>
 
-            <h3>GymOps</h3>
+            <h3>LiftLore</h3>
           </div>
 
           <h2>

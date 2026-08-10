@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY = "gymops_favorite_session_keys";
+const STORAGE_KEY = "liftlore_favorite_session_keys";
 
 const loadFavoriteKeys = () => {
   try {

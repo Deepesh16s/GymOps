@@ -2,7 +2,7 @@
 
 ## Overview
 
-GymOps is a conventional two-tier app: a React SPA talking to an Express/MongoDB REST API over JWT-authenticated JSON requests. There is no server-rendering, no GraphQL layer, and no external AI/LLM calls — every "intelligence" feature is a pure-function calculation over data the client already has loaded.
+LiftLore is a conventional two-tier app: a React SPA talking to an Express/MongoDB REST API over JWT-authenticated JSON requests. There is no server-rendering, no GraphQL layer, and no external AI/LLM calls — every "intelligence" feature is a pure-function calculation over data the client already has loaded.
 
 ```
 Browser (React SPA)  <-- JSON over HTTPS -->  Express API  <-->  MongoDB

@@ -1,4 +1,4 @@
-# GymOps
+# LiftLore
 
 A full-stack fitness tracking application: workout logging, live workout sessions, a workout planner, cardio tracking, goals, and a deterministic (non-AI) training intelligence layer that surfaces recovery, fatigue, plateau, and training-balance insights from a user's own logged data.
 
@@ -139,13 +139,20 @@ Serve `client/dist/` from any static host (see below); run `server/` as a long-l
 
 ## Deployment considerations
 
-There is no deployment configuration in this repository (no Dockerfile, no CI/CD pipeline, no platform-specific config like `vercel.json`/`Procfile`). To deploy:
+Target architecture: **Vercel** (client) + **Render** (API) + **MongoDB Atlas** (database). Config for this is checked into the repo:
 
-- **API** — any Node host (Render, Railway, Fly.io, a VPS, etc.). Set all required server env vars; ensure outbound network access to MongoDB Atlas and Gmail's SMTP if using password reset.
-- **Client** — any static host (Netlify, Vercel, Cloudflare Pages, S3+CDN, etc.) serving `client/dist/`, with `VITE_*` env vars set at build time (Vite inlines them into the build — they cannot be changed at runtime after building).
-- **CORS** — `CLIENT_URL` on the server must exactly match the client's deployed origin, or every API request will be rejected in production.
-- **Google OAuth** — the OAuth client's authorized JavaScript origins (in Google Cloud Console) must include the deployed client URL.
-- **MongoDB** — if using Atlas, the API host's outbound IP must be allow-listed (or use Atlas's "allow from anywhere" for simplicity, with a strong `MONGO_URI` password).
+- `client/vercel.json` — SPA rewrite rule (`/* -> /index.html`), required for React Router deep links/refresh to work on Vercel. Set the Vercel project's **Root Directory** to `client` when connecting the repo.
+- `render.yaml` — Render Blueprint for the API service (`rootDir: server`, `npm install` / `npm start`). Every secret is declared with `sync: false`, meaning Render will prompt for the value rather than storing it in the repo — nothing here has a real value baked in.
+
+Steps:
+
+- **API (Render)** — connect the repo, Render reads `render.yaml` and creates the `liftlore-api` web service. Fill in the prompted env vars (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `CLIENT_URL`, `EMAIL_USER`, `EMAIL_PASS`, and the `VAPID_*` vars if using push). `NODE_ENV=production` is already set by the blueprint.
+- **Client (Vercel)** — connect the repo with Root Directory `client`; Vercel auto-detects the Vite build. Set `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`, and (optionally) `VITE_VAPID_PUBLIC_KEY` as build-time env vars (Vite inlines them into the build — they cannot be changed at runtime after building).
+- **CORS** — once both are deployed, set `CLIENT_URL` on Render to the exact Vercel URL, or every API request will be rejected in production.
+- **Google OAuth** — add the deployed Vercel URL to the OAuth client's Authorized JavaScript origins in Google Cloud Console. This can only be done once the real Vercel URL exists, so it's expected to happen right after the first deploy, not before.
+- **MongoDB Atlas** — allow-list Render's outbound IP(s) (or use Atlas's "allow from anywhere" with a strong `MONGO_URI` password), and use the Atlas connection string, not a local `mongod` URI.
+
+Other hosts remain possible (any Node host for the API, any static host for the client) — the env vars and CORS/OAuth requirements above apply regardless; only the two files above are Vercel/Render-specific.
 
 ## Known limitations
 

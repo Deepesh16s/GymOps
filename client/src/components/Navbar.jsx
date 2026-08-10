@@ -68,7 +68,7 @@ function Navbar() {
             <path d="M4 14l3-4 3 3 3-5 3 6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <span>Gym<span className="navbar-logo-dot">Ops</span></span>
+        <span>Lift<span className="navbar-logo-dot">Lore</span></span>
       </Link>
 
       <div className="navbar-links">

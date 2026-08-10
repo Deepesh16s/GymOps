@@ -10,7 +10,7 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || "GymOps", {
+    self.registration.showNotification(payload.title || "LiftLore", {
       body: payload.body || "",
       icon: "/favicon.svg",
       badge: "/favicon.svg",

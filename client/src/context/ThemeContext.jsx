@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 
-const STORAGE_KEY = "gymops-theme";
+const STORAGE_KEY = "liftlore-theme";
 
 function getInitialTheme() {
   if (typeof window === "undefined") return "light";

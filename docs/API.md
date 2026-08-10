@@ -6,7 +6,7 @@ Auth: routes marked **JWT** require `Authorization: Bearer <token>`, obtained fr
 
 Unhandled/unexpected server errors return `500 { message: "Server Error" }` (or a resource-specific message) and never include stack traces or internals. A malformed JSON request body returns `400 { message: "Malformed request body" }`. An unknown route returns `404 { message: "Route not found" }`.
 
-`GET /` — public health check, returns the plain-text string `GymOps Backend Running...`.
+`GET /` — public health check, returns the plain-text string `LiftLore Backend Running...`.
 
 ## Auth — `/api/auth`
 

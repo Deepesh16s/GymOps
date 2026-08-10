@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../services/api";
 
-const STORAGE_KEY = "gymops_active_workout_session";
+const STORAGE_KEY = "liftlore_active_workout_session";
 const SUCCESS_MESSAGE_DURATION = 4500;
-const TIMING_TIP_SHOWN_COUNT_KEY = "gymops_timing_tip_shown_count";
+const TIMING_TIP_SHOWN_COUNT_KEY = "liftlore_timing_tip_shown_count";
 const TIMING_TIP_MAX_SHOWS = 3;
 
 const generateId = () =>
@@ -418,7 +418,7 @@ function useWorkoutSession() {
 
       if (res.data?.notifications?.length) {
         window.dispatchEvent(
-          new CustomEvent("gymops:notifications-created", {
+          new CustomEvent("liftlore:notifications-created", {
             detail: res.data.notifications,
           })
         );

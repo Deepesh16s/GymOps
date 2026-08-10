@@ -83,7 +83,7 @@ function Profile() {
           res.data.user
         )
       );
-      window.dispatchEvent(new Event("gymops:user-updated"));
+      window.dispatchEvent(new Event("liftlore:user-updated"));
 
       setNameMsg(
         "Profile updated successfully."

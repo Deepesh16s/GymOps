@@ -3,7 +3,7 @@ import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from "lucide-re
 import useCountdown from "../hooks/useCountdown";
 import "./RestTimer.css";
 
-const SOUND_PREF_KEY = "gymops_rest_timer_sound";
+const SOUND_PREF_KEY = "liftlore_rest_timer_sound";
 const PRESETS = [60, 90, 120, 180];
 
 function playBeep() {

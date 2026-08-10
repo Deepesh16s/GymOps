@@ -108,7 +108,7 @@ export default function Login() {
               </svg>
             </div>
             <span className="gl-logo-text">
-              Gym<span className="gl-logo-dot">Ops</span>
+              Lift<span className="gl-logo-dot">Lore</span>
             </span>
           </div>
           <p className="gl-tagline">
@@ -139,7 +139,7 @@ export default function Login() {
               </svg>
             </div>
             <span className="gl-card-logo-text">
-              Gym<span className="gl-card-logo-dot">Ops</span>
+              Lift<span className="gl-card-logo-dot">Lore</span>
             </span>
           </div>
 

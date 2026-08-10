@@ -39,7 +39,7 @@ if (!isProduction) {
 }
 
 app.get("/", (req, res) => {
-  res.send("GymOps Backend Running...");
+  res.send("LiftLore Backend Running...");
 });
 
 app.use("/api/auth", authRoutes);

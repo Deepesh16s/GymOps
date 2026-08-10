@@ -416,7 +416,7 @@ function CoachExplanation({ sections, recommendedCategory, generatedAt }) {
   if (!sections.length) return null;
 
   const heading = recommendedCategory
-    ? `Why GymOps recommends ${recommendedCategory} today`
+    ? `Why LiftLore recommends ${recommendedCategory} today`
     : "Why this recommendation?";
 
   return (
