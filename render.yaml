@@ -17,9 +17,9 @@ services:
         sync: false
       - key: CLIENT_URL
         sync: false
-      - key: EMAIL_USER
+      - key: RESEND_API_KEY
         sync: false
-      - key: EMAIL_PASS
+      - key: RESEND_FROM_EMAIL
         sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false

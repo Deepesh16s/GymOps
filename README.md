@@ -24,7 +24,7 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 
 **Frontend** — React 19, Vite, React Router 7, Axios, Recharts, `@react-oauth/google`, `lucide-react`, `react-select`. Plain CSS (design tokens in `client/src/styles/design-tokens.css`), no CSS framework.
 
-**Backend** — Node.js, Express 5, Mongoose 9 (MongoDB), JWT auth (`jsonwebtoken`), `bcryptjs`, `google-auth-library` (Google ID token verification), `helmet`, `cors`, `express-rate-limit`, `compression`, `nodemailer` (password reset email), `web-push` (browser push).
+**Backend** — Node.js, Express 5, Mongoose 9 (MongoDB), JWT auth (`jsonwebtoken`), `bcryptjs`, `google-auth-library` (Google ID token verification), `helmet`, `cors`, `express-rate-limit`, `compression`, `resend` (password reset email, sent over HTTPS — Render blocks outbound SMTP, so a transactional email API is used instead of raw SMTP), `web-push` (browser push).
 
 ## Project structure
 
@@ -91,7 +91,8 @@ Full templates: [`server/.env.example`](server/.env.example), [`client/.env.exam
 | `JWT_SECRET` | Yes | Signs/verifies login tokens |
 | `GOOGLE_CLIENT_ID` | Yes (for Google Sign-In) | Audience for verifying Google ID tokens |
 | `CLIENT_URL` | Yes in production | Locks CORS to this origin; also used to build the password-reset email link |
-| `EMAIL_USER` / `EMAIL_PASS` | Yes (for password reset) | Gmail account + [App Password](https://myaccount.google.com/apppasswords) used by Nodemailer |
+| `RESEND_API_KEY` | Yes (for password reset) | API key from [Resend](https://resend.com) used to send password-reset emails |
+| `RESEND_FROM_EMAIL` | No | Sender address; must be on a domain verified in Resend, otherwise defaults to `onboarding@resend.dev` |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT_EMAIL` | No | Web Push; push delivery is silently disabled if unset |
 | `PORT` | No (default 5000) | API port |
 | `NODE_ENV` | No | `production` enables strict CORS and disables the dev request logger |
@@ -146,7 +147,7 @@ Target architecture: **Vercel** (client) + **Render** (API) + **MongoDB Atlas** 
 
 Steps:
 
-- **API (Render)** — connect the repo, Render reads `render.yaml` and creates the `repvyn-api` web service. Fill in the prompted env vars (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `CLIENT_URL`, `EMAIL_USER`, `EMAIL_PASS`, and the `VAPID_*` vars if using push). `NODE_ENV=production` is already set by the blueprint.
+- **API (Render)** — connect the repo, Render reads `render.yaml` and creates the `repvyn-api` web service. Fill in the prompted env vars (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `CLIENT_URL`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and the `VAPID_*` vars if using push). `NODE_ENV=production` is already set by the blueprint.
 - **Client (Vercel)** — connect the repo with Root Directory `client`; Vercel auto-detects the Vite build. Set `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`, and (optionally) `VITE_VAPID_PUBLIC_KEY` as build-time env vars (Vite inlines them into the build — they cannot be changed at runtime after building).
 - **CORS** — once both are deployed, set `CLIENT_URL` on Render to the exact Vercel URL, or every API request will be rejected in production.
 - **Google OAuth** — add the deployed Vercel URL to the OAuth client's Authorized JavaScript origins in Google Cloud Console. This can only be done once the real Vercel URL exists, so it's expected to happen right after the first deploy, not before.
