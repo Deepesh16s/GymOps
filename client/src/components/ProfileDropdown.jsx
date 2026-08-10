@@ -14,9 +14,9 @@ function ProfileDropdown() {
 
   useEffect(() => {
     const handleUserUpdated = () => setStoredUser(readStoredUser());
-    window.addEventListener("liftlore:user-updated", handleUserUpdated);
+    window.addEventListener("repvyn:user-updated", handleUserUpdated);
     return () =>
-      window.removeEventListener("liftlore:user-updated", handleUserUpdated);
+      window.removeEventListener("repvyn:user-updated", handleUserUpdated);
   }, []);
 
   useEffect(() => {

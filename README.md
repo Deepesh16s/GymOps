@@ -1,4 +1,4 @@
-# LiftLore
+# Repvyn
 
 A full-stack fitness tracking application: workout logging, live workout sessions, a workout planner, cardio tracking, goals, and a deterministic (non-AI) training intelligence layer that surfaces recovery, fatigue, plateau, and training-balance insights from a user's own logged data.
 
@@ -146,7 +146,7 @@ Target architecture: **Vercel** (client) + **Render** (API) + **MongoDB Atlas** 
 
 Steps:
 
-- **API (Render)** — connect the repo, Render reads `render.yaml` and creates the `liftlore-api` web service. Fill in the prompted env vars (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `CLIENT_URL`, `EMAIL_USER`, `EMAIL_PASS`, and the `VAPID_*` vars if using push). `NODE_ENV=production` is already set by the blueprint.
+- **API (Render)** — connect the repo, Render reads `render.yaml` and creates the `repvyn-api` web service. Fill in the prompted env vars (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `CLIENT_URL`, `EMAIL_USER`, `EMAIL_PASS`, and the `VAPID_*` vars if using push). `NODE_ENV=production` is already set by the blueprint.
 - **Client (Vercel)** — connect the repo with Root Directory `client`; Vercel auto-detects the Vite build. Set `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`, and (optionally) `VITE_VAPID_PUBLIC_KEY` as build-time env vars (Vite inlines them into the build — they cannot be changed at runtime after building).
 - **CORS** — once both are deployed, set `CLIENT_URL` on Render to the exact Vercel URL, or every API request will be rejected in production.
 - **Google OAuth** — add the deployed Vercel URL to the OAuth client's Authorized JavaScript origins in Google Cloud Console. This can only be done once the real Vercel URL exists, so it's expected to happen right after the first deploy, not before.

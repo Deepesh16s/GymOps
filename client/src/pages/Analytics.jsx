@@ -686,7 +686,7 @@ function Analytics() {
             </div>
 
             <div className="analytics-score">
-              <span className="analytics-score__label">LiftLore Training Score</span>
+              <span className="analytics-score__label">Repvyn Training Score</span>
               {trainingScore != null ? (
                 <>
                   <span className="analytics-score__value">{trainingScore}</span>
@@ -712,7 +712,7 @@ function Analytics() {
             </div>
 
             <div className="analytics-score-breakdown">
-              <p className="analytics-score-breakdown__title">The maths behind your LiftLore score</p>
+              <p className="analytics-score-breakdown__title">The maths behind your Repvyn score</p>
               <div className="analytics-score-breakdown__list">
                 {trainingScoreBreakdown.map((part) => (
                   <div className="analytics-score-breakdown__row" key={part.key}>

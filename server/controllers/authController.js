@@ -292,7 +292,7 @@ exports.forgotPassword = async (req, res) => {
 
       await sendEmail({
         to: user.email,
-        subject: "Reset your LiftLore password",
+        subject: "Reset your Repvyn password",
         html: `<p>Click the link below to reset your password. This link expires in 15 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
       });
     }

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: liftlore-api
+    name: repvyn-api
     runtime: node
     rootDir: server
     plan: free

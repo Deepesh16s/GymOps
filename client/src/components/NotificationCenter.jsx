@@ -271,8 +271,8 @@ function NotificationCenter() {
         });
       }, 1000);
     };
-    window.addEventListener("liftlore:notifications-created", handleCreated);
-    return () => window.removeEventListener("liftlore:notifications-created", handleCreated);
+    window.addEventListener("repvyn:notifications-created", handleCreated);
+    return () => window.removeEventListener("repvyn:notifications-created", handleCreated);
   }, []);
 
   useEffect(() => {

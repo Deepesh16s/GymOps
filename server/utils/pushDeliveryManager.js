@@ -5,7 +5,7 @@ const Notification = require("../models/Notification");
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_CONTACT_EMAIL || "no-reply@liftlore.local"}`,
+    `mailto:${process.env.VAPID_CONTACT_EMAIL || "no-reply@repvyn.local"}`,
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
   );

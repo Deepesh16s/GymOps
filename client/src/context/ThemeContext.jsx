@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 
-const STORAGE_KEY = "liftlore-theme";
+const STORAGE_KEY = "repvyn-theme";
 
 function getInitialTheme() {
   if (typeof window === "undefined") return "light";

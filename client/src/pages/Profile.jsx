@@ -83,7 +83,7 @@ function Profile() {
           res.data.user
         )
       );
-      window.dispatchEvent(new Event("liftlore:user-updated"));
+      window.dispatchEvent(new Event("repvyn:user-updated"));
 
       setNameMsg(
         "Profile updated successfully."

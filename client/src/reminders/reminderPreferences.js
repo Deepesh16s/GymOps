@@ -1,6 +1,6 @@
 import { REMINDER_PREFERENCE_CATEGORIES } from "../constants/notificationTypes";
 
-const STORAGE_KEY = "liftlore:reminderPreferences";
+const STORAGE_KEY = "repvyn:reminderPreferences";
 
 const DEFAULT_PREFERENCES = Object.values(REMINDER_PREFERENCE_CATEGORIES).reduce(
   (acc, category) => ({ ...acc, [category]: true }),
