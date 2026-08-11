@@ -29,7 +29,7 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 ## Project structure
 
 ```
-GymOps/
+Repvyn/
 ├── client/                    React + Vite SPA
 │   ├── public/                 Static assets, favicon, push service worker
 │   └── src/
@@ -64,7 +64,7 @@ Requires Node.js and a MongoDB instance (local or [Atlas](https://www.mongodb.co
 
 ```bash
 git clone <this repo>
-cd GymOps
+cd Repvyn
 
 # Server
 cd server
@@ -117,7 +117,7 @@ Two independent sign-in paths, both issuing the same JWT (`Authorization: Bearer
 - **Email/password** — bcrypt-hashed (`POST /api/auth/register`, `/login`), plus forgot/reset password via a time-limited emailed token.
 - **Google Sign-In** — the client obtains an ID token via `@react-oauth/google`; the server verifies it with `google-auth-library` (`POST /api/auth/google`) and creates the user on first sign-in.
 
-**Status:** the server-side Google token verification was recently fixed and is believed correct from code review, but a full browser OAuth round trip (consent screen → token → account creation/login) has **not** been verified in this pass — no browser tooling was available in this session. Treat it as needing a manual check before relying on it in production. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+**Status:** email/password auth, forgot/reset password, and every other page listed under Known Limitations below have been verified live in a real browser. Google Sign-In's server-side token verification is correct by code review, but the actual consent-screen round trip is still blocked in this environment — it requires the deployed origin to be registered in Google Cloud Console's Authorized JavaScript origins, which can only be done once a real production URL exists. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ## Development commands
 
@@ -140,7 +140,7 @@ Serve `client/dist/` from any static host (see below); run `server/` as a long-l
 
 ## Deployment considerations
 
-Target architecture: **Vercel** (client) + **Render** (API) + **MongoDB Atlas** (database). Config for this is checked into the repo:
+Live architecture: **Vercel** (client) + **Render** (API) + **MongoDB Atlas** (database). Config for this is checked into the repo:
 
 - `client/vercel.json` — SPA rewrite rule (`/* -> /index.html`), required for React Router deep links/refresh to work on Vercel. Set the Vercel project's **Root Directory** to `client` when connecting the repo.
 - `render.yaml` — Render Blueprint for the API service (`rootDir: server`, `npm install` / `npm start`). Every secret is declared with `sync: false`, meaning Render will prompt for the value rather than storing it in the repo — nothing here has a real value baked in.
@@ -159,5 +159,6 @@ Other hosts remain possible (any Node host for the API, any static host for the 
 
 - No automated test suite (unit, integration, or e2e) exists for either the client or the server.
 - No CI pipeline — lint/build/tests do not run automatically on push or PR.
-- Full Google OAuth browser flow, modal focus-trap behavior, screen-reader accessibility, and mobile/responsive rendering have not been verified in a real browser as part of this audit (no browser tooling was available). See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for the complete verified/unverified breakdown.
+- Login, Register, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, Notifications, and Forgot/Reset Password have all been exercised live in a real browser (Playwright), including mobile viewports (down to 320px) — this is no longer unverified.
+- Still not verified in a real browser: the full Google OAuth consent-screen round trip (needs a real Google account; blocked in this environment by origin configuration, not a code issue), screen-reader/assistive-technology behavior, and testing in browsers other than Chromium.
 - `server/scripts/` contains four one-off data migration scripts that have already been applied to the live data they targeted; they are kept for historical reference, not as reusable maintenance tools.
