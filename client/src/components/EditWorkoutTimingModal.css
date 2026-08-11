@@ -4,13 +4,14 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: color-mix(in srgb, var(--go-text) 45%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  animation: go-overlay-in var(--go-base) ease;
 }
 
 .edit-timing-modal-card {
@@ -19,10 +20,16 @@
   background: var(--go-surface);
   border: 1px solid var(--go-border-soft);
   border-radius: var(--go-radius-lg);
-  padding: 24px;
-  box-shadow:
-    var(--go-shadow-sm),
-    0 20px 48px color-mix(in srgb, var(--go-text) 18%, transparent);
+  padding: var(--go-space-6);
+  box-shadow: var(--go-shadow-lg);
+  animation: go-modal-in var(--go-base) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edit-timing-modal-overlay,
+  .edit-timing-modal-card {
+    animation: none;
+  }
 }
 
 .edit-timing-modal-header {
@@ -35,7 +42,7 @@
 .edit-timing-modal-icon {
   width: 36px;
   height: 36px;
-  border-radius: 11px;
+  border-radius: var(--go-radius-sm);
   background: var(--go-primary-50);
   color: var(--go-primary);
   display: flex;
@@ -71,11 +78,11 @@
   height: 28px;
   flex-shrink: 0;
   border: none;
-  border-radius: 9px;
+  border-radius: var(--go-radius-sm);
   background: transparent;
   color: var(--go-text-faint);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--go-fast), color var(--go-fast);
 }
 
 .edit-timing-modal-close:hover {
@@ -105,7 +112,7 @@
 .edit-timing-modal-input {
   width: 100%;
   padding: 11px 14px;
-  border-radius: 12px;
+  border-radius: var(--go-radius-sm);
   border: 1px solid var(--go-border-soft);
   background: var(--go-surface);
   color: var(--go-text);
@@ -208,7 +215,7 @@
 .edit-timing-modal-btn {
   flex: 1;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--go-radius-sm);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;

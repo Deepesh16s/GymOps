@@ -125,11 +125,26 @@
 }
 
 .muscle-map__main {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(20px, 1fr) auto minmax(220px, 1fr);
   align-items: center;
-  justify-content: center;
   gap: 20px;
   width: 100%;
+}
+
+.muscle-map__main > .muscle-map__bodies {
+  grid-column: 2;
+  justify-self: center;
+}
+
+.muscle-map__main > .muscle-map__sidelist {
+  grid-column: 3;
+  justify-self: start;
+}
+
+.muscle-map__main > .muscle-map__detail {
+  grid-column: 3;
+  justify-self: stretch;
 }
 
 .muscle-map__bodies {
@@ -724,8 +739,15 @@
 
 @container musclemap (max-width: 560px) {
   .muscle-map__main {
-    flex-direction: column;
-    align-items: center;
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .muscle-map__main > .muscle-map__bodies,
+  .muscle-map__main > .muscle-map__sidelist,
+  .muscle-map__main > .muscle-map__detail {
+    grid-column: 1;
+    justify-self: stretch;
   }
 
   .muscle-map__sidelist {

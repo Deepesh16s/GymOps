@@ -13,6 +13,7 @@ export default function Login() {
 
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [googleBtnWidth, setGoogleBtnWidth] = useState(320);
   const googleWrapperRef = useRef(null);
 
@@ -54,6 +55,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError("");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -68,6 +70,7 @@ export default function Login() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const response = await api.post("/auth/login", {
         email: formData.email.trim(),
@@ -82,6 +85,7 @@ export default function Login() {
     } catch (error) {
       console.log(error);
       setError(error.response?.data?.message || "Login Failed");
+      setIsSubmitting(false);
     }
   };
 
@@ -124,8 +128,6 @@ export default function Login() {
 
       <div className="gl-panel">
         <div className="gl-card">
-          <div className="gl-card-glow" />
-
           <div className="gl-card-logo">
             <div className="gl-card-logo-icon">
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -204,13 +206,12 @@ export default function Login() {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
-                autoComplete="current-password"
                 required
               />
             </div>
             {error && <p className="gl-error">{error}</p>}
-            <button className="gl-btn" type="submit">
-              Sign In
+            <button className="gl-btn" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Signing In..." : "Sign In"}
             </button>
           </form>
 

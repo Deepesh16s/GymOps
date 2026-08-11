@@ -23,6 +23,7 @@ function Register() {
   } = formData;
 
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -34,6 +35,7 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setFormError("");
 
     if (
@@ -43,6 +45,7 @@ function Register() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await api.post(
         "/auth/register",
@@ -62,6 +65,7 @@ function Register() {
           ?.message ||
           "Registration failed. Please try again."
       );
+      setIsSubmitting(false);
     }
   };
 
@@ -89,7 +93,9 @@ function Register() {
               </svg>
             </div>
 
-            <h1>Repvyn</h1>
+            <h1>
+              Rep<span className="logo-dot">vyn</span>
+            </h1>
           </div>
 
           <p>
@@ -222,8 +228,9 @@ function Register() {
             <button
               type="submit"
               className="register-btn"
+              disabled={isSubmitting}
             >
-              Create Account
+              {isSubmitting ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 

@@ -1,29 +1,38 @@
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
   padding: 16px;
+  animation: go-overlay-in var(--go-base) ease;
 }
 
 .confirm-dialog-card {
   width: 360px;
   max-width: calc(100vw - 32px);
-  background: var(--go-surface-raised, var(--go-surface));
-  backdrop-filter: blur(20px);
+  background: var(--go-surface);
   border: 1px solid var(--go-border-soft);
-  border-radius: var(--go-radius-md, 18px);
-  padding: 28px 26px;
+  border-radius: var(--go-radius-lg);
+  padding: var(--go-space-6) var(--go-space-6);
   box-shadow: var(--go-shadow-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 6px;
+  animation: go-modal-in var(--go-base) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog-overlay,
+  .confirm-dialog-card {
+    animation: none;
+  }
 }
 
 .confirm-dialog-icon {
@@ -88,11 +97,11 @@
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
-  border-radius: var(--go-radius-sm, 10px);
+  border-radius: var(--go-radius-sm);
   padding: 12px 0;
   cursor: pointer;
   border: 1px solid var(--go-border-soft);
-  transition: background 0.2s ease, opacity 0.2s ease;
+  transition: background var(--go-fast), opacity var(--go-fast);
 }
 
 .confirm-dialog-btn:disabled {

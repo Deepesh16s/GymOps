@@ -56,9 +56,7 @@ import { buildProgressionSeries, filterWorkoutsByTimeRange } from "../progressio
 import { getStrengthCardioSplit } from "../intelligence/balanceEngine";
 import { generateTrainingBrief, generateWeeklyCoachReport, generateCoachPriority } from "../trainingIntelligence";
 import WeeklyCoachReport from "../components/WeeklyCoachReport";
-import ConfidenceBadge from "../components/ConfidenceBadge";
 import LoadErrorBanner from "../components/LoadErrorBanner";
-import RecoveryBreakdownDisclosure from "../components/RecoveryBreakdownDisclosure";
 import { getGoalAnalytics } from "../utils/goalAnalytics";
 import {
   buildSessionSummaries,
@@ -307,13 +305,13 @@ const INSIGHT_ICON_BY_KEY = {
 function InsightCard({ insight }) {
   const Icon = INSIGHT_ICON_BY_KEY[insight.key] || Zap;
   return (
-    <div className={`insight-card insight-card--${insight.tone}`}>
-      <div className="insight-card__icon">
+    <div className={`dash-insight-card dash-insight-card--${insight.tone}`}>
+      <div className="dash-insight-card__icon">
         <Icon size={18} strokeWidth={2} />
       </div>
-      <div className="insight-card__body">
-        <span className="insight-card__title">{insight.title}</span>
-        <span className="insight-card__detail">{insight.detail}</span>
+      <div className="dash-insight-card__body">
+        <span className="dash-insight-card__title">{insight.title}</span>
+        <span className="dash-insight-card__detail">{insight.detail}</span>
       </div>
     </div>
   );
@@ -1346,58 +1344,6 @@ function Dashboard() {
           <section className="section">
             <p className="section__label">Today's Focus</p>
             <CoachPriorityBanner signal={coachPriority.top} onNavigate={navigate} />
-            <div className="secondary-grid">
-              {trainingBrief.recoveryScore != null && (
-                <SecondaryCard
-                  title="Recovery Score"
-                  value={`${trainingBrief.recoveryScore} / 100`}
-                  sub={trainingBrief.recoveryScore >= 85 ? "Recovered" : trainingBrief.recoveryScore >= 50 ? "Recovering" : "Needs Rest"}
-                  icon={HeartPulse}
-                >
-                  <ConfidenceBadge
-                    level={trainingBrief.recoveryConfidence}
-                    reason={trainingBrief.recoveryConfidenceReason}
-                    label="Recovery estimate"
-                  />
-                  <RecoveryBreakdownDisclosure score={trainingBrief.recoveryScore} breakdown={trainingBrief.recoveryBreakdown} />
-                </SecondaryCard>
-              )}
-              {trainingBrief.weeklyGrade && (
-                <SecondaryCard title="Weekly Grade" value={trainingBrief.weeklyGrade} icon={Trophy}>
-                  <ConfidenceBadge
-                    level={trainingBrief.weeklyGradeConfidence}
-                    reason={trainingBrief.weeklyGradeConfidenceReason}
-                    label="Weekly grade"
-                  />
-                </SecondaryCard>
-              )}
-              {trainingBrief.trainingBalance.available && (
-                <SecondaryCard
-                  title="Training Balance"
-                  value={trainingBrief.trainingBalance.imbalance.balanced ? "Balanced" : trainingBrief.trainingBalance.imbalance.dominant}
-                  sub={trainingBrief.trainingBalance.imbalance.balanced ? null : `${trainingBrief.trainingBalance.imbalance.least} lagging`}
-                  icon={BarChart2}
-                >
-                  <ConfidenceBadge
-                    level={trainingBrief.trainingBalance.confidence}
-                    reason={trainingBrief.trainingBalance.confidenceReason}
-                    label="Training balance"
-                  />
-                </SecondaryCard>
-              )}
-              {trainingBrief.fatigueBand && (
-                <SecondaryCard title="Fatigue" value={trainingBrief.fatigueBand} icon={Flame}>
-                  <ConfidenceBadge
-                    level={trainingBrief.fatigueConfidence}
-                    reason={trainingBrief.fatigueConfidenceReason}
-                    label="Fatigue read"
-                  />
-                </SecondaryCard>
-              )}
-              {trainingBrief.recommendedWorkout && (
-                <SecondaryCard title="Next Recommendation" value={trainingBrief.recommendedWorkout} icon={Dumbbell} />
-              )}
-            </div>
             <CoachExplanation
               sections={trainingBrief.explanationSections}
               recommendedCategory={trainingBrief.recommendedCategory}
@@ -1406,78 +1352,67 @@ function Dashboard() {
           </section>
         )}
 
-        {weeklyCoachReport.available && <WeeklyCoachReport report={weeklyCoachReport} />}
-
-        <section className="section">
-          <p className="section__label">Overview</p>
-          <div className="primary-grid">
-            <PrimaryCard
-              title="Total Sessions"
-              numericValue={loading ? null : stats.totalSessions}
-              formatValue={(n) => String(n)}
-              sub={
-                loading || weeklySessionTrend === 0
-                  ? null
-                  : `${weeklySessionTrend > 0 ? "↑" : "↓"} ${
-                      weeklySessionTrend > 0 ? "+" : ""
-                    }${weeklySessionTrend} this week`
-              }
-              icon={Dumbbell}
-              accent
-              onClick={() => navigate("/workouts")}
-            />
-            <PrimaryCard
-              title="Last Session Volume"
-              value={loading ? null : lastSessionVolumeValue}
-              numericValue={loading ? null : lastSessionVolumeNumeric}
-              formatValue={(n) => `${Math.round(n).toLocaleString()} kg`}
-              sub={loading ? null : lastSessionSubDisplay}
-              icon={Flame}
-              onClick={() => navigate("/analytics")}
-            />
-            <PrimaryCard
-              title="Sessions Logged"
-              numericValue={loading ? null : stats.sessionsLast7Days}
-              formatValue={(n) => `${n} (7d)`}
-              icon={Activity}
-              onClick={() => navigate("/workouts")}
-            />
-            <PrimaryCard
-              title={showLongestStreakFallback ? "Longest Streak" : "Current Streak"}
-              numericValue={
-                loading ? null : showLongestStreakFallback ? longestStreakEver : stats.currentStreak
-              }
-              formatValue={(n) => `${n}d`}
-              icon={CalendarDays}
-              onClick={() => navigate("/calendar")}
-            />
+        <section className="section dash-summary-row">
+          <div className="dash-summary-row__stats">
+            <p className="section__label">Overview</p>
+            <div className="primary-grid primary-grid--compact">
+              <PrimaryCard
+                title="Total Sessions"
+                numericValue={loading ? null : stats.totalSessions}
+                formatValue={(n) => String(n)}
+                sub={
+                  loading || weeklySessionTrend === 0
+                    ? null
+                    : `${weeklySessionTrend > 0 ? "↑" : "↓"} ${
+                        weeklySessionTrend > 0 ? "+" : ""
+                      }${weeklySessionTrend} this week`
+                }
+                icon={Dumbbell}
+                accent
+                onClick={() => navigate("/workouts")}
+              />
+              <PrimaryCard
+                title="Last Session Volume"
+                value={loading ? null : lastSessionVolumeValue}
+                numericValue={loading ? null : lastSessionVolumeNumeric}
+                formatValue={(n) => `${Math.round(n).toLocaleString()} kg`}
+                sub={loading ? null : lastSessionSubDisplay}
+                icon={Flame}
+                onClick={() => navigate("/analytics")}
+              />
+              <PrimaryCard
+                title="Sessions Logged"
+                numericValue={loading ? null : stats.sessionsLast7Days}
+                formatValue={(n) => `${n} (7d)`}
+                icon={Activity}
+                onClick={() => navigate("/workouts")}
+              />
+              <PrimaryCard
+                title={showLongestStreakFallback ? "Longest Streak" : "Current Streak"}
+                numericValue={
+                  loading ? null : showLongestStreakFallback ? longestStreakEver : stats.currentStreak
+                }
+                formatValue={(n) => `${n}d`}
+                icon={CalendarDays}
+                onClick={() => navigate("/calendar")}
+              />
+            </div>
           </div>
+
+          {weeklyCoachReport.available && (
+            <div className="dash-summary-row__report">
+              <WeeklyCoachReport report={weeklyCoachReport} />
+            </div>
+          )}
         </section>
 
-        <section className="section today-steps-section">
-          <div className="secondary-grid today-steps-section__grid">
-            <TodayStepsCard
-              steps={todaySteps}
-              dailyGoalTarget={dailyStepsGoal?.dailyTarget ?? null}
-              loading={loading}
-              editing={stepsEditing}
-              inputValue={stepsInput}
-              onInputChange={(e) => setStepsInput(e.target.value)}
-              onEditStart={handleStartEditSteps}
-              onSave={handleSaveSteps}
-              onCancel={handleCancelEditSteps}
-              saving={stepsSaving}
-            />
-          </div>
-        </section>
-
-        <section className="section">
-          <p className="section__label">Last Session</p>
-          <LastSessionCard session={recentSessions[0] || null} loading={loading} />
-        </section>
-
-        <section className="section charts-row">
-          <div className="chart-card chart-card--pie">
+        <section className="section muscle-map-hero-section">
+          <div className="muscle-map-hero">
+            <div className="muscle-map-hero__head">
+              <div>
+                <p className="muscle-map-hero__title">Muscle Map</p>
+              </div>
+            </div>
             <MuscleBodyMap
               workouts={muscleWorkouts}
               loading={loading}
@@ -1487,7 +1422,9 @@ function Dashboard() {
               }
             />
           </div>
+        </section>
 
+        <section className="section charts-row">
           <div className="chart-card chart-card--bar">
             <div className="chart-card__head">
               <div>
@@ -1511,7 +1448,7 @@ function Dashboard() {
                 ))}
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={200}>
               <BarChart
                 data={barChartData}
                 barSize={26}
@@ -1547,6 +1484,27 @@ function Dashboard() {
                 />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </section>
+
+        <section className="section supporting-row">
+          <div className="supporting-row__item">
+            <TodayStepsCard
+              steps={todaySteps}
+              dailyGoalTarget={dailyStepsGoal?.dailyTarget ?? null}
+              loading={loading}
+              editing={stepsEditing}
+              inputValue={stepsInput}
+              onInputChange={(e) => setStepsInput(e.target.value)}
+              onEditStart={handleStartEditSteps}
+              onSave={handleSaveSteps}
+              onCancel={handleCancelEditSteps}
+              saving={stepsSaving}
+            />
+          </div>
+          <div className="supporting-row__item">
+            <p className="section__label">Last Session</p>
+            <LastSessionCard session={recentSessions[0] || null} loading={loading} />
           </div>
         </section>
 

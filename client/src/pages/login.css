@@ -6,7 +6,7 @@
   --slate:        var(--go-text-muted);
   --text:         var(--go-text);
   --text-muted:   var(--go-text-faint);
-  --border:       var(--go-border);
+  --border:       var(--go-border-soft);
   --font:         var(--go-font);
 }
 
@@ -162,16 +162,6 @@ body {
   box-shadow: var(--go-shadow-md), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
-.gl-card-glow {
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--go-brand), transparent);
-  border-radius: 0 0 2px 2px;
-}
-
 .gl-card-logo {
   display: flex;
   align-items: center;
@@ -259,11 +249,8 @@ body {
 .gl-social-btn:hover {
   background: var(--surface);
   border-color: #cbd5e1;
-  transform: translateY(-1px);
   box-shadow: var(--go-shadow-sm);
 }
-
-.gl-social-btn:active { transform: translateY(0); }
 
 .gl-divider {
   display: flex;
@@ -353,9 +340,10 @@ body {
   box-shadow: var(--go-shadow-sm), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
 }
 
-.gl-btn:hover { transform: translateY(-1px); box-shadow: var(--go-shadow-md); }
-.gl-btn:active { transform: translateY(0); box-shadow: var(--go-shadow-xs); }
+.gl-btn:hover { box-shadow: var(--go-shadow-md); }
+.gl-btn:active { box-shadow: var(--go-shadow-xs); }
 .gl-btn:focus-visible { outline: 3px solid var(--go-primary); outline-offset: 2px; }
+.gl-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .gl-register { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--slate); }
 .gl-register-link { color: var(--go-primary); font-weight: 600; text-decoration: none; transition: color var(--go-fast); }

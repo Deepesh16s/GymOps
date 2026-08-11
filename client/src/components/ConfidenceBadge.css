@@ -48,6 +48,11 @@
   animation: confidence-popover-in 140ms ease-out;
 }
 
+.confidence-badge__popover--right {
+  left: auto;
+  right: 0;
+}
+
 @keyframes confidence-popover-in {
   from {
     opacity: 0;

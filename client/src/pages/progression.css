@@ -9,7 +9,7 @@
 .progression-page {
   min-height: 100vh;
   background: var(--go-bg);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--go-font);
   color: var(--go-text);
   --prog-ease: var(--go-ease-decel);
 }
@@ -26,18 +26,14 @@
 
 .progression-hero {
   position: relative;
-  background: color-mix(in srgb, var(--go-surface) 78%, transparent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--go-surface);
   border: 1px solid var(--go-border-soft);
-  border-radius: var(--go-radius-lg);
-  padding: 36px 40px;
+  border-radius: var(--go-radius-xl);
+  padding: var(--go-space-7) var(--go-space-8);
   display: flex;
   flex-direction: column;
   gap: 22px;
-  box-shadow:
-    var(--go-shadow-sm),
-    inset 0 1px 0 color-mix(in srgb, var(--go-surface) 90%, transparent);
+  box-shadow: var(--go-shadow-sm);
 }
 
 .progression-hero__top {
@@ -94,8 +90,8 @@
   gap: 12px;
   padding: 14px 18px;
   border-radius: var(--go-radius-sm);
-  background: var(--go-warning-50);
-  border: 1px solid color-mix(in srgb, var(--go-warning) 20%, transparent);
+  background: var(--go-success-50);
+  border: 1px solid color-mix(in srgb, var(--go-success) 20%, transparent);
   animation: go-fade-in-up 0.4s var(--prog-ease) both;
 }
 
@@ -107,8 +103,8 @@
   height: 34px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--go-warning) 18%, transparent);
-  color: var(--go-warning);
+  background: color-mix(in srgb, var(--go-success) 18%, transparent);
+  color: var(--go-success-dark);
 }
 
 .progression-hero__pr-body {
@@ -120,7 +116,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--go-warning);
+  color: var(--go-success-dark);
 }
 
 .progression-hero__pr-value {

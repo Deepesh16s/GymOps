@@ -135,7 +135,7 @@
 }
 
 .progress-chart__tooltip-trophy {
-  color: var(--go-warning);
+  color: var(--go-success-dark);
 }
 
 .progress-chart__legend {

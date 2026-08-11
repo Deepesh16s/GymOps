@@ -43,15 +43,27 @@
 
   --go-illustration-surface: #f4f8f6;
 
+  --go-space-1: 4px;
+  --go-space-2: 8px;
+  --go-space-3: 12px;
+  --go-space-4: 16px;
+  --go-space-5: 20px;
+  --go-space-6: 24px;
+  --go-space-7: 32px;
+  --go-space-8: 40px;
+  --go-space-9: 48px;
+  --go-space-10: 64px;
+
   --go-radius-sm: 12px;
   --go-radius-md: 20px;
   --go-radius-lg: 22px;
+  --go-radius-xl: 28px;
   --go-radius-pill: 999px;
 
-  --go-shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --go-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --go-shadow-md: 0 12px 30px rgba(0, 0, 0, 0.12);
-  --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.16);
+  --go-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --go-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --go-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --go-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
   --go-shadow-glow: 0 0 25px rgba(16, 185, 129, 0.22);
 
   --go-fast: 0.15s ease;
@@ -59,6 +71,7 @@
   --go-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --go-ease-decel: cubic-bezier(0.16, 1, 0.3, 1);
 
+  --go-text-display: 3.75rem;
   --go-text-h1: 3rem;
   --go-text-h2: 2rem;
   --go-text-h3: 1.5rem;
@@ -67,6 +80,8 @@
   --go-text-body: 0.875rem;
   --go-text-caption: 0.75rem;
 
+  --go-tracking-tight: -0.03em;
+
   --go-font:
     Inter,
     system-ui,
@@ -74,14 +89,6 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-
-  --go-emerald: var(--go-primary);
-  --go-emerald-dark: var(--go-primary-dark);
-  --go-emerald-light: var(--go-primary-light);
-  --go-emerald-50: var(--go-primary-50);
-  --go-emerald-100: var(--go-primary-100);
-  --go-emerald-200: var(--go-primary-200);
-  --go-emerald-300: var(--go-primary-300);
 }
 
 [data-theme="dark"] {
@@ -127,19 +134,11 @@
   --go-warning: #fbbf24;
   --go-warning-50: rgba(251, 191, 36, 0.12);
 
-  --go-shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --go-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --go-shadow-md: 0 12px 30px rgba(0, 0, 0, 0.45);
-  --go-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.55);
+  --go-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --go-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --go-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --go-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
   --go-shadow-glow: 0 0 25px rgba(79, 124, 255, 0.28);
-
-  --go-emerald: var(--go-primary);
-  --go-emerald-dark: var(--go-primary-dark);
-  --go-emerald-light: var(--go-primary-light);
-  --go-emerald-50: var(--go-primary-50);
-  --go-emerald-100: var(--go-primary-100);
-  --go-emerald-200: var(--go-primary-200);
-  --go-emerald-300: var(--go-primary-300);
 }
 
 @keyframes go-fade-in-up {
@@ -150,5 +149,25 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes go-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes go-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

@@ -25,7 +25,7 @@
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: linear-gradient(155deg, rgba(5, 15, 20, 0.4) 0%, rgba(5, 15, 20, 0.7) 100%);
 }
 
 .hero-content {
@@ -43,15 +43,20 @@
 }
 
 .hero-logo h1 {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.hero-logo .logo-dot {
+  color: var(--go-brand);
 }
 
 .logo-icon {
   width: 50px;
   height: 50px;
-  background: var(--go-brand);
-  border-radius: 15px;
+  background: linear-gradient(135deg, var(--go-brand), var(--go-brand-dark));
+  border-radius: var(--go-radius-sm);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -59,7 +64,7 @@
 
 .hero-content p {
   margin-top: 15px;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
 }
 
 .hero-tags {
@@ -70,15 +75,19 @@
 }
 
 .hero-tags span {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(12px);
-  padding: 12px 22px;
-  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 7px 16px;
+  border-radius: var(--go-radius-pill);
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
 .register-right {
   flex: 1;
-  background: linear-gradient(135deg, var(--go-bg), var(--go-surface));
+  background: var(--go-bg);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -89,18 +98,20 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(color-mix(in srgb, var(--go-brand) 13%, transparent) 1px, transparent 1px);
-  background-size: 35px 35px;
-  opacity: 0.5;
+  background-image: radial-gradient(color-mix(in srgb, var(--go-brand) 12%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 80% at 40% 50%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 40% 50%, black 40%, transparent 100%);
 }
 
 .register-card {
   width: 460px;
-  background: color-mix(in srgb, var(--go-surface) 94%, transparent);
-  backdrop-filter: blur(20px);
-  padding: 35px;
-  border-radius: 30px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  max-width: calc(100vw - 40px);
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  padding: var(--go-space-8) var(--go-space-7) var(--go-space-7);
+  border-radius: var(--go-radius-xl);
+  box-shadow: var(--go-shadow-lg);
   position: relative;
   z-index: 10;
 }
@@ -108,54 +119,77 @@
 .card-logo {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 8px;
 }
 
 .card-logo h3 {
-  font-size: 2rem;
+  font-size: 17px;
+  font-weight: 800;
   color: var(--go-text);
+  letter-spacing: -0.04em;
+}
+
+.card-logo .logo-dot {
+  color: var(--go-brand);
 }
 
 .register-card h2 {
   margin-top: 20px;
-  font-size: 2.2rem;
+  font-size: 1.65rem;
+  font-weight: 700;
   color: var(--go-text);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
 }
 
-.register-card p {
-  margin-top: 8px;
+.register-card > p {
+  margin-top: 6px;
   color: var(--go-text-muted);
+  font-size: 0.88rem;
 }
 
-form {
-  margin-top: 25px;
+.register-card form {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
-label {
+.register-card label {
   display: block;
   margin-top: 12px;
-  margin-bottom: 5px;
-  font-size: 0.85rem;
-  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--go-text-muted);
+  letter-spacing: 0.06em;
 }
 
-input {
+.register-card input {
   width: 100%;
-  height: 50px;
-  padding: 0 18px;
-  border-radius: 16px;
-  border: 1px solid var(--go-border-soft);
+  height: 48px;
+  padding: 0 16px;
+  border-radius: var(--go-radius-sm);
+  border: 1.5px solid var(--go-border-soft);
   background: var(--go-surface-sunken);
   color: var(--go-text);
-  font-size: 1rem;
+  font-size: 0.93rem;
+  font-family: var(--go-font);
   outline: none;
-  transition: all 0.3s ease;
+  transition: border-color var(--go-fast), background var(--go-fast), box-shadow var(--go-fast);
 }
 
-input:focus {
+.register-card input::placeholder {
+  color: var(--go-text-faint);
+}
+
+.register-card input:hover {
+  border-color: var(--go-border-strong);
+}
+
+.register-card input:focus {
+  background: var(--go-surface);
   border-color: var(--go-primary);
-  box-shadow: 0 0 0 4px var(--go-primary-100);
+  box-shadow: 0 0 0 3px var(--go-primary-200);
 }
 
 .register-error {
@@ -164,7 +198,7 @@ input:focus {
   gap: 8px;
   padding: 10px 14px;
   margin-top: 14px;
-  border-radius: 12px;
+  border-radius: var(--go-radius-sm);
   background: var(--go-danger-50);
   color: var(--go-danger-dark);
   font-size: 0.85rem;
@@ -173,38 +207,52 @@ input:focus {
 
 .register-btn {
   width: 100%;
-  height: 50px;
-  margin-top: 25px;
+  height: 52px;
+  margin-top: 22px;
   border: none;
-  border-radius: 16px;
-  background: linear-gradient(90deg, var(--go-primary), var(--go-primary-dark));
+  border-radius: var(--go-radius-sm);
+  background: linear-gradient(135deg, var(--go-primary) 0%, var(--go-primary-dark) 100%);
   color: white;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: box-shadow var(--go-fast);
+  box-shadow: var(--go-shadow-sm);
 }
 
 .register-btn:hover {
-  transform: translateY(-1px);
   box-shadow: var(--go-shadow-md);
+}
+
+.register-btn:focus-visible {
+  outline: 3px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.register-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .login-link {
   text-align: center;
-  margin-top: 18px;
+  margin-top: 22px;
+  font-size: 0.85rem;
   color: var(--go-text-muted);
 }
 
 .login-link a {
   color: var(--go-primary);
   text-decoration: none;
-  font-weight: 700;
+  font-weight: 600;
+  transition: color var(--go-fast);
 }
 
-[data-theme="dark"] .register-card h2,
-[data-theme="dark"] .card-logo h3 { color: var(--go-text); }
-[data-theme="dark"] input { background: var(--go-surface-sunken); border-color: var(--go-border-strong); color: var(--go-text); }
+.login-link a:hover {
+  color: var(--go-primary-dark);
+  text-decoration: underline;
+}
 
 @media (max-width: 1000px) {
   .register-left {
@@ -216,6 +264,25 @@ input:focus {
   }
 
   .register-card {
-    width: 90%;
+    width: 100%;
+    max-width: 440px;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-card {
+    padding: var(--go-space-7) var(--go-space-5) var(--go-space-6);
+    border-radius: var(--go-radius-lg);
+  }
+
+  .register-card h2 {
+    font-size: 1.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
   }
 }

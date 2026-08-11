@@ -3,12 +3,15 @@
 .planner-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  animation: go-overlay-in var(--go-base) ease;
 }
 
 .planner-modal-card {
@@ -17,14 +20,10 @@
   max-height: 90vh;
   overflow-y: auto;
   background: var(--go-surface);
-  border-radius: var(--go-radius-md);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-lg);
   box-shadow: var(--go-shadow-lg);
-  animation: planner-modal-in 0.22s var(--go-base, ease);
-}
-
-@keyframes planner-modal-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  animation: go-modal-in var(--go-base) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .planner-modal-header {

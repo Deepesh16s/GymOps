@@ -3,31 +3,84 @@
 .cta-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--go-space-2);
   background: var(--go-primary);
   color: #fff;
   border: none;
-  border-radius: 14px;
-  padding: 14px 26px;
-  font-size: 0.95rem;
+  border-radius: var(--go-radius-sm);
+  padding: var(--go-space-3) var(--go-space-6);
+  font-size: 0.9rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: transform var(--go-base), box-shadow var(--go-base), background var(--go-base);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--go-primary) 30%, transparent);
+  transition: background var(--go-fast), box-shadow var(--go-fast);
+  box-shadow: var(--go-shadow-xs);
   white-space: nowrap;
 }
 
 .cta-btn:hover {
   background: var(--go-primary-dark);
-  transform: translateY(-3px);
-  box-shadow:
-    0 10px 28px color-mix(in srgb, var(--go-primary) 38%, transparent),
-    0 0 0 6px color-mix(in srgb, var(--go-primary) 16%, transparent);
+  box-shadow: var(--go-shadow-sm);
 }
 
 .cta-btn:active {
-  transform: translateY(0);
+  box-shadow: var(--go-shadow-xs);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--go-space-2);
+  background: var(--go-surface);
+  color: var(--go-text);
+  border: 1px solid var(--go-border-soft);
+  border-radius: var(--go-radius-sm);
+  padding: var(--go-space-3) var(--go-space-6);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--go-fast), border-color var(--go-fast);
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: var(--go-surface-sunken);
+  border-color: var(--go-border-strong);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--go-space-2);
+  background: transparent;
+  color: var(--go-text-muted);
+  border: none;
+  border-radius: var(--go-radius-sm);
+  padding: var(--go-space-2) var(--go-space-4);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--go-fast), color var(--go-fast);
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  background: var(--go-primary-50);
+  color: var(--go-primary-dark);
+}
+
+.btn-secondary:focus-visible,
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.btn-secondary:disabled,
+.btn-ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .cta-btn:focus-visible {

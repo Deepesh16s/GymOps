@@ -196,7 +196,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--go-warning) 75%, transparent);
+  background: color-mix(in srgb, var(--go-success) 75%, transparent);
 }
 
 .calendar-cell__accent {
@@ -991,7 +991,7 @@
 }
 
 .calendar-hover-preview__row--pr {
-  color: #fbbf24;
+  color: var(--go-success-dark);
 }
 
 

@@ -58,8 +58,8 @@
   gap: 4px;
   padding: 3px 10px;
   border-radius: var(--go-radius-pill);
-  background: var(--go-warning-50);
-  color: var(--go-warning);
+  background: var(--go-success-50);
+  color: var(--go-success-dark);
   font-size: var(--go-text-caption);
   font-weight: 700;
   animation: analytics-celebrate-pop 0.4s ease;
@@ -444,14 +444,10 @@
   box-sizing: border-box;
   padding: 28px 32px;
   border-radius: var(--go-radius-md);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--go-primary) 10%, var(--go-surface)),
-    var(--go-surface)
-  );
+  background: var(--go-primary-50);
   border: 1px solid var(--go-border-soft);
   cursor: pointer;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow var(--go-fast), border-color var(--go-fast);
 }
 
 .analytics-next-chapter:hover {
@@ -588,7 +584,11 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
-  color: var(--go-warning);
+  color: var(--go-text-muted);
+}
+
+.analytics-latest-pr .analytics-latest-pr__head {
+  color: var(--go-success-dark);
 }
 
 .analytics-latest-pr__body {
@@ -737,11 +737,7 @@
   gap: 10px;
   padding: 12px 14px;
   border-radius: var(--go-radius-sm);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--go-primary) 10%, var(--go-surface-sunken)),
-    var(--go-surface-sunken)
-  );
+  background: var(--go-surface-sunken);
   border: 1px solid color-mix(in srgb, var(--go-primary) 16%, transparent);
 }
 

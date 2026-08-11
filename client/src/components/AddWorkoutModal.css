@@ -1,8 +1,9 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 
   display: flex;
   justify-content: center;
@@ -18,14 +19,12 @@
   max-height: 88vh;
   overflow-y: auto;
 
-  background: linear-gradient(180deg, var(--go-primary-50), transparent 120px),
-    var(--go-surface-raised);
-  backdrop-filter: blur(20px);
+  background: var(--go-surface);
 
   border: 1px solid var(--go-border-soft);
-  border-radius: var(--go-radius-md);
+  border-radius: var(--go-radius-lg);
 
-  padding: 32px;
+  padding: var(--go-space-6);
 
   box-shadow: var(--go-shadow-lg);
 
@@ -34,22 +33,6 @@
 
   animation: go-modal-in var(--go-base) cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: center;
-}
-
-@keyframes go-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes go-modal-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -105,7 +88,6 @@
 .close-btn:hover {
   color: var(--go-text);
   border-color: var(--go-border-strong);
-  transform: rotate(90deg);
 }
 
 .modal-card form {
@@ -261,7 +243,7 @@
   border: none;
   border-radius: var(--go-radius-sm);
 
-  background: linear-gradient(135deg, var(--go-primary), var(--go-primary-dark));
+  background: var(--go-primary);
   color: #ffffff;
 
   font-size: 0.95rem;
@@ -269,12 +251,11 @@
   letter-spacing: 0.01em;
 
   cursor: pointer;
-  transition: var(--go-base);
+  transition: var(--go-fast);
 }
 
 .save-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--go-shadow-glow);
+  background: var(--go-primary-dark);
 }
 
 .save-btn:active {

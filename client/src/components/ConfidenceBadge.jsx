@@ -1,4 +1,4 @@
-import { useState, useId, useRef, useEffect } from "react";
+import { useState, useId, useRef, useEffect, useLayoutEffect } from "react";
 import { Info } from "lucide-react";
 import "./ConfidenceBadge.css";
 
@@ -6,8 +6,18 @@ const CLOSE_EVENT = "confidence-badge-open";
 
 function ConfidenceBadge({ level, reason, label = "Confidence" }) {
   const [open, setOpen] = useState(false);
+  const [align, setAlign] = useState("left");
   const popoverId = useId();
   const ref = useRef(null);
+  const popoverRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const el = popoverRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 8) setAlign("right");
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -37,7 +47,10 @@ function ConfidenceBadge({ level, reason, label = "Confidence" }) {
   const toggle = () => {
     setOpen((prev) => {
       const next = !prev;
-      if (next) window.dispatchEvent(new CustomEvent(CLOSE_EVENT, { detail: popoverId }));
+      if (next) {
+        setAlign("left");
+        window.dispatchEvent(new CustomEvent(CLOSE_EVENT, { detail: popoverId }));
+      }
       return next;
     });
   };
@@ -55,7 +68,12 @@ function ConfidenceBadge({ level, reason, label = "Confidence" }) {
         <Info size={12} strokeWidth={2} />
       </button>
       {open && (
-        <span id={popoverId} className="confidence-badge__popover" role="tooltip">
+        <span
+          id={popoverId}
+          ref={popoverRef}
+          className={`confidence-badge__popover confidence-badge__popover--${align}`}
+          role="tooltip"
+        >
           <span className="confidence-badge__label">{label}</span>
           <strong className={`confidence-badge__level confidence-badge__level--${level.toLowerCase()}`}>
             {level} confidence
