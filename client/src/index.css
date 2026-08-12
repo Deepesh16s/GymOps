@@ -1,5 +1,6 @@
 @import "./styles/design-tokens.css";
 @import "./styles/buttons.css";
+@import "./styles/motion.css";
 
 * {
   margin: 0;

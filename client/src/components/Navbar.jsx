@@ -11,6 +11,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import BrandMark from "./BrandMark";
 import DarkModeToggle from "./DarkModeToggle";
 import ProfileDropdown from "./ProfileDropdown";
 import NotificationCenter from "./NotificationCenter";
@@ -63,16 +64,12 @@ function Navbar() {
   return (
     <nav className={`navbar ${scrolled ? "navbar-scrolled" : ""}`}>
       <Link to="/dashboard" className="navbar-logo">
-        <div className="navbar-logo-icon">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-            <path d="M4 14l3-4 3 3 3-5 3 6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        <BrandMark size={22} />
         <span>Rep<span className="navbar-logo-dot">vyn</span></span>
       </Link>
 
       <div className="navbar-links">
-        {NAV_LINKS.map(({ to, label, icon: Icon }) => {
+        {NAV_LINKS.map(({ to, label }) => {
           const active = location.pathname === to;
           return (
             <Link
@@ -80,7 +77,6 @@ function Navbar() {
               to={to}
               className={`navbar-link ${active ? "navbar-link-active" : ""}`}
             >
-              <Icon size={16} strokeWidth={1.8} />
               {label}
             </Link>
           );

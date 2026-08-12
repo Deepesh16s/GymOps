@@ -12,33 +12,33 @@
 }
 
 [data-theme="light"] .muscle-map {
-  --heat-none: #33503f;
-  --heat-highlight: #10b981;
-  --heat-peak: #34d399;
-  --heat-light-a: #4f9974;
-  --heat-light-b: #356249;
-  --heat-moderate-a: #3fae7a;
-  --heat-moderate-b: #2d7a54;
-  --heat-high-a: #22c58e;
-  --heat-high-b: #189968;
-  --heat-extreme-a: #6ee7b7;
-  --heat-extreme-b: #10b981;
+  --heat-none: #a8b8b3;
+  --heat-highlight: #0d9488;
+  --heat-peak: #2dd4bf;
+  --heat-light-a: #8fd4c4;
+  --heat-light-b: #6bbfac;
+  --heat-moderate-a: #4fc4ae;
+  --heat-moderate-b: #2fae97;
+  --heat-high-a: #22a892;
+  --heat-high-b: #128a76;
+  --heat-extreme-a: #5eead4;
+  --heat-extreme-b: #0d9488;
   --heat-outline: #cbd5e1;
 }
 
 [data-theme="dark"] .muscle-map {
-  --heat-none: #3d5079;
-  --heat-highlight: #4f7eff;
-  --heat-peak: #69a7ff;
-  --heat-light-a: #5878ab;
-  --heat-light-b: #34456a;
-  --heat-moderate-a: #6a8fd0;
-  --heat-moderate-b: #3a5088;
-  --heat-high-a: #7aa0ff;
-  --heat-high-b: #4468c0;
-  --heat-extreme-a: #a8d0ff;
-  --heat-extreme-b: #4f7eff;
-  --heat-outline: #334155;
+  --heat-none: #3a4a48;
+  --heat-highlight: #2dd4bf;
+  --heat-peak: #5eead4;
+  --heat-light-a: #4a8a7e;
+  --heat-light-b: #2f6358;
+  --heat-moderate-a: #34a08d;
+  --heat-moderate-b: #1f7a68;
+  --heat-high-a: #2dc4ac;
+  --heat-high-b: #189176;
+  --heat-extreme-a: #7ff4de;
+  --heat-extreme-b: #2dd4bf;
+  --heat-outline: #2a3a38;
 }
 
 .muscle-map__head {

@@ -5,6 +5,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import Layout from "./components/Layout";
 import RequireAuth from "./components/RequireAuth";
 import ErrorBoundary from "./components/ErrorBoundary";
+import Landing from "./pages/Landing";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -34,7 +35,8 @@ function App() {
         <BrowserRouter>
           <Suspense fallback={<RouteLoading />}>
             <Routes>
-              <Route path="/" element={<Login />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password/:token" element={<ResetPassword />} />

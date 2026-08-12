@@ -42,7 +42,25 @@ export function getExerciseHistorySnapshot(historicalWorkouts, exerciseId) {
   };
 }
 
-export function getNextSetSuggestion(snapshot) {
+export function getNextSetSuggestion(snapshot, sessionSetsSoFar = []) {
+  // Prefer what the user is actually doing right now over stale history: a set
+  // already logged today is always more relevant than a different past session.
+  if (sessionSetsSoFar.length) {
+    const lastInSession = sessionSetsSoFar[sessionSetsSoFar.length - 1];
+    const sessionBest = bestSet(sessionSetsSoFar);
+    const readyForMoreWeight = lastInSession.weight >= sessionBest.weight && lastInSession.reps >= 3;
+
+    if (readyForMoreWeight) {
+      return {
+        weight: Math.round((lastInSession.weight + WEIGHT_INCREMENT_KG) * 2) / 2,
+        reps: lastInSession.reps,
+        basis: "weight",
+      };
+    }
+
+    return { weight: lastInSession.weight, reps: lastInSession.reps + 1, basis: "reps" };
+  }
+
   if (!snapshot?.lastSession?.length) return null;
 
   const lastBest = bestSet(snapshot.lastSession);

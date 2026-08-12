@@ -1,8 +1,8 @@
-import "./register.css";
-import hero from "../assets/hero.jpg";
+import "../styles/auth.css";
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import BrandMark from "../components/BrandMark";
 import api from "../services/api";
 
 function Register() {
@@ -15,12 +15,7 @@ function Register() {
     confirmPassword: "",
   });
 
-  const {
-    name,
-    email,
-    password,
-    confirmPassword,
-  } = formData;
+  const { name, email, password, confirmPassword } = formData;
 
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,8 +23,7 @@ function Register() {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]:
-        e.target.value,
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -38,211 +32,129 @@ function Register() {
     if (isSubmitting) return;
     setFormError("");
 
-    if (
-      password !== confirmPassword
-    ) {
+    if (password !== confirmPassword) {
       setFormError("Passwords do not match");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await api.post(
-        "/auth/register",
-        {
-          name,
-          email,
-          password,
-        }
-      );
+      await api.post("/auth/register", { name, email, password });
 
-      navigate("/");
+      navigate("/login");
     } catch (error) {
       console.log(error);
 
-      setFormError(
-        error.response?.data
-          ?.message ||
-          "Registration failed. Please try again."
-      );
+      setFormError(error.response?.data?.message || "Registration failed. Please try again.");
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="register-container">
-      <div className="register-left">
-        <img
-          src={hero}
-          alt="Repvyn"
-        />
-
-        <div className="hero-overlay"></div>
-
-        <div className="hero-content">
-          <div className="hero-logo">
-            <div className="logo-icon">
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M4 14l3-4 3 3 3-5 3 6"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-
-            <h1>
-              Rep<span className="logo-dot">vyn</span>
-            </h1>
-          </div>
-
-          <p>
-            Track Workouts • Build
-            Strength • Visualize
-            Progress
-          </p>
-
-          <div className="hero-tags">
-            <span>
-              Workouts
-            </span>
-
-            <span>
-              Analytics
-            </span>
-
-            <span>
-              Goals
-            </span>
-          </div>
-        </div>
+    <div className="auth-page">
+      <div className="auth-atmosphere">
+        <div className="auth-glow auth-glow--1" />
+        <div className="auth-glow auth-glow--2" />
       </div>
 
-      <div className="register-right">
-        <div className="register-card">
-          <div className="card-logo">
-            <div className="logo-icon">
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M4 14l3-4 3 3 3-5 3 6"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+      <header className="auth-topbar">
+        <Link to="/" className="auth-brand">
+          <BrandMark size={22} />
+          <span>Rep<span className="auth-brand-accent">vyn</span></span>
+        </Link>
+      </header>
+
+      <main className="auth-main">
+        <div className="auth-card">
+          <h1 className="auth-heading">Create your account</h1>
+          <p className="auth-sub">Start logging your training today.</p>
+
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="register-name">
+                Full name
+              </label>
+              <input
+                className="auth-input"
+                id="register-name"
+                type="text"
+                name="name"
+                autoComplete="name"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={handleChange}
+                required
+              />
             </div>
 
-            <h3>Repvyn</h3>
-          </div>
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="register-email">
+                Email address
+              </label>
+              <input
+                className="auth-input"
+                id="register-email"
+                type="email"
+                name="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <h2>
-            Create Account
-          </h2>
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="register-password">
+                Password
+              </label>
+              <input
+                className="auth-input"
+                id="register-password"
+                type="password"
+                name="password"
+                autoComplete="new-password"
+                placeholder="Create a password"
+                value={password}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <p>
-            Start your fitness
-            journey today
-          </p>
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="register-confirm-password">
+                Confirm password
+              </label>
+              <input
+                className="auth-input"
+                id="register-confirm-password"
+                type="password"
+                name="confirmPassword"
+                autoComplete="new-password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <form
-            onSubmit={
-              handleSubmit
-            }
-          >
-            <label htmlFor="register-name">
-              FULL NAME
-            </label>
+            {formError && <p className="auth-error">{formError}</p>}
 
-            <input
-              id="register-name"
-              type="text"
-              name="name"
-              placeholder="Enter your full name"
-              value={name}
-              onChange={
-                handleChange
-              }
-              required
-            />
-
-            <label htmlFor="register-email">
-              EMAIL ADDRESS
-            </label>
-
-            <input
-              id="register-email"
-              type="email"
-              name="email"
-              autoComplete="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={
-                handleChange
-              }
-              required
-            />
-
-            <label htmlFor="register-password">
-              PASSWORD
-            </label>
-
-            <input
-              id="register-password"
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              placeholder="Create a password"
-              value={password}
-              onChange={
-                handleChange
-              }
-              required
-            />
-
-            <label htmlFor="register-confirm-password">
-              CONFIRM PASSWORD
-            </label>
-
-            <input
-              id="register-confirm-password"
-              type="password"
-              name="confirmPassword"
-              autoComplete="new-password"
-              placeholder="Confirm your password"
-              value={
-                confirmPassword
-              }
-              onChange={
-                handleChange
-              }
-              required
-            />
-
-            {formError && (
-              <p className="register-error">{formError}</p>
-            )}
-
-            <button
-              type="submit"
-              className="register-btn"
-              disabled={isSubmitting}
-            >
+            <button type="submit" className="auth-btn" disabled={isSubmitting}>
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
-          <div className="login-link">
-            Already have an
-            account?{" "}
-            <Link to="/">
+          <p className="auth-switch">
+            Already have an account?{" "}
+            <Link to="/login" className="auth-switch-link">
               Login
             </Link>
-          </div>
+          </p>
         </div>
-      </div>
+      </main>
+
+      <p className="auth-footnote">Track Workouts &bull; Build Strength &bull; Visualize Progress</p>
     </div>
   );
 }

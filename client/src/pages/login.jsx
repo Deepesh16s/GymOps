@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate } from "react-router-dom";
-import hero from "../assets/hero.jpg";
-import "./login.css";
+import "../styles/auth.css";
+import BrandMark from "../components/BrandMark";
 import api from "../services/api";
 
 export default function Login() {
@@ -90,92 +90,50 @@ export default function Login() {
   };
 
   return (
-    <div className="gl-root">
-      <div className="gl-bg">
-        <div className="gl-grid" />
+    <div className="auth-page">
+      <div className="auth-atmosphere">
+        <div className="auth-glow auth-glow--1" />
+        <div className="auth-glow auth-glow--2" />
       </div>
 
-      <div className="gl-hero">
-        <img src={hero} alt="Gym" className="gl-hero-img" />
-        <div className="gl-hero-overlay" />
-        <div className="gl-hero-content">
-          <div className="gl-logo">
-            <div className="gl-logo-icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M4 14l3-4 3 3 3-5 3 6"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <span className="gl-logo-text">
-              Rep<span className="gl-logo-dot">vyn</span>
-            </span>
-          </div>
-          <p className="gl-tagline">
-            Track Workouts&nbsp;•&nbsp;Build Strength&nbsp;•&nbsp;Visualize Progress
-          </p>
-          <div className="gl-badges">
-            <span className="gl-badge">Workouts</span>
-            <span className="gl-badge">Analytics</span>
-            <span className="gl-badge">Goals</span>
-          </div>
-        </div>
-      </div>
+      <header className="auth-topbar">
+        <Link to="/" className="auth-brand">
+          <BrandMark size={22} />
+          <span>Rep<span className="auth-brand-accent">vyn</span></span>
+        </Link>
+      </header>
 
-      <div className="gl-panel">
-        <div className="gl-card">
-          <div className="gl-card-logo">
-            <div className="gl-card-logo-icon">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M4 14l3-4 3 3 3-5 3 6"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <span className="gl-card-logo-text">
-              Rep<span className="gl-card-logo-dot">vyn</span>
-            </span>
+      <main className="auth-main">
+        <div className="auth-card">
+          <h1 className="auth-heading">Welcome back</h1>
+          <p className="auth-sub">Sign in to continue your training journey.</p>
+
+          <div className="auth-google-wrap" ref={googleWrapperRef}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              width={googleBtnWidth}
+              size="large"
+              shape="pill"
+              theme="filled_black"
+              text="continue_with"
+              logo_alignment="center"
+            />
           </div>
 
-          <h1 className="gl-heading">Welcome back</h1>
-          <p className="gl-sub">Sign in to continue your fitness journey</p>
-
-          <div className="gl-socials">
-            <div className="gl-social-btn google-wrapper" ref={googleWrapperRef}>
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                width={googleBtnWidth}
-                size="large"
-                shape="pill"
-                theme="outline"
-                text="continue_with"
-                logo_alignment="center"
-              />
-            </div>
+          <div className="auth-divider">
+            <div className="auth-divider-line" />
+            <span className="auth-divider-text">or sign in with email</span>
+            <div className="auth-divider-line" />
           </div>
 
-          <div className="gl-divider">
-            <div className="gl-divider-line" />
-            <span className="gl-divider-text">or sign in with email</span>
-            <div className="gl-divider-line" />
-          </div>
-
-          <form className="gl-form" onSubmit={handleSubmit} noValidate>
-            <div className="gl-field">
-              <label className="gl-label" htmlFor="email">
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="email">
                 Email address
               </label>
               <input
-                className="gl-input"
+                className="auth-input"
                 id="email"
                 type="email"
                 name="email"
@@ -183,22 +141,21 @@ export default function Login() {
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                autoComplete="email"
                 required
               />
             </div>
 
-            <div className="gl-field">
-              <div className="gl-label-row">
-                <label className="gl-label" htmlFor="password">
+            <div className="auth-field">
+              <div className="auth-label-row">
+                <label className="auth-label" htmlFor="password">
                   Password
                 </label>
-                <Link to="/forgot-password" className="gl-forgot">
+                <Link to="/forgot-password" className="auth-forgot">
                   Forgot password?
                 </Link>
               </div>
               <input
-                className="gl-input"
+                className="auth-input"
                 id="password"
                 type="password"
                 name="password"
@@ -209,20 +166,24 @@ export default function Login() {
                 required
               />
             </div>
-            {error && <p className="gl-error">{error}</p>}
-            <button className="gl-btn" type="submit" disabled={isSubmitting}>
+
+            {error && <p className="auth-error">{error}</p>}
+
+            <button className="auth-btn" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Signing In..." : "Sign In"}
             </button>
           </form>
 
-          <p className="gl-register">
+          <p className="auth-switch">
             Don't have an account?{" "}
-            <Link to="/register" className="gl-register-link">
+            <Link to="/register" className="auth-switch-link">
               Register
             </Link>
           </p>
         </div>
-      </div>
+      </main>
+
+      <p className="auth-footnote">Track Workouts &bull; Build Strength &bull; Visualize Progress</p>
     </div>
   );
 }

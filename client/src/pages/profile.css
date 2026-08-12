@@ -190,6 +190,10 @@
   border-color: color-mix(in srgb, var(--go-danger-dark) 20%, var(--go-border-soft));
 }
 
+.profile-danger .profile-section-header svg {
+  color: var(--go-danger-dark);
+}
+
 .profile-danger-title {
   color: var(--go-danger-dark);
 }

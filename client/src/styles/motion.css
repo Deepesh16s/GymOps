@@ -1,0 +1,72 @@
+@import "./design-tokens.css";
+
+@keyframes motion-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.motion-enter {
+  animation: motion-fade-up var(--motion-slow) var(--motion-ease) both;
+}
+
+.motion-enter-blur {
+  animation: motion-blur-in var(--motion-slow) var(--motion-ease) both;
+}
+
+.motion-stagger-1 { animation-delay: 0.05s; }
+.motion-stagger-2 { animation-delay: 0.1s; }
+.motion-stagger-3 { animation-delay: 0.15s; }
+.motion-stagger-4 { animation-delay: 0.2s; }
+.motion-stagger-5 { animation-delay: 0.25s; }
+.motion-stagger-6 { animation-delay: 0.3s; }
+
+.motion-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--motion-reveal) var(--motion-ease), transform var(--motion-reveal) var(--motion-ease);
+}
+
+.motion-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-enter,
+  .motion-enter-blur,
+  .motion-reveal {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

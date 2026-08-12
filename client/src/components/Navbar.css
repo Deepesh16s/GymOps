@@ -4,81 +4,81 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 36px;
-  background: color-mix(in srgb, var(--go-surface) 82%, transparent);
+  padding: 0 40px;
+  height: 64px;
+  background: color-mix(in srgb, var(--go-bg) 80%, transparent);
   border-bottom: 1px solid var(--go-border-soft);
   position: sticky;
   top: 0;
   z-index: 50;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition: box-shadow var(--go-base), background var(--go-base);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color var(--go-base);
   flex-wrap: wrap;
-}
-
-.navbar-scrolled {
-  box-shadow: var(--go-shadow-sm);
 }
 
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
   color: var(--go-text);
   text-decoration: none;
   font-family: var(--go-font);
   flex-shrink: 0;
 }
 
-.navbar-logo-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--go-brand), var(--go-brand-dark));
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.navbar-logo-dot {
+  color: var(--go-primary);
 }
-
-.navbar-logo-dot { color: var(--go-brand); }
 
 .navbar-links {
   display: flex;
-  gap: 2px;
-  background: var(--go-surface-sunken);
-  padding: 3px;
-  border-radius: var(--go-radius-md);
+  align-items: center;
+  gap: 30px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .navbar-link {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--go-radius-sm);
+  padding: 4px 0;
   color: var(--go-text-muted);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 500;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
+  position: relative;
+  transition: color 0.15s ease;
 }
 
-.navbar-link svg {
-  flex-shrink: 0;
+.navbar-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -21px;
+  height: 2px;
+  background: var(--go-primary);
+  transform: scaleX(0);
+  transition: transform 0.2s var(--go-ease-decel);
 }
 
 .navbar-link:hover {
-  background: var(--go-primary-50);
   color: var(--go-text);
 }
 
 .navbar-link-active {
-  background: var(--go-surface);
-  color: var(--go-primary-dark);
-  box-shadow: var(--go-shadow-xs);
+  color: var(--go-text);
+}
+
+.navbar-link-active::after {
+  transform: scaleX(1);
 }
 
 .navbar-right {
@@ -88,19 +88,12 @@
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .navbar-link-active {
-  background: var(--go-surface-sunken);
-  color: var(--go-primary-light);
-  box-shadow: none;
-  border: 1px solid var(--go-border-soft);
-}
-
 .navbar-hamburger {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: var(--go-radius-sm);
   background: transparent;
@@ -111,8 +104,7 @@
 }
 
 .navbar-hamburger:hover {
-  background: var(--go-primary-50);
-  color: var(--go-primary-dark);
+  background: var(--go-surface-sunken);
 }
 
 .navbar-hamburger:focus-visible,
@@ -166,33 +158,42 @@
 
 .navbar-mobile-link svg {
   flex-shrink: 0;
+  color: var(--go-text-faint);
 }
 
 .navbar-mobile-link:hover {
-  background: var(--go-primary-50);
+  background: var(--go-surface-sunken);
   color: var(--go-text);
 }
 
 .navbar-mobile-link-active {
   background: var(--go-primary-50);
-  color: var(--go-primary-dark);
+  color: var(--go-primary);
   font-weight: 600;
+}
+
+.navbar-mobile-link-active svg {
+  color: var(--go-primary);
 }
 
 @media (max-width: 1180px) and (min-width: 1081px) {
   .navbar {
-    padding: 14px 24px;
+    padding: 0 24px;
+  }
+
+  .navbar-links {
+    gap: 20px;
   }
 
   .navbar-link {
-    padding: 8px 10px;
     font-size: 0.82rem;
   }
 }
 
 @media (max-width: 1080px) {
   .navbar {
-    padding: 12px 18px;
+    padding: 0 18px;
+    height: 58px;
   }
 
   .navbar-links {
@@ -211,12 +212,12 @@
 
 @media (max-width: 480px) {
   .navbar {
-    padding: 10px 14px;
+    padding: 0 14px;
     gap: 8px;
   }
 
   .navbar-logo span {
-    font-size: 0.98rem;
+    font-size: 0.95rem;
   }
 
   .navbar-right {
@@ -228,7 +229,8 @@
   .navbar-mobile-menu,
   .navbar-mobile-link,
   .navbar-hamburger,
-  .navbar-link {
+  .navbar-link,
+  .navbar-link::after {
     transition: none;
   }
 }

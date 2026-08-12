@@ -1,47 +1,50 @@
 :root {
-  --go-bg: #f5fbf8;
+  --go-bg: #fafaf9;
 
   --go-surface: #ffffff;
-  --go-surface-sunken: #f7faf9;
+  --go-surface-sunken: #f5f5f4;
   --go-surface-raised: #ffffff;
 
-  --go-text: #0f172a;
-  --go-text-muted: #64748b;
-  --go-text-faint: #94a3b8;
+  --go-text: #171717;
+  --go-text-muted: #525252;
+  --go-text-faint: #8a8a8a;
 
-  --go-border-soft: rgba(16, 185, 129, 0.1);
-  --go-border-strong: rgba(16, 185, 129, 0.25);
+  --go-border-soft: rgba(0, 0, 0, 0.08);
+  --go-border-strong: rgba(0, 0, 0, 0.14);
 
-  --go-brand: #10b981;
-  --go-brand-dark: #059669;
-  --go-brand-light: #6ee7b7;
+  --go-brand: #0d9488;
+  --go-brand-dark: #0f766e;
+  --go-brand-light: #2dd4bf;
 
-  --go-primary: #10b981;
-  --go-primary-dark: #059669;
-  --go-primary-light: #6ee7b7;
+  --go-primary: #0d9488;
+  --go-primary-dark: #0f766e;
+  --go-primary-light: #2dd4bf;
 
-  --go-primary-50: rgba(16, 185, 129, 0.08);
-  --go-primary-100: rgba(16, 185, 129, 0.12);
-  --go-primary-200: rgba(16, 185, 129, 0.16);
-  --go-primary-300: rgba(16, 185, 129, 0.25);
+  --go-primary-50: rgba(13, 148, 136, 0.06);
+  --go-primary-100: rgba(13, 148, 136, 0.1);
+  --go-primary-200: rgba(13, 148, 136, 0.16);
+  --go-primary-300: rgba(13, 148, 136, 0.26);
 
-  --go-success: #10b981;
-  --go-success-dark: #059669;
-  --go-success-light: #6ee7b7;
-  --go-success-50: rgba(16, 185, 129, 0.08);
-  --go-success-100: rgba(16, 185, 129, 0.12);
+  --go-accent-secondary: #0284c7;
+  --go-accent-secondary-50: rgba(2, 132, 199, 0.08);
+
+  --go-success: #16a34a;
+  --go-success-dark: #15803d;
+  --go-success-light: #4ade80;
+  --go-success-50: rgba(22, 163, 74, 0.08);
+  --go-success-100: rgba(22, 163, 74, 0.14);
 
   --go-icon-accent: var(--go-primary-dark);
 
   --go-chart-accent: var(--go-primary);
 
   --go-danger-dark: #dc2626;
-  --go-danger-50: rgba(239, 68, 68, 0.08);
+  --go-danger-50: rgba(220, 38, 38, 0.08);
 
   --go-warning: #b45309;
-  --go-warning-50: rgba(217, 119, 6, 0.08);
+  --go-warning-50: rgba(180, 83, 9, 0.08);
 
-  --go-illustration-surface: #f4f8f6;
+  --go-illustration-surface: #f5f5f4;
 
   --go-space-1: 4px;
   --go-space-2: 8px;
@@ -54,24 +57,30 @@
   --go-space-9: 48px;
   --go-space-10: 64px;
 
-  --go-radius-sm: 12px;
-  --go-radius-md: 20px;
-  --go-radius-lg: 22px;
-  --go-radius-xl: 28px;
+  --go-radius-sm: 8px;
+  --go-radius-md: 12px;
+  --go-radius-lg: 16px;
+  --go-radius-xl: 20px;
   --go-radius-pill: 999px;
 
   --go-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --go-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --go-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --go-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --go-shadow-glow: 0 0 25px rgba(16, 185, 129, 0.22);
+  --go-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --go-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07);
+  --go-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.09);
+  --go-shadow-glow: 0 0 32px rgba(13, 148, 136, 0.16);
 
   --go-fast: 0.15s ease;
-  --go-base: 0.25s ease;
+  --go-base: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   --go-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --go-ease-decel: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --go-text-display: 3.75rem;
+  --motion-fast: 150ms;
+  --motion-normal: 220ms;
+  --motion-slow: 400ms;
+  --motion-reveal: 600ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --go-text-display: 4.25rem;
   --go-text-h1: 3rem;
   --go-text-h2: 2rem;
   --go-text-h3: 1.5rem;
@@ -81,6 +90,7 @@
   --go-text-caption: 0.75rem;
 
   --go-tracking-tight: -0.03em;
+  --go-tracking-tighter: -0.045em;
 
   --go-font:
     Inter,
@@ -89,56 +99,66 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  --go-font-mono:
+    "SF Mono",
+    "Menlo",
+    "Consolas",
+    monospace;
 }
 
 [data-theme="dark"] {
-  --go-bg: #0b1210;
+  --go-bg: #050505;
 
-  --go-surface: #111827;
-  --go-surface-sunken: #1a2320;
-  --go-surface-raised: #16202e;
+  --go-surface: #0a0a0a;
+  --go-surface-sunken: #141414;
+  --go-surface-raised: #101010;
 
-  --go-text: #e2f5ee;
-  --go-text-muted: #94a3b8;
-  --go-text-faint: #64748b;
+  --go-text: #f5f5f5;
+  --go-text-muted: #a1a1aa;
+  --go-text-faint: #71717a;
 
-  --go-border-soft: rgba(79, 124, 255, 0.16);
-  --go-border-strong: rgba(79, 124, 255, 0.3);
+  --go-border-soft: rgba(255, 255, 255, 0.08);
+  --go-border-strong: rgba(255, 255, 255, 0.14);
 
-  --go-brand: #10b981;
-  --go-brand-dark: #059669;
-  --go-brand-light: #6ee7b7;
+  --go-brand: #2dd4bf;
+  --go-brand-dark: #14b8a6;
+  --go-brand-light: #5eead4;
 
-  --go-primary: #4f7cff;
-  --go-primary-dark: #3358d6;
-  --go-primary-light: #8fa8ff;
+  --go-primary: #2dd4bf;
+  --go-primary-dark: #14b8a6;
+  --go-primary-light: #5eead4;
 
-  --go-primary-50: rgba(79, 124, 255, 0.12);
-  --go-primary-100: rgba(79, 124, 255, 0.18);
-  --go-primary-200: rgba(79, 124, 255, 0.24);
-  --go-primary-300: rgba(79, 124, 255, 0.34);
+  --go-primary-50: rgba(45, 212, 191, 0.08);
+  --go-primary-100: rgba(45, 212, 191, 0.12);
+  --go-primary-200: rgba(45, 212, 191, 0.18);
+  --go-primary-300: rgba(45, 212, 191, 0.3);
 
-  --go-success: #34d399;
-  --go-success-dark: #10b981;
-  --go-success-light: #6ee7b7;
-  --go-success-50: rgba(16, 185, 129, 0.14);
-  --go-success-100: rgba(16, 185, 129, 0.2);
+  --go-accent-secondary: #7dd3fc;
+  --go-accent-secondary-50: rgba(125, 211, 252, 0.1);
+
+  --go-success: #4ade80;
+  --go-success-dark: #22c55e;
+  --go-success-light: #86efac;
+  --go-success-50: rgba(74, 222, 128, 0.12);
+  --go-success-100: rgba(74, 222, 128, 0.18);
 
   --go-icon-accent: var(--go-primary-light);
 
-  --go-chart-accent: #6f8eff;
+  --go-chart-accent: var(--go-primary);
 
   --go-danger-dark: #f87171;
-  --go-danger-50: rgba(239, 68, 68, 0.16);
+  --go-danger-50: rgba(248, 113, 113, 0.14);
 
   --go-warning: #fbbf24;
   --go-warning-50: rgba(251, 191, 36, 0.12);
 
-  --go-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --go-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --go-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --go-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --go-shadow-glow: 0 0 25px rgba(79, 124, 255, 0.28);
+  --go-illustration-surface: #141414;
+
+  --go-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --go-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --go-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --go-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --go-shadow-glow: 0 0 32px rgba(45, 212, 191, 0.18);
 }
 
 @keyframes go-fade-in-up {

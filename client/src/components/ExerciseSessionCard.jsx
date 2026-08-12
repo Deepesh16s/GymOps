@@ -64,7 +64,7 @@ function ExerciseSessionCard({
     }
   }, []);
 
-  const suggestion = useMemo(() => getNextSetSuggestion(snapshot), [snapshot]);
+  const suggestion = useMemo(() => getNextSetSuggestion(snapshot, sets), [snapshot, sets]);
 
   const autofill = useMemo(() => {
     const lastInSession = sets[sets.length - 1];

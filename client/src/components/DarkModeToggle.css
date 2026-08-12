@@ -6,20 +6,15 @@
   height: 38px;
   border-radius: 50%;
   border: 1px solid var(--go-border-strong);
-  background: var(--go-primary-50);
+  background: var(--go-surface-sunken);
   color: var(--go-icon-accent);
   cursor: pointer;
-  transition: background var(--go-fast), transform var(--go-fast), border-color var(--go-fast);
+  transition: background var(--go-fast), border-color var(--go-fast);
   flex-shrink: 0;
 }
 
 .theme-toggle:hover {
   background: var(--go-primary-100);
-  transform: translateY(-1px);
-}
-
-.theme-toggle:active {
-  transform: translateY(0);
 }
 
 .theme-toggle:focus-visible {
