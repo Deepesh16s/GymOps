@@ -653,15 +653,32 @@
   margin: 0 4px;
 }
 
-.muscle-map__empty {
+.muscle-map__sidelist-empty {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 220px;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--go-space-5);
+  border: 1px dashed var(--go-border-strong);
+  border-radius: var(--go-radius-md);
   color: var(--go-text-faint);
+}
+
+.muscle-map__sidelist-empty svg {
+  color: var(--go-primary);
+  margin-bottom: 2px;
+}
+
+.muscle-map__sidelist-empty p {
+  margin: 0;
   font-size: 13px;
-  gap: 8px;
+  font-weight: 700;
+  color: var(--go-text);
+}
+
+.muscle-map__sidelist-empty span {
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 

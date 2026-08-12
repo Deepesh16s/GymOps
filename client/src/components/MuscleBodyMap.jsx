@@ -288,26 +288,16 @@ function MuscleBodyMap({
         </div>
       </div>
 
-      {hasData && (
-        <div className="muscle-map__legend">
-          {INTENSITY_LEVELS.map((level) => (
-            <span key={level} className="muscle-map__legend-item">
-              <span className={`muscle-map__legend-swatch muscle-map__legend-swatch--${level}`} />
-              {INTENSITY_LABELS[level]}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {!hasData ? (
-        <div className="muscle-map__empty">
-          <p>No sets logged yet.</p>
-          <span className="muscle-map__empty-sub">
-            Log a session to see your muscle split.
+      <div className="muscle-map__legend">
+        {INTENSITY_LEVELS.map((level) => (
+          <span key={level} className="muscle-map__legend-item">
+            <span className={`muscle-map__legend-swatch muscle-map__legend-swatch--${level}`} />
+            {INTENSITY_LABELS[level]}
           </span>
-        </div>
-      ) : (
-        <>
+        ))}
+      </div>
+
+      <>
           {isNarrow && (
             <div className="muscle-map__view-toggle">
               <button
@@ -519,6 +509,13 @@ function MuscleBodyMap({
             </div>
 
             <div className="muscle-map__sidelist">
+              {legendEntries.length === 0 && (
+                <div className="muscle-map__sidelist-empty">
+                  <Dumbbell size={18} strokeWidth={1.8} />
+                  <p>No sets logged yet</p>
+                  <span>Log your first workout and this fills in automatically.</span>
+                </div>
+              )}
               {legendEntries.map((e, i) => {
                 const isTop = i === 0;
                 const pct = pctOf(e.sets);
@@ -718,7 +715,6 @@ function MuscleBodyMap({
             </div>
           </div>
         </>
-      )}
     </div>
   );
 }

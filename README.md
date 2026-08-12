@@ -19,10 +19,11 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Browser push notifications** — optional Web Push delivery for a subset of notification types, via a dedicated service worker
 - **Training intelligence** — recovery scores, readiness, fatigue level, plateau detection, deload recommendations, training balance (upper/lower, strength/cardio splits), volume landmarks, muscle priority, weekly grade, and a deterministic "coach priority" summary — all derived from the user's own logged workouts, no external API calls
 - **Google Sign-In** — alongside email/password auth with forgot/reset password via email
+- **Public landing page** — dark, marketing-style entry point at `/` (redirects straight to `/dashboard` if already signed in); sign-in itself lives at its own `/login` route
 
 ## Tech stack
 
-**Frontend** — React 19, Vite, React Router 7, Axios, Recharts, `@react-oauth/google`, `lucide-react`, `react-select`. Plain CSS (design tokens in `client/src/styles/design-tokens.css`), no CSS framework.
+**Frontend** — React 19, Vite, React Router 7, Axios, Recharts, `@react-oauth/google`, `lucide-react`, `react-select`. Plain CSS (design tokens + shared auth/motion styles in `client/src/styles/`), no CSS framework, no animation library — page-entrance/scroll-reveal motion is a small native implementation (`client/src/components/Reveal.jsx`).
 
 **Backend** — Node.js, Express 5, Mongoose 9 (MongoDB), JWT auth (`jsonwebtoken`), `bcryptjs`, `google-auth-library` (Google ID token verification), `helmet`, `cors`, `express-rate-limit`, `compression`, `resend` (password reset email, sent over HTTPS — Render blocks outbound SMTP, so a transactional email API is used instead of raw SMTP), `web-push` (browser push).
 
@@ -33,8 +34,9 @@ Repvyn/
 ├── client/                    React + Vite SPA
 │   ├── public/                 Static assets, favicon, push service worker
 │   └── src/
-│       ├── pages/               Route-level views (Dashboard, Goals, Calendar, ...)
+│       ├── pages/               Route-level views (Landing, Login, Dashboard, Goals, Calendar, ...)
 │       ├── components/          Shared UI components (+ progression/, workoutHistory/ subfolders)
+│       ├── styles/                Design tokens, shared auth-page shell, motion system
 │       ├── services/             Axios wrappers per resource (api.js holds the shared instance)
 │       ├── hooks/                 Reusable hooks (workout session state, push notifications, ...)
 │       ├── context/                ThemeContext (dark mode)
@@ -117,7 +119,7 @@ Two independent sign-in paths, both issuing the same JWT (`Authorization: Bearer
 - **Email/password** — bcrypt-hashed (`POST /api/auth/register`, `/login`), plus forgot/reset password via a time-limited emailed token.
 - **Google Sign-In** — the client obtains an ID token via `@react-oauth/google`; the server verifies it with `google-auth-library` (`POST /api/auth/google`) and creates the user on first sign-in.
 
-**Status:** email/password auth, forgot/reset password, and every other page listed under Known Limitations below have been verified live in a real browser. Google Sign-In's server-side token verification is correct by code review, but the actual consent-screen round trip is still blocked in this environment — it requires the deployed origin to be registered in Google Cloud Console's Authorized JavaScript origins, which can only be done once a real production URL exists. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+**Status:** email/password auth, forgot/reset password, and every other page listed under Known Limitations below — including the current dark-themed Landing/Login/Register redesign — have been verified live in a real browser across desktop and mobile viewports, in both light and dark theme. Google Sign-In's server-side token verification is correct by code review and the button renders/behaves correctly in the UI, but the actual consent-screen round trip is still blocked in this environment — it requires the deployed origin to be registered in Google Cloud Console's Authorized JavaScript origins, which can only be done once a real production URL exists.
 
 ## Development commands
 
@@ -159,6 +161,7 @@ Other hosts remain possible (any Node host for the API, any static host for the 
 
 - No automated test suite (unit, integration, or e2e) exists for either the client or the server.
 - No CI pipeline — lint/build/tests do not run automatically on push or PR.
-- Login, Register, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, Notifications, and Forgot/Reset Password have all been exercised live in a real browser (Playwright), including mobile viewports (down to 320px) — this is no longer unverified.
+- Landing, Login, Register, Forgot/Reset Password, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, and Notifications have all been exercised live in a real browser (Playwright), including mobile viewports (down to 320px) and both light/dark theme — this is no longer unverified.
 - Still not verified in a real browser: the full Google OAuth consent-screen round trip (needs a real Google account; blocked in this environment by origin configuration, not a code issue), screen-reader/assistive-technology behavior, and testing in browsers other than Chromium.
-- `server/scripts/` contains four one-off data migration scripts that have already been applied to the live data they targeted; they are kept for historical reference, not as reusable maintenance tools.
+- `DELETE /api/auth/account` removes only the `User` document — workouts, goals, exercises, and notifications are not cascade-deleted and become orphaned. Not fixed since it's a data-retention/product decision, not a clear bug.
+- `server/scripts/` contains five one-off data migration scripts that have already been applied to the live data they targeted; they are kept for historical reference, not as reusable maintenance tools.

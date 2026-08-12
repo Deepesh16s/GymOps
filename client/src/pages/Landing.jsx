@@ -20,6 +20,7 @@ function Landing() {
   return (
     <div className="land-page">
       <div className="land-atmosphere">
+        <img src={hero} alt="" aria-hidden="true" className="land-bg-photo" />
         <div className="land-glow land-glow--1" />
         <div className="land-glow land-glow--2" />
       </div>
@@ -48,11 +49,6 @@ function Landing() {
         <div className="land-cta-row motion-enter motion-stagger-4">
           <Link to="/register" className="land-cta-primary">Start Training</Link>
           <Link to="/login" className="land-cta-secondary">Sign In</Link>
-        </div>
-
-        <div className="land-visual motion-enter motion-stagger-5">
-          <img src={hero} alt="Athlete training" className="land-visual-img" />
-          <div className="land-visual-fade" />
         </div>
       </main>
 
