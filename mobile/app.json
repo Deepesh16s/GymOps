@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Repvyn",
+    "slug": "repvyn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#050505",
+    "scheme": "repvyn",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.repvyn.app"
+    },
+    "android": {
+      "package": "com.repvyn.app",
+      "permissions": [
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_EXERCISE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#050505",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "react-native-health-connect",
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b5343710-4c93-4765-881b-b02eb43a0f53"
+      }
+    },
+    "owner": "repvyn"
+  }
+}
