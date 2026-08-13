@@ -169,6 +169,94 @@ exports.syncBatch = async (req, res) => {
   }
 };
 
+// Most recent HeartRate sample's own {time, beatsPerMinute} entry within the
+// most recent HeartRate record's `value` array (HeartRate is stored as a
+// series per record, unlike the other scalar types).
+function latestHeartRateReading(record) {
+  if (!record || !Array.isArray(record.value) || record.value.length === 0) return null;
+  return record.value.reduce((latest, sample) =>
+    !latest || new Date(sample.time) > new Date(latest.time) ? sample : latest
+  , null);
+}
+
+exports.getHealthSummary = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // "Today" as a UTC calendar day, matching this project's existing
+    // convention for day-boundary aggregates (see todayKeyUTC/daysAgoKeyUTC
+    // in server/utils/goalMetrics.js) rather than inventing a new,
+    // timezone-aware definition.
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+
+    const [
+      stepsAgg,
+      caloriesAgg,
+      latestHeartRateRecord,
+      latestRestingHeartRate,
+      latestHrv,
+      latestExercise,
+      latestSleep,
+    ] = await Promise.all([
+      HealthSample.aggregate([
+        { $match: { user: userId, recordType: "Steps", startTime: { $gte: todayStart, $lt: todayEnd } } },
+        { $group: { _id: null, total: { $sum: "$value" } } },
+      ]),
+      HealthSample.aggregate([
+        {
+          $match: {
+            user: userId,
+            recordType: "ActiveCaloriesBurned",
+            startTime: { $gte: todayStart, $lt: todayEnd },
+          },
+        },
+        { $group: { _id: null, total: { $sum: "$value" } } },
+      ]),
+      HealthSample.findOne({ user: userId, recordType: "HeartRate" }).sort({ startTime: -1 }),
+      HealthSample.findOne({ user: userId, recordType: "RestingHeartRate" }).sort({ startTime: -1 }),
+      HealthSample.findOne({ user: userId, recordType: "HeartRateVariabilityRmssd" }).sort({ startTime: -1 }),
+      HealthSample.findOne({ user: userId, recordType: "ExerciseSession" }).sort({ startTime: -1 }),
+      HealthSleepSession.findOne({ user: userId }).sort({ startTime: -1 }),
+    ]);
+
+    const latestHr = latestHeartRateReading(latestHeartRateRecord);
+
+    res.status(200).json({
+      date: todayStart.toISOString().slice(0, 10),
+      steps: stepsAgg.length > 0 ? { total: stepsAgg[0].total, unit: "count" } : null,
+      activeCalories: caloriesAgg.length > 0 ? { total: caloriesAgg[0].total, unit: "kilocalories" } : null,
+      heartRate: latestHr ? { value: latestHr.beatsPerMinute, unit: "bpm", time: latestHr.time } : null,
+      restingHeartRate: latestRestingHeartRate
+        ? { value: latestRestingHeartRate.value, unit: "bpm", time: latestRestingHeartRate.startTime }
+        : null,
+      heartRateVariability: latestHrv
+        ? { value: latestHrv.value, unit: "ms", time: latestHrv.startTime }
+        : null,
+      exercise: latestExercise
+        ? {
+            exerciseType: latestExercise.value?.exerciseType ?? null,
+            title: latestExercise.value?.title ?? null,
+            startTime: latestExercise.startTime,
+            endTime: latestExercise.endTime,
+          }
+        : null,
+      sleep: latestSleep
+        ? {
+            startTime: latestSleep.startTime,
+            endTime: latestSleep.endTime,
+            durationMinutes: Math.round((latestSleep.endTime - latestSleep.startTime) / 60000),
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error("getHealthSummary error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 exports.deleteHealthData = async (req, res) => {
   try {
     const sampleResult = await HealthSample.deleteMany({ user: req.user._id });

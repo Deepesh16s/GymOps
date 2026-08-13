@@ -7,6 +7,7 @@ const {
   disconnectHealth,
   getSyncState,
   syncBatch,
+  getHealthSummary,
   deleteHealthData,
 } = require("../controllers/healthController");
 
@@ -17,6 +18,7 @@ router.post("/connect", protect, connectHealth);
 router.delete("/connect", protect, disconnectHealth);
 router.get("/sync-state", protect, getSyncState);
 router.post("/sync", protect, syncBatch);
+router.get("/summary", protect, getHealthSummary);
 router.delete("/data", protect, deleteHealthData);
 
 module.exports = router;

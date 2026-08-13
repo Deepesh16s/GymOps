@@ -9,10 +9,44 @@ interface Props {
   onRequestRationale: (onContinue: () => void) => void;
 }
 
+// The one error string useHealthConnection sets when the OS permission
+// prompt was granted only partially — the only case where sending the user
+// to Health Connect's own settings is actually the right next step.
+const PERMISSION_DENIED_ERROR = "Not all permissions were granted.";
+
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 export function HomeScreen({ onRequestRationale }: Props) {
   const { user, logout } = useAuth();
   const health = useHealthConnection();
   const [disconnecting, setDisconnecting] = useState(false);
+
+  const summary = health.summary;
+  const hasSummaryData = !!(
+    summary &&
+    (summary.steps ||
+      summary.activeCalories ||
+      summary.heartRate ||
+      summary.restingHeartRate ||
+      summary.heartRateVariability ||
+      summary.exercise ||
+      summary.sleep)
+  );
 
   const handleConnectPress = () => {
     // Show the rationale before the OS permission prompt, per Health Connect's
@@ -94,6 +128,11 @@ export function HomeScreen({ onRequestRationale }: Props) {
               fits into your recovery.
             </Text>
             {health.error && <Text style={styles.error}>{health.error}</Text>}
+            {health.error === PERMISSION_DENIED_ERROR && (
+              <Pressable onPress={health.openHealthConnectSettings} style={styles.linkRow}>
+                <Text style={styles.linkText}>Open Health Connect settings</Text>
+              </Pressable>
+            )}
             <Pressable style={styles.primaryButton} onPress={handleConnectPress}>
               <Text style={styles.primaryButtonText}>Connect Health</Text>
             </Pressable>
@@ -113,6 +152,9 @@ export function HomeScreen({ onRequestRationale }: Props) {
             <Text style={styles.cardBody}>
               Permission was removed from Health Connect settings. Reconnect to resume syncing.
             </Text>
+            <Pressable onPress={health.openHealthConnectSettings} style={styles.linkRow}>
+              <Text style={styles.linkText}>Open Health Connect settings</Text>
+            </Pressable>
             <Pressable style={styles.primaryButton} onPress={handleConnectPress}>
               <Text style={styles.primaryButtonText}>Reconnect</Text>
             </Pressable>
@@ -122,14 +164,15 @@ export function HomeScreen({ onRequestRationale }: Props) {
         {(health.phase === "connected" || health.phase === "syncing") && (
           <>
             <Text style={styles.cardTitle}>Health data connected</Text>
-            {health.lastSyncResult && (
-              <Text style={styles.cardBody}>
-                Last sync: {health.lastSyncResult.mode === "historical" ? "imported" : "updated"}{" "}
-                {health.lastSyncResult.upserted} record
-                {health.lastSyncResult.upserted === 1 ? "" : "s"}
-                {health.lastSyncResult.deleted > 0 ? `, removed ${health.lastSyncResult.deleted}` : ""}.
-              </Text>
-            )}
+            <Text style={styles.cardBody}>
+              {health.phase === "syncing"
+                ? health.isHistoricalSync
+                  ? "Importing your health history…"
+                  : "Syncing health data…"
+                : health.lastSyncedAt
+                  ? `Last synced ${formatTimestamp(health.lastSyncedAt)}`
+                  : "Not synced yet."}
+            </Text>
             {health.error && <Text style={styles.error}>{health.error}</Text>}
 
             <Pressable
@@ -168,6 +211,78 @@ export function HomeScreen({ onRequestRationale }: Props) {
           </>
         )}
       </View>
+
+      {(health.phase === "connected" || health.phase === "syncing") && (
+        <View style={[styles.card, styles.summaryCard]}>
+          <Text style={styles.cardTitle}>Health summary</Text>
+          {hasSummaryData ? (
+            <View style={styles.summaryList}>
+              {summary?.steps && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Steps today</Text>
+                  <Text style={styles.summaryValue}>{summary.steps.total.toLocaleString()}</Text>
+                </View>
+              )}
+              {summary?.activeCalories && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Active calories today</Text>
+                  <Text style={styles.summaryValue}>{Math.round(summary.activeCalories.total)} kcal</Text>
+                </View>
+              )}
+              {summary?.heartRate && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Latest heart rate</Text>
+                  <View style={styles.summaryValueGroup}>
+                    <Text style={styles.summaryValue}>{summary.heartRate.value} bpm</Text>
+                    <Text style={styles.summarySub}>{formatTimestamp(summary.heartRate.time)}</Text>
+                  </View>
+                </View>
+              )}
+              {summary?.restingHeartRate && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Resting heart rate</Text>
+                  <View style={styles.summaryValueGroup}>
+                    <Text style={styles.summaryValue}>{summary.restingHeartRate.value} bpm</Text>
+                    <Text style={styles.summarySub}>{formatTimestamp(summary.restingHeartRate.time)}</Text>
+                  </View>
+                </View>
+              )}
+              {summary?.heartRateVariability && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Heart rate variability</Text>
+                  <View style={styles.summaryValueGroup}>
+                    <Text style={styles.summaryValue}>{summary.heartRateVariability.value.toFixed(1)} ms</Text>
+                    <Text style={styles.summarySub}>{formatTimestamp(summary.heartRateVariability.time)}</Text>
+                  </View>
+                </View>
+              )}
+              {summary?.sleep && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Last sleep</Text>
+                  <View style={styles.summaryValueGroup}>
+                    <Text style={styles.summaryValue}>{formatDuration(summary.sleep.durationMinutes)}</Text>
+                    <Text style={styles.summarySub}>{formatTimestamp(summary.sleep.endTime)}</Text>
+                  </View>
+                </View>
+              )}
+              {summary?.exercise && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Latest exercise</Text>
+                  <View style={styles.summaryValueGroup}>
+                    <Text style={styles.summaryValue}>{summary.exercise.title || "Workout"}</Text>
+                    <Text style={styles.summarySub}>{formatTimestamp(summary.exercise.startTime)}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={styles.cardBody}>
+              No health data available yet. Once a supported source records data in Health Connect,
+              it will appear here.
+            </Text>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -202,6 +317,22 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text, fontSize: 17, fontWeight: "700", marginBottom: spacing.xs },
   cardBody: { color: colors.textMuted, fontSize: 13, lineHeight: 19, marginBottom: spacing.lg },
   error: { color: colors.danger, fontSize: 13, marginBottom: spacing.md },
+  linkRow: { marginBottom: spacing.md },
+  linkText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
+  summaryCard: { marginTop: spacing.lg },
+  summaryList: { gap: spacing.md },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  summaryLabel: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
+  summaryValueGroup: { alignItems: "flex-end" },
+  summaryValue: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  summarySub: { color: colors.textFaint, fontSize: 11, marginTop: 2 },
   primaryButton: {
     height: 46,
     borderRadius: radius.sm,

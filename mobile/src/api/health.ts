@@ -1,12 +1,13 @@
 import { apiRequest } from "./client";
 import type { NormalizedRecord } from "../health/normalize";
-import type { TrackedRecordType } from "../health/recordTypes";
 
 export interface ConnectionStatus {
   connected: boolean;
   connectedAt: string | null;
   grantedRecordTypes: string[];
-  syncState: Partial<Record<TrackedRecordType, { lastSyncedAt: string | null }>>;
+  // One cursor covers every tracked type (see SyncBatchRequest below), so this
+  // is a single flat status, not one per record type.
+  syncState: { lastSyncedAt: string | null };
 }
 
 export function getConnectionStatus(): Promise<ConnectionStatus> {
@@ -54,4 +55,21 @@ export function syncBatch(batch: SyncBatchRequest): Promise<SyncBatchResponse> {
 
 export function deleteAllHealthData(): Promise<{ message: string; deletedCount: number }> {
   return apiRequest("/health/data", { method: "DELETE" });
+}
+
+// Read-only presentation data derived from already-synced records. Each field
+// is null when nothing has been synced for that type yet — never a fake zero.
+export interface HealthSummary {
+  date: string; // UTC calendar day the "today" aggregates (steps, calories) cover
+  steps: { total: number; unit: string } | null;
+  activeCalories: { total: number; unit: string } | null;
+  heartRate: { value: number; unit: string; time: string } | null;
+  restingHeartRate: { value: number; unit: string; time: string } | null;
+  heartRateVariability: { value: number; unit: string; time: string } | null;
+  exercise: { exerciseType: number | null; title: string | null; startTime: string; endTime: string } | null;
+  sleep: { startTime: string; endTime: string; durationMinutes: number } | null;
+}
+
+export function getHealthSummary(): Promise<HealthSummary> {
+  return apiRequest<HealthSummary>("/health/summary");
 }
