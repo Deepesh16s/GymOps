@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Mail,
   CalendarDays,
   Pencil,
   Lock,
   Trash2,
+  AtSign,
 } from "lucide-react";
 
 import "./profile.css";
@@ -20,6 +21,12 @@ function Profile() {
   const [name, setName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [nameMsg, setNameMsg] = useState("");
+
+  const [username, setUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameMsg, setUsernameMsg] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState("idle"); // idle | checking | available | taken
+  const usernameCheckId = useRef(0);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] =
@@ -43,6 +50,7 @@ function Profile() {
 
         setUser(res.data);
         setName(res.data.name || "");
+        setUsername(res.data.username || "");
       } catch (error) {
         console.log(error);
       } finally {
@@ -52,6 +60,57 @@ function Profile() {
 
     fetchProfile();
   }, []);
+
+  // Live availability check as the user edits their username — the actual
+  // guarantee is server-side on save, this is UX only.
+  useEffect(() => {
+    if (!username || username === user?.username) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    const checkId = ++usernameCheckId.current;
+    setUsernameStatus("checking");
+    const handle = setTimeout(async () => {
+      try {
+        const res = await api.get("/auth/username-available", { params: { username } });
+        if (checkId !== usernameCheckId.current) return;
+        setUsernameStatus(res.data.available ? "available" : "taken");
+        setUsernameMsg(res.data.available ? "" : res.data.message || "Username is already taken");
+      } catch (error) {
+        if (checkId !== usernameCheckId.current) return;
+        console.log(error);
+        setUsernameStatus("idle");
+      }
+    }, 400);
+
+    return () => clearTimeout(handle);
+  }, [username, user?.username]);
+
+  const handleUsernameSave = async (e) => {
+    e.preventDefault();
+    setUsernameMsg("");
+
+    if (usernameStatus === "taken" || usernameStatus === "checking") return;
+
+    setSavingUsername(true);
+    try {
+      const res = await api.put("/auth/username", { username });
+      setUser(res.data.user);
+
+      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+      if (storedUser) {
+        localStorage.setItem("user", JSON.stringify({ ...storedUser, username: res.data.user.username }));
+        window.dispatchEvent(new Event("repvyn:user-updated"));
+      }
+
+      setUsernameMsg("Username updated successfully.");
+    } catch (error) {
+      setUsernameMsg(error.response?.data?.message || "Could not update username.");
+    } finally {
+      setSavingUsername(false);
+    }
+  };
 
   const handleNameSave = async (e) => {
     e.preventDefault();
@@ -229,6 +288,13 @@ function Profile() {
               {user?.name}
             </h1>
 
+            {user?.username && (
+              <p className="profile-username">
+                <AtSign size={14} />
+                {user.username}
+              </p>
+            )}
+
             <p className="profile-email">
               <Mail size={16} />
               {user?.email}
@@ -243,6 +309,60 @@ function Profile() {
                 {joinedDate}
               </p>
             )}
+
+            {user?.username && (
+              <Link to={`/u/${user.username}`} className="profile-view-public">
+                View public profile
+              </Link>
+            )}
+          </section>
+
+          <section className="profile-card">
+            <div className="profile-section-header">
+              <AtSign size={20} />
+
+              <h2 className="profile-card-title">
+                Username
+              </h2>
+            </div>
+
+            <form className="profile-form" onSubmit={handleUsernameSave}>
+              <label className="profile-label" htmlFor="username">
+                Username
+              </label>
+
+              <input
+                id="username"
+                className="profile-input"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                minLength={3}
+                maxLength={20}
+                pattern="[a-z0-9_]+"
+              />
+
+              {usernameStatus === "checking" && (
+                <p className="profile-msg">Checking availability...</p>
+              )}
+              {usernameStatus === "available" && (
+                <p className="profile-msg">@{username} is available</p>
+              )}
+
+              <button
+                className="profile-btn"
+                type="submit"
+                disabled={savingUsername || usernameStatus === "taken" || usernameStatus === "checking"}
+              >
+                {savingUsername ? "Saving..." : "Save Username"}
+              </button>
+
+              {usernameMsg && (
+                <p className="profile-msg">
+                  {usernameMsg}
+                </p>
+              )}
+            </form>
           </section>
 
 

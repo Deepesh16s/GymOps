@@ -19,6 +19,8 @@ const Analytics = lazy(() => import("./pages/Analytics"));
 const CalendarPage = lazy(() => import("./pages/Calendar"));
 const Goals = lazy(() => import("./pages/Goals"));
 const Guide = lazy(() => import("./pages/Guide"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const UserSearch = lazy(() => import("./pages/UserSearch"));
 
 function RouteLoading() {
   return (
@@ -56,6 +58,8 @@ function App() {
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/goals" element={<Goals />} />
                 <Route path="/guide" element={<Guide />} />
+                <Route path="/search" element={<UserSearch />} />
+                <Route path="/u/:username" element={<PublicProfile />} />
               </Route>
             </Routes>
           </Suspense>

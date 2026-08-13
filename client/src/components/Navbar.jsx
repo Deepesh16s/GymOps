@@ -8,6 +8,7 @@ import {
   Calendar,
   Target,
   BookOpen,
+  Search,
   Menu,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const NAV_LINKS = [
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/goals", label: "Goals", icon: Target },
   { to: "/guide", label: "Guide", icon: BookOpen },
+  { to: "/search", label: "Search", icon: Search },
 ];
 
 function Navbar() {

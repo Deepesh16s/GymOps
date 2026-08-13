@@ -95,6 +95,7 @@
 }
 
 .navbar-dropdown-name { font-size: 0.88rem; font-weight: 600; color: var(--go-text); line-height: 1.3; }
+.navbar-dropdown-username { font-size: 0.76rem; color: var(--go-primary); font-weight: 600; line-height: 1.3; margin: 1px 0; }
 .navbar-dropdown-email {
   font-size: 0.76rem;
   color: var(--go-text-muted);

@@ -1,6 +1,6 @@
 import "../styles/auth.css";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import BrandMark from "../components/BrandMark";
 import api from "../services/api";
@@ -11,21 +11,54 @@ function Register() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    username: "",
     password: "",
     confirmPassword: "",
   });
 
-  const { name, email, password, confirmPassword } = formData;
+  const { name, email, username, password, confirmPassword } = formData;
 
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [usernameStatus, setUsernameStatus] = useState("idle"); // idle | checking | available | taken
+  const [usernameMsg, setUsernameMsg] = useState("");
+  const usernameCheckId = useRef(0);
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name: field, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [field]: field === "username" ? value.toLowerCase() : value,
+    }));
   };
+
+  // Live availability check as the user types — server-side validation on
+  // submit is authoritative either way, this is UX only.
+  useEffect(() => {
+    if (!username) {
+      setUsernameStatus("idle");
+      setUsernameMsg("");
+      return;
+    }
+
+    const checkId = ++usernameCheckId.current;
+    setUsernameStatus("checking");
+    const handle = setTimeout(async () => {
+      try {
+        const res = await api.get("/auth/username-available", { params: { username } });
+        if (checkId !== usernameCheckId.current) return; // a newer keystroke superseded this check
+        setUsernameStatus(res.data.available ? "available" : "taken");
+        setUsernameMsg(res.data.available ? "" : res.data.message || "Username is already taken");
+      } catch (error) {
+        if (checkId !== usernameCheckId.current) return;
+        console.log(error);
+        setUsernameStatus("idle");
+      }
+    }, 400);
+
+    return () => clearTimeout(handle);
+  }, [username]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,9 +70,14 @@ function Register() {
       return;
     }
 
+    if (usernameStatus === "taken") {
+      setFormError("Please choose an available username.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await api.post("/auth/register", { name, email, password });
+      await api.post("/auth/register", { name, email, username, password });
 
       navigate("/login");
     } catch (error) {
@@ -102,6 +140,33 @@ function Register() {
                 onChange={handleChange}
                 required
               />
+            </div>
+
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="register-username">
+                Username
+              </label>
+              <input
+                className="auth-input"
+                id="register-username"
+                type="text"
+                name="username"
+                autoComplete="off"
+                placeholder="how people will find you"
+                value={username}
+                onChange={handleChange}
+                minLength={3}
+                maxLength={20}
+                pattern="[a-z0-9_]+"
+                required
+              />
+              {usernameStatus === "checking" && (
+                <p className="auth-hint">Checking availability...</p>
+              )}
+              {usernameStatus === "available" && (
+                <p className="auth-hint auth-hint-success">@{username} is available</p>
+              )}
+              {usernameStatus === "taken" && <p className="auth-error">{usernameMsg}</p>}
             </div>
 
             <div className="auth-field">

@@ -75,13 +75,33 @@
 }
 
 .profile-email,
-.profile-joined {
+.profile-joined,
+.profile-username {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 6px;
   color: var(--go-text-muted);
   font-size: 0.88rem;
+}
+
+.profile-username {
+  color: var(--go-primary);
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.profile-view-public {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--go-primary);
+  text-decoration: none;
+}
+
+.profile-view-public:hover {
+  text-decoration: underline;
 }
 
 .profile-joined {

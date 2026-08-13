@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, LogOut, ChevronDown } from "lucide-react";
+import { User, LogOut, ChevronDown, AtSign } from "lucide-react";
 import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
 import "./ProfileDropdown.css";
 
@@ -64,6 +64,9 @@ function ProfileDropdown() {
           </span>
           <div>
             <p className="navbar-dropdown-name">{storedUser?.name}</p>
+            {storedUser?.username && (
+              <p className="navbar-dropdown-username">@{storedUser.username}</p>
+            )}
             <p className="navbar-dropdown-email">{storedUser?.email}</p>
           </div>
         </div>
@@ -75,6 +78,16 @@ function ProfileDropdown() {
           <User size={15} strokeWidth={1.8} />
           Profile
         </Link>
+        {storedUser?.username && (
+          <Link
+            to={`/u/${storedUser.username}`}
+            className="navbar-dropdown-item"
+            onClick={() => setDropdownOpen(false)}
+          >
+            <AtSign size={15} strokeWidth={1.8} />
+            View public profile
+          </Link>
+        )}
         <button
           type="button"
           className="navbar-dropdown-item navbar-dropdown-logout"

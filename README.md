@@ -20,6 +20,11 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Training intelligence** — recovery scores, readiness, fatigue level, plateau detection, deload recommendations, training balance (upper/lower, strength/cardio splits), volume landmarks, muscle priority, weekly grade, and a deterministic "coach priority" summary — all derived from the user's own logged workouts, no external API calls
 - **Google Sign-In** — alongside email/password auth with forgot/reset password via email
 - **Public landing page** — dark, marketing-style entry point at `/` (redirects straight to `/dashboard` if already signed in); sign-in itself lives at its own `/login` route
+- **Username & public identity** — every account has a unique, validated `@handle`; new users choose one at registration, existing users are assigned a temporary one automatically with a one-time prompt to personalize it
+- **Public profiles** — a deliberately scoped public page (`/u/:username`) showing name, avatar, and follower/following counts; private account data and Health Connect data are never exposed through it
+- **User search** — find people by username
+- **Follow / unfollow** — one-directional social graph with follower/following counts
+- **Block / unblock** — removes any existing follow relationship and prevents new ones while a block is active
 
 ## Tech stack
 
@@ -120,6 +125,20 @@ Two independent sign-in paths, both issuing the same JWT (`Authorization: Bearer
 - **Google Sign-In** — the client obtains an ID token via `@react-oauth/google`; the server verifies it with `google-auth-library` (`POST /api/auth/google`) and creates the user on first sign-in.
 
 **Status:** email/password auth, forgot/reset password, and every other page listed under Known Limitations below — including the current dark-themed Landing/Login/Register redesign — have been verified live in a real browser across desktop and mobile viewports, in both light and dark theme. Google Sign-In's server-side token verification is correct by code review and the button renders/behaves correctly in the UI, but the actual consent-screen round trip is still blocked in this environment — it requires the deployed origin to be registered in Google Cloud Console's Authorized JavaScript origins, which can only be done once a real production URL exists.
+
+### Social foundation
+
+Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow` and `Block` (and everything built on top of them later) reference the ID, never the username, so changing a username never breaks an existing relationship.
+
+- **Existing users** are assigned a temporary username automatically (derived from their email, with collision suffixes) the next time they log in, and see a one-time prompt — "Choose username" or "Maybe later" — that never reappears once either is chosen.
+- **New users** pick a username during registration; availability is checked server-side (a live client-side check is UX only, not the source of truth).
+- **Public profiles** (`/u/:username`) expose only `username`, `name`, `picture`, join date, and follower/following counts — never email, auth data, or Health Connect/health data.
+- **Follow/unfollow** is one-directional (not a request/accept system). **Block** removes any existing follow relationship in both directions and prevents new ones while active; unblocking does not restore a prior follow.
+- Deleting an account removes that user's `Follow` and `Block` records.
+
+Health Connect data (steps, heart rate, HRV, sleep, etc.) is architecturally private — nothing in the social layer can expose it; a future opt-in health-sharing feature would be a separate, explicit addition, not something the current social graph does implicitly. This identity/social architecture (public/private data separation, `_id`-based relationships, per-account deletion cleanup) is being built with eventual Google Play / Health Connect compliance in mind — Play Store submission itself is not underway.
+
+Not yet built: chat, activity feed, challenges, leaderboards, social notifications, shared achievements, and full moderation (block is the only foundation in place so far).
 
 ## Development commands
 

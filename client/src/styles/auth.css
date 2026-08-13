@@ -237,6 +237,16 @@
   line-height: 1.4;
 }
 
+.auth-hint {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.auth-hint-success {
+  color: #5eead4;
+}
+
 .auth-btn {
   width: 100%;
   height: 46px;

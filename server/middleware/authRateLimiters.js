@@ -18,4 +18,12 @@ const forgotPasswordLimiter = rateLimit({
   message: { message: "Too many requests. Please try again later." },
 });
 
-module.exports = { loginRegisterLimiter, forgotPasswordLimiter };
+const usernameCheckLimiter = rateLimit({
+  windowMs: Number(process.env.USERNAME_CHECK_RATE_LIMIT_WINDOW_MS) || 5 * 60 * 1000,
+  max: Number(process.env.USERNAME_CHECK_RATE_LIMIT_MAX) || 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please try again later." },
+});
+
+module.exports = { loginRegisterLimiter, forgotPasswordLimiter, usernameCheckLimiter };

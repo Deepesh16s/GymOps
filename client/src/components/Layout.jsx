@@ -1,12 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useSearchParams } from "react-router-dom";
 import Navbar from "./Navbar";
 import ErrorBoundary from "./ErrorBoundary";
+import UsernameSetupPrompt from "./UsernameSetupPrompt";
+import api from "../services/api";
 import { markPushClicked } from "../services/pushService";
 import "./Layout.css";
 
 function Layout() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [promptUser, setPromptUser] = useState(null);
 
   useEffect(() => {
     const pushClickId = searchParams.get("pushClick");
@@ -23,6 +26,28 @@ function Layout() {
     );
   }, [searchParams, setSearchParams]);
 
+  // Fetches fresh (not the possibly-stale cached localStorage copy — a
+  // session started before this feature shipped wouldn't have these fields
+  // cached yet) once per authenticated-session mount, not per page.
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get("/auth/me")
+      .then((res) => {
+        if (cancelled) return;
+        const user = res.data;
+        if (!user.usernameChosenByUser && !user.usernamePromptDismissedAt) {
+          setPromptUser(user);
+        }
+      })
+      .catch((error) => console.log(error));
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="app-shell">
       <Navbar />
@@ -31,6 +56,9 @@ function Layout() {
           <Outlet />
         </ErrorBoundary>
       </div>
+      {promptUser && (
+        <UsernameSetupPrompt user={promptUser} onDone={() => setPromptUser(null)} />
+      )}
     </div>
   );
 }
