@@ -87,7 +87,12 @@
 
 .public-profile-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+.public-profile-actions .public-profile-btn {
+  min-width: 100px;
 }
 
 .public-profile-btn {

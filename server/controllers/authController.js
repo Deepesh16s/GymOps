@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const Follow = require("../models/Follow");
 const Block = require("../models/Block");
+const Conversation = require("../models/Conversation");
+const Message = require("../models/Message");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -267,13 +269,27 @@ exports.deleteAccount = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Scoped to this phase only: clean up the Follow/Block records this
-    // phase introduces so it doesn't add to the account-deletion debt.
-    // The pre-existing gap (workouts, goals, notifications, health data,
-    // etc. are not cascaded) is a separate, already-documented issue not
-    // addressed here.
+    // Scoped to this phase only: clean up the Follow/Block/Conversation/
+    // Message records this and the prior social phase introduce, so neither
+    // adds to the account-deletion debt. The pre-existing gap (workouts,
+    // goals, notifications, health data, etc. are not cascaded) is a
+    // separate, already-documented issue not addressed here.
+    //
+    // Conversations (and every message in them) are hard-deleted for BOTH
+    // participants when either side deletes their account — matching the
+    // existing Follow/Block precedent of full removal rather than a
+    // per-user soft-delete/anonymization model. A conversation can't be
+    // kept for the remaining participant without leaving a message.sender
+    // pointing at a User._id that no longer exists.
     await Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] });
     await Block.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] });
+
+    const ownedConversations = await Conversation.find({ participants: userId }).select("_id");
+    const conversationIds = ownedConversations.map((c) => c._id);
+    if (conversationIds.length) {
+      await Message.deleteMany({ conversation: { $in: conversationIds } });
+      await Conversation.deleteMany({ _id: { $in: conversationIds } });
+    }
 
     await User.findByIdAndDelete(userId);
     res.status(200).json({ message: "Account deleted successfully" });

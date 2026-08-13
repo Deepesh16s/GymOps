@@ -26,7 +26,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.0",
     "resend": "^6.19.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

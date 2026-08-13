@@ -22,6 +22,9 @@ const Guide = lazy(() => import("./pages/Guide"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const UserSearch = lazy(() => import("./pages/UserSearch"));
 const FollowList = lazy(() => import("./pages/FollowList"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Conversation = lazy(() => import("./pages/Conversation"));
+const Guidance = lazy(() => import("./pages/Guidance"));
 
 function RouteLoading() {
   return (
@@ -63,6 +66,9 @@ function App() {
                 <Route path="/u/:username" element={<PublicProfile />} />
                 <Route path="/u/:username/followers" element={<FollowList mode="followers" />} />
                 <Route path="/u/:username/following" element={<FollowList mode="following" />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/messages/:id" element={<Conversation />} />
+                <Route path="/guidance" element={<Guidance />} />
               </Route>
             </Routes>
           </Suspense>

@@ -5,11 +5,20 @@ import ErrorBoundary from "./ErrorBoundary";
 import UsernameSetupPrompt from "./UsernameSetupPrompt";
 import api from "../services/api";
 import { markPushClicked } from "../services/pushService";
+import * as chatSocket from "../services/chatSocket";
 import "./Layout.css";
 
 function Layout() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [promptUser, setPromptUser] = useState(null);
+
+  // Opened once per authenticated session, not per page — same lifecycle as
+  // the username-prompt fetch below. See chatSocket.js for why this is a
+  // convenience layer, not something chat correctness depends on.
+  useEffect(() => {
+    chatSocket.connect();
+    return () => chatSocket.disconnect();
+  }, []);
 
   useEffect(() => {
     const pushClickId = searchParams.get("pushClick");

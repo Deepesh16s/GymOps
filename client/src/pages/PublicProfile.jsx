@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
-import { CalendarDays, UserPlus, UserMinus, ShieldOff, ShieldCheck, Pencil } from "lucide-react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  CalendarDays,
+  UserPlus,
+  UserMinus,
+  ShieldOff,
+  ShieldCheck,
+  Pencil,
+  MessageCircle,
+} from "lucide-react";
 import ConfirmDialog from "../components/ConfirmDialog";
 import {
   getPublicProfile,
@@ -9,10 +17,12 @@ import {
   blockUser,
   unblockUser,
 } from "../services/socialService";
+import { createConversation } from "../services/chatService";
 import "./publicProfile.css";
 
 function PublicProfile() {
   const { username } = useParams();
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +31,7 @@ function PublicProfile() {
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState("");
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [messagePending, setMessagePending] = useState(false);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -72,6 +83,22 @@ function PublicProfile() {
       setActionError(error.response?.data?.message || "Something went wrong.");
     } finally {
       setActionPending(false);
+    }
+  };
+
+  const handleMessage = async () => {
+    setMessagePending(true);
+    setActionError("");
+    try {
+      const res = await createConversation(username);
+      navigate(`/messages/${res.data._id}`);
+    } catch (error) {
+      // Covers the case where they've blocked the viewer — that isn't
+      // exposed on the profile itself (see privacy note below), so this is
+      // the point where it surfaces, as a plain error rather than a crash.
+      setActionError(error.response?.data?.message || "Unable to start a conversation with this user.");
+    } finally {
+      setMessagePending(false);
     }
   };
 
@@ -163,6 +190,16 @@ function PublicProfile() {
             >
               {profile.viewerIsFollowing ? <UserMinus size={16} /> : <UserPlus size={16} />}
               {profile.viewerIsFollowing ? "Unfollow" : "Follow"}
+            </button>
+
+            <button
+              type="button"
+              className="public-profile-btn public-profile-btn-outline"
+              onClick={handleMessage}
+              disabled={messagePending || profile.viewerHasBlocked}
+            >
+              <MessageCircle size={16} />
+              Message
             </button>
 
             <button

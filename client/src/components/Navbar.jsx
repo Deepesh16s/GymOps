@@ -9,6 +9,8 @@ import {
   Target,
   BookOpen,
   Search,
+  MessageCircle,
+  Compass,
   Menu,
   X,
 } from "lucide-react";
@@ -16,6 +18,8 @@ import BrandMark from "./BrandMark";
 import DarkModeToggle from "./DarkModeToggle";
 import ProfileDropdown from "./ProfileDropdown";
 import NotificationCenter from "./NotificationCenter";
+import { listConversations } from "../services/chatService";
+import * as chatSocket from "../services/chatSocket";
 import "./Navbar.css";
 
 const NAV_LINKS = [
@@ -25,15 +29,40 @@ const NAV_LINKS = [
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/goals", label: "Goals", icon: Target },
+  { to: "/guidance", label: "Guidance", icon: Compass },
   { to: "/guide", label: "Guide", icon: BookOpen },
   { to: "/search", label: "Search", icon: Search },
+  { to: "/messages", label: "Messages", icon: MessageCircle },
 ];
 
 function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const mobileMenuRef = useRef(null);
+
+  useEffect(() => {
+    listConversations()
+      .then((res) => {
+        const anyUnread = (res.data.conversations || []).some((c) => c.unreadCount > 0);
+        setHasUnreadMessages(anyUnread);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    return chatSocket.subscribe((event) => {
+      if (event.type === "message:new") setHasUnreadMessages(true);
+    });
+  }, []);
+
+  // Approximation, not a precise per-conversation read count: visiting the
+  // Messages area clears the dot. Good enough for a nav-level "something's
+  // new" indicator — the conversation list itself shows exact unread counts.
+  useEffect(() => {
+    if (location.pathname.startsWith("/messages")) setHasUnreadMessages(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -80,6 +109,7 @@ function Navbar() {
               className={`navbar-link ${active ? "navbar-link-active" : ""}`}
             >
               {label}
+              {to === "/messages" && hasUnreadMessages && <span className="navbar-link-dot" />}
             </Link>
           );
         })}
@@ -124,6 +154,7 @@ function Navbar() {
             >
               <Icon size={18} strokeWidth={1.8} />
               {label}
+              {to === "/messages" && hasUnreadMessages && <span className="navbar-link-dot" />}
             </Link>
           );
         })}

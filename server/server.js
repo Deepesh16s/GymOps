@@ -3,11 +3,13 @@ require("dotenv").config();
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
 const connectDB = require("./config/db");
+const { attach: attachChatSocket } = require("./realtime/chatSocket");
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -22,6 +24,7 @@ const plannedWorkoutRoutes = require("./routes/plannedWorkoutRoutes");
 const pushRoutes = require("./routes/pushRoutes");
 const healthRoutes = require("./routes/healthRoutes");
 const userRoutes = require("./routes/userRoutes");
+const conversationRoutes = require("./routes/conversationRoutes");
 
 const app = express();
 
@@ -62,6 +65,7 @@ app.use("/api/planned-workouts", plannedWorkoutRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/conversations", conversationRoutes);
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
@@ -78,6 +82,12 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// Plain http.Server wrapping the Express app so the chat WebSocket upgrade
+// (ws/chat) can share the same port — Express itself has no concept of
+// WebSocket upgrades, but Node's underlying http.Server does.
+const server = http.createServer(app);
+attachChatSocket(server);
+
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

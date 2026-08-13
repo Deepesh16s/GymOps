@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Follow = require("../models/Follow");
 const Block = require("../models/Block");
 const { normalize: normalizeUsername } = require("../utils/username");
+const { toPublicUser: basePublicUser } = require("../utils/publicUser");
 
 const MAX_SEARCH_RESULTS = 20;
 const MAX_LIST_RESULTS = 50;
@@ -13,11 +14,7 @@ const MAX_LIST_RESULTS = 50;
 // Health Connect data is structurally unreachable here — this function never
 // touches HealthSample/HealthSleepSession at all.
 function toPublicUser(user, viewerContext) {
-  const result = {
-    username: user.username,
-    name: user.name,
-    picture: user.picture || "",
-  };
+  const result = basePublicUser(user);
 
   // Only attached when a viewer context is supplied (list endpoints under
   // optionalAuth) — keeps the base shape identical for anonymous callers.

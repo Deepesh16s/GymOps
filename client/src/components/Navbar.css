@@ -57,6 +57,14 @@
   transition: color 0.15s ease;
 }
 
+.navbar-link-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--go-primary);
+  flex-shrink: 0;
+}
+
 .navbar-link::after {
   content: "";
   position: absolute;
