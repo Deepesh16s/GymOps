@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   checkAvailability,
@@ -60,8 +61,20 @@ const DISCONNECTED_STATE: Omit<State, "phase"> = {
   error: null,
 };
 
+// A sync that resolves (doesn't throw) can still be partial/failed per-type
+// (historical import) or per-chunk (either mode) — surface that through the
+// same error text the UI already renders, rather than silently reporting
+// success on an incomplete sync.
+function syncIssueMessage(result: SyncResult): string | null {
+  if (result.status === "success") return null;
+  if (result.status === "failed") return "Sync failed. It will retry automatically next time.";
+  return "Some health data couldn't sync and will retry next time.";
+}
+
 export function useHealthConnection() {
   const [state, setState] = useState<State>({ phase: "checking", ...DISCONNECTED_STATE });
+  const phaseRef = useRef(state.phase);
+  phaseRef.current = state.phase;
 
   // Presentation-only data. A failed fetch here shouldn't affect the
   // connection phase itself — that's derived from the on-device Health
@@ -112,6 +125,23 @@ export function useHealthConnection() {
     refreshStatus();
   }, [refreshStatus]);
 
+  // Re-checks Health Connect permission status when the app returns to the
+  // foreground, so a permission revoked from outside the app (e.g. from
+  // Health Connect's own settings) while Repvyn was merely backgrounded is
+  // caught without needing a full cold relaunch. Skipped while a connect/sync
+  // is actively in flight so it can't clobber that operation's own phase
+  // transitions — refreshStatus() itself only ever reads status, it never
+  // triggers a sync, so this can't cause an unexpected historical import.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (nextAppState !== "active") return;
+      const currentPhase = phaseRef.current;
+      if (currentPhase === "checking" || currentPhase === "connecting" || currentPhase === "syncing") return;
+      refreshStatus();
+    });
+    return () => subscription.remove();
+  }, [refreshStatus]);
+
   const connect = useCallback(async () => {
     setState((s) => ({ ...s, phase: "connecting", error: null }));
     try {
@@ -128,7 +158,13 @@ export function useHealthConnection() {
       // historical import — no extra round trip needed to know that.
       setState((s) => ({ ...s, phase: "syncing", isHistoricalSync: true }));
       const result = await runSync();
-      setState((s) => ({ ...s, phase: "connected", lastSyncResult: result, isHistoricalSync: false, error: null }));
+      setState((s) => ({
+        ...s,
+        phase: "connected",
+        lastSyncResult: result,
+        isHistoricalSync: false,
+        error: syncIssueMessage(result),
+      }));
       await refreshServerData();
     } catch (err) {
       setState((s) => ({
@@ -145,7 +181,13 @@ export function useHealthConnection() {
     setState((s) => ({ ...s, phase: "syncing", isHistoricalSync: isFirstSync, error: null }));
     try {
       const result = await runSync();
-      setState((s) => ({ ...s, phase: "connected", lastSyncResult: result, isHistoricalSync: false }));
+      setState((s) => ({
+        ...s,
+        phase: "connected",
+        lastSyncResult: result,
+        isHistoricalSync: false,
+        error: syncIssueMessage(result),
+      }));
       await refreshServerData();
     } catch (err) {
       setState((s) => ({
