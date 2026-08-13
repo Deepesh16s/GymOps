@@ -1,5 +1,10 @@
 .mcp.json
 
+# Per-machine local editor/assistant settings — not project config, never
+# intended to be shared. Deliberately scoped to this exact filename only,
+# not a blanket ignore of any tool's config directory.
+**/.claude/settings.local.json
+
 # OS / editor junk (client/ and server/ each have their own .gitignore
 # for node_modules, dist, and .env — this one only covers the repo root)
 .DS_Store
