@@ -69,6 +69,14 @@
 .public-profile-count {
   font-size: 0.85rem;
   color: var(--go-text-muted);
+  text-decoration: none;
+  border-radius: var(--go-radius-sm, 8px);
+  padding: 2px 4px;
+}
+
+.public-profile-count:hover {
+  color: var(--go-text);
+  background: var(--go-surface-sunken);
 }
 
 .public-profile-count strong {
@@ -122,4 +130,21 @@
   margin: 14px 0 0;
   font-size: 0.8rem;
   color: var(--go-danger-dark);
+}
+
+.public-profile-edit-link {
+  text-decoration: none;
+  width: 100%;
+}
+
+.public-profile-retry {
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid var(--go-border-strong);
+  border-radius: var(--go-radius-sm, 8px);
+  color: var(--go-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
 }

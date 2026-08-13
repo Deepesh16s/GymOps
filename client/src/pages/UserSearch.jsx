@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Search as SearchIcon } from "lucide-react";
-import api from "../services/api";
+import { Search as SearchIcon, UserPlus, UserMinus } from "lucide-react";
+import { searchUsers, followUser, unfollowUser } from "../services/socialService";
 import "./userSearch.css";
 
 function UserSearch() {
@@ -9,6 +9,8 @@ function UserSearch() {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState(false);
+  const [pendingUsername, setPendingUsername] = useState(null);
   const requestId = useRef(0);
 
   useEffect(() => {
@@ -16,27 +18,45 @@ function UserSearch() {
     if (!trimmed) {
       setResults([]);
       setHasSearched(false);
+      setError(false);
       return;
     }
-
     const id = ++requestId.current;
     setSearching(true);
+    setError(false);
     const handle = setTimeout(async () => {
       try {
-        const res = await api.get("/users/search", { params: { q: trimmed } });
+        const res = await searchUsers(trimmed);
         if (id !== requestId.current) return;
         setResults(res.data.users || []);
         setHasSearched(true);
-      } catch (error) {
+      } catch {
         if (id !== requestId.current) return;
-        console.log(error);
+        setError(true);
+        setHasSearched(true);
       } finally {
         if (id === requestId.current) setSearching(false);
       }
     }, 350);
-
     return () => clearTimeout(handle);
   }, [query]);
+
+  const handleFollowToggle = async (user) => {
+    setPendingUsername(user.username);
+    try {
+      if (user.viewerIsFollowing) await unfollowUser(user.username);
+      else await followUser(user.username);
+      setResults((prev) =>
+        prev.map((u) =>
+          u.username === user.username ? { ...u, viewerIsFollowing: !u.viewerIsFollowing } : u
+        )
+      );
+    } catch {
+      // Leave the button reflecting the last known state.
+    } finally {
+      setPendingUsername(null);
+    }
+  };
 
   return (
     <div className="user-search-page">
@@ -56,23 +76,40 @@ function UserSearch() {
 
       {searching && <p className="user-search-hint">Searching...</p>}
 
-      {!searching && hasSearched && results.length === 0 && (
+      {!searching && error && (
+        <p className="user-search-hint">Something went wrong. Try searching again.</p>
+      )}
+
+      {!searching && !error && hasSearched && results.length === 0 && (
         <p className="user-search-hint">No users found for "{query.trim()}".</p>
       )}
 
-      <ul className="user-search-results">
-        {results.map((u) => (
-          <li key={u.username}>
-            <Link to={`/u/${u.username}`} className="user-search-result">
-              <span className="user-search-avatar">{u.name?.charAt(0).toUpperCase() || "?"}</span>
-              <span>
-                <span className="user-search-result-name">{u.name}</span>
-                <span className="user-search-result-handle">@{u.username}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {!searching && !error && results.length > 0 && (
+        <ul className="user-search-results">
+          {results.map((u) => (
+            <li key={u.username} className="user-search-result">
+              <Link to={`/u/${u.username}`} className="user-search-result-link">
+                <span className="user-search-avatar">{u.name?.charAt(0).toUpperCase() || "?"}</span>
+                <span>
+                  <span className="user-search-result-name">{u.name}</span>
+                  <span className="user-search-result-handle">@{u.username}</span>
+                </span>
+              </Link>
+              {!u.viewerIsSelf && u.viewerIsFollowing !== undefined && (
+                <button
+                  type="button"
+                  className={`user-search-follow-btn ${u.viewerIsFollowing ? "user-search-follow-btn-outline" : "user-search-follow-btn-primary"}`}
+                  onClick={() => handleFollowToggle(u)}
+                  disabled={pendingUsername === u.username}
+                >
+                  {u.viewerIsFollowing ? <UserMinus size={14} /> : <UserPlus size={14} />}
+                  {u.viewerIsFollowing ? "Unfollow" : "Follow"}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

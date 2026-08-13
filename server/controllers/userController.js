@@ -12,17 +12,38 @@ const MAX_LIST_RESULTS = 50;
 // username-tracking flags (usernameChosenByUser, usernamePromptDismissedAt).
 // Health Connect data is structurally unreachable here — this function never
 // touches HealthSample/HealthSleepSession at all.
-function toPublicUser(user) {
-  return {
+function toPublicUser(user, viewerContext) {
+  const result = {
     username: user.username,
     name: user.name,
     picture: user.picture || "",
   };
+
+  // Only attached when a viewer context is supplied (list endpoints under
+  // optionalAuth) — keeps the base shape identical for anonymous callers.
+  if (viewerContext) {
+    const { viewerId, followingSet } = viewerContext;
+    result.viewerIsSelf = String(viewerId) === String(user._id);
+    result.viewerIsFollowing = followingSet.has(String(user._id));
+  }
+
+  return result;
 }
 
 async function findByUsername(rawUsername, select) {
   const username = normalizeUsername(rawUsername);
   return User.findOne({ username }).select(select);
+}
+
+// Bulk lookup so list endpoints stay at one extra query total instead of
+// N+1 — never touched when there's no authenticated viewer.
+async function getViewerFollowingSet(viewerId, targetIds) {
+  if (!viewerId || targetIds.length === 0) return new Set();
+  const follows = await Follow.find({
+    follower: viewerId,
+    following: { $in: targetIds },
+  }).select("following");
+  return new Set(follows.map((f) => String(f.following)));
 }
 
 exports.searchUsers = async (req, res) => {
@@ -45,7 +66,14 @@ exports.searchUsers = async (req, res) => {
       .select("username name picture")
       .limit(limit);
 
-    res.status(200).json({ users: users.map(toPublicUser) });
+    const viewerId = req.user?._id;
+    const followingSet = await getViewerFollowingSet(
+      viewerId,
+      users.map((u) => u._id)
+    );
+    const viewerContext = viewerId ? { viewerId, followingSet } : undefined;
+
+    res.status(200).json({ users: users.map((u) => toPublicUser(u, viewerContext)) });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
@@ -100,8 +128,16 @@ exports.getFollowers = async (req, res) => {
       .limit(limit)
       .populate("follower", "username name picture");
 
+    const entries = follows.filter((f) => f.follower);
+    const viewerId = req.user?._id;
+    const followingSet = await getViewerFollowingSet(
+      viewerId,
+      entries.map((f) => f.follower._id)
+    );
+    const viewerContext = viewerId ? { viewerId, followingSet } : undefined;
+
     res.status(200).json({
-      users: follows.filter((f) => f.follower).map((f) => toPublicUser(f.follower)),
+      users: entries.map((f) => toPublicUser(f.follower, viewerContext)),
       page,
       limit,
     });
@@ -127,8 +163,16 @@ exports.getFollowing = async (req, res) => {
       .limit(limit)
       .populate("following", "username name picture");
 
+    const entries = follows.filter((f) => f.following);
+    const viewerId = req.user?._id;
+    const followingSet = await getViewerFollowingSet(
+      viewerId,
+      entries.map((f) => f.following._id)
+    );
+    const viewerContext = viewerId ? { viewerId, followingSet } : undefined;
+
     res.status(200).json({
-      users: follows.filter((f) => f.following).map((f) => toPublicUser(f.following)),
+      users: entries.map((f) => toPublicUser(f.following, viewerContext)),
       page,
       limit,
     });
@@ -207,8 +251,7 @@ exports.blockUser = async (req, res) => {
     }
 
     try {
-      await Block.create({ blocker: blockerId, blocked: blockedId });
-    } catch (error) {
+      await Block.create({ blocker: blockerId, blocked: blockedId });    } catch (error) {
       if (error.code !== 11000 && error.code !== "E11000") throw error;
     }
 

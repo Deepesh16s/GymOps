@@ -21,6 +21,7 @@ const Goals = lazy(() => import("./pages/Goals"));
 const Guide = lazy(() => import("./pages/Guide"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const UserSearch = lazy(() => import("./pages/UserSearch"));
+const FollowList = lazy(() => import("./pages/FollowList"));
 
 function RouteLoading() {
   return (
@@ -60,6 +61,8 @@ function App() {
                 <Route path="/guide" element={<Guide />} />
                 <Route path="/search" element={<UserSearch />} />
                 <Route path="/u/:username" element={<PublicProfile />} />
+                <Route path="/u/:username/followers" element={<FollowList mode="followers" />} />
+                <Route path="/u/:username/following" element={<FollowList mode="following" />} />
               </Route>
             </Routes>
           </Suspense>

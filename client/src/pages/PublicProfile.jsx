@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { CalendarDays, UserPlus, UserMinus, ShieldOff, ShieldCheck } from "lucide-react";
-import api from "../services/api";
+import { useParams, Link } from "react-router-dom";
+import { CalendarDays, UserPlus, UserMinus, ShieldOff, ShieldCheck, Pencil } from "lucide-react";
+import ConfirmDialog from "../components/ConfirmDialog";
+import {
+  getPublicProfile,
+  followUser,
+  unfollowUser,
+  blockUser,
+  unblockUser,
+} from "../services/socialService";
 import "./publicProfile.css";
 
 function PublicProfile() {
@@ -10,20 +17,23 @@ function PublicProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
     setNotFound(false);
+    setLoadError(false);
     try {
-      const res = await api.get(`/users/${username}`);
+      const res = await getPublicProfile(username);
       setProfile(res.data);
     } catch (error) {
       if (error.response?.status === 404) {
         setNotFound(true);
       } else {
-        console.log(error);
+        setLoadError(true);
       }
     } finally {
       setLoading(false);
@@ -39,9 +49,9 @@ function PublicProfile() {
     setActionError("");
     try {
       if (profile.viewerIsFollowing) {
-        await api.delete(`/users/${username}/follow`);
+        await unfollowUser(username);
       } else {
-        await api.post(`/users/${username}/follow`);
+        await followUser(username);
       }
       await loadProfile();
     } catch (error) {
@@ -51,15 +61,25 @@ function PublicProfile() {
     }
   };
 
-  const handleBlockToggle = async () => {
+  const handleBlockConfirmed = async () => {
+    setBlockConfirmOpen(false);
     setActionPending(true);
     setActionError("");
     try {
-      if (profile.viewerHasBlocked) {
-        await api.delete(`/users/${username}/block`);
-      } else {
-        await api.post(`/users/${username}/block`);
-      }
+      await blockUser(username);
+      await loadProfile();
+    } catch (error) {
+      setActionError(error.response?.data?.message || "Something went wrong.");
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    setActionPending(true);
+    setActionError("");
+    try {
+      await unblockUser(username);
       await loadProfile();
     } catch (error) {
       setActionError(error.response?.data?.message || "Something went wrong.");
@@ -80,6 +100,20 @@ function PublicProfile() {
     return (
       <div className="public-profile-page">
         <p className="public-profile-loading">@{username} isn't on Repvyn.</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="public-profile-page">
+        <p className="public-profile-loading">
+          Couldn't load this profile.
+          <br />
+          <button type="button" className="public-profile-retry" onClick={loadProfile}>
+            Retry
+          </button>
+        </p>
       </div>
     );
   }
@@ -106,15 +140,20 @@ function PublicProfile() {
         )}
 
         <div className="public-profile-counts">
-          <div className="public-profile-count">
+          <Link to={`/u/${username}/followers`} className="public-profile-count">
             <strong>{profile.followerCount}</strong> Followers
-          </div>
-          <div className="public-profile-count">
+          </Link>
+          <Link to={`/u/${username}/following`} className="public-profile-count">
             <strong>{profile.followingCount}</strong> Following
-          </div>
+          </Link>
         </div>
 
-        {!profile.viewerIsSelf && (
+        {profile.viewerIsSelf ? (
+          <Link to="/profile" className="public-profile-btn public-profile-btn-outline public-profile-edit-link">
+            <Pencil size={16} />
+            Edit Profile
+          </Link>
+        ) : (
           <div className="public-profile-actions">
             <button
               type="button"
@@ -129,7 +168,7 @@ function PublicProfile() {
             <button
               type="button"
               className="public-profile-btn public-profile-btn-ghost"
-              onClick={handleBlockToggle}
+              onClick={() => (profile.viewerHasBlocked ? handleUnblock() : setBlockConfirmOpen(true))}
               disabled={actionPending}
             >
               {profile.viewerHasBlocked ? <ShieldCheck size={16} /> : <ShieldOff size={16} />}
@@ -140,6 +179,17 @@ function PublicProfile() {
 
         {actionError && <p className="public-profile-error">{actionError}</p>}
       </div>
+
+      <ConfirmDialog
+        open={blockConfirmOpen}
+        icon={ShieldOff}
+        title={`Block @${username}?`}
+        body="They won't be able to follow you, and any existing follow between you will be removed. You can unblock them later."
+        confirmLabel="Block"
+        onConfirm={handleBlockConfirmed}
+        onCancel={() => setBlockConfirmOpen(false)}
+        danger
+      />
     </div>
   );
 }

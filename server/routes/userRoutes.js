@@ -16,12 +16,12 @@ const { protect, optionalAuth } = require("../middleware/authMiddleware");
 const { usernameCheckLimiter } = require("../middleware/authRateLimiters");
 
 // Public reads — viewing a profile/search/followers doesn't require auth.
-// The profile route uses optionalAuth so an identified viewer additionally
-// gets their own follow/block relationship to this profile in the response.
-router.get("/search", usernameCheckLimiter, searchUsers);
+// All four use optionalAuth so an identified viewer additionally gets their
+// own follow/block relationship to each returned profile in the response.
+router.get("/search", usernameCheckLimiter, optionalAuth, searchUsers);
 router.get("/:username", optionalAuth, getPublicProfile);
-router.get("/:username/followers", getFollowers);
-router.get("/:username/following", getFollowing);
+router.get("/:username/followers", optionalAuth, getFollowers);
+router.get("/:username/following", optionalAuth, getFollowing);
 
 // Writes — require the acting user to be authenticated.
 router.post("/:username/follow", protect, followUser);
