@@ -20,6 +20,7 @@ const dailyStepsRoutes = require("./routes/dailyStepsRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const plannedWorkoutRoutes = require("./routes/plannedWorkoutRoutes");
 const pushRoutes = require("./routes/pushRoutes");
+const healthRoutes = require("./routes/healthRoutes");
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/api/daily-steps", dailyStepsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/planned-workouts", plannedWorkoutRoutes);
 app.use("/api/push", pushRoutes);
+app.use("/api/health", healthRoutes);
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
