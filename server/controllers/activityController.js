@@ -46,7 +46,7 @@ exports.getFeed = async (req, res) => {
     const postIds = page.filter((a) => a.type === "physiquePost" && a.refId).map((a) => a.refId);
     const [posts, likeCounts, commentCounts, viewerLikes] = postIds.length
       ? await Promise.all([
-          PhysiquePost.find({ _id: { $in: postIds } }).select("imageUrl"),
+          PhysiquePost.find({ _id: { $in: postIds } }).select("imageUrl visibility"),
           PhysiqueLike.aggregate([
             { $match: { post: { $in: postIds } } },
             { $group: { _id: "$post", count: { $sum: 1 } } },
@@ -81,6 +81,7 @@ exports.getFeed = async (req, res) => {
           },
           image: postId ? postById.get(postId).imageUrl : null,
           postId,
+          postVisibility: postId ? postById.get(postId).visibility : null,
           likeCount: postId ? likeCountByPost.get(postId) || 0 : null,
           commentCount: postId ? commentCountByPost.get(postId) || 0 : null,
           viewerHasLiked: postId ? likedPostSet.has(postId) : null,

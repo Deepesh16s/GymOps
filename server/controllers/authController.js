@@ -9,6 +9,7 @@ const Activity = require("../models/Activity");
 const PhysiquePost = require("../models/PhysiquePost");
 const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
+const Report = require("../models/Report");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -331,9 +332,22 @@ exports.deleteAccount = async (req, res) => {
     await Promise.all(
       physiquePosts.map((p) => destroyCloudinaryAsset(p.imageAssetId).catch((err) => console.log(err)))
     );
+    const affectedComments = await PhysiqueComment.find({
+      $or: [{ user: userId }, { post: { $in: physiquePostIds } }],
+    }).select("_id");
+    const affectedCommentIds = affectedComments.map((c) => c._id);
     await PhysiqueLike.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
     await PhysiqueComment.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
     await PhysiquePost.deleteMany({ user: userId });
+
+    await Report.deleteMany({
+      $or: [
+        { reporter: userId },
+        { targetType: "user", targetId: userId },
+        { targetType: "physiquePost", targetId: { $in: physiquePostIds } },
+        { targetType: "comment", targetId: { $in: affectedCommentIds } },
+      ],
+    });
 
     const ownedConversations = await Conversation.find({ participants: userId }).select("_id");
     const conversationIds = ownedConversations.map((c) => c._id);

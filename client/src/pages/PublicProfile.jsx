@@ -19,8 +19,10 @@ import {
   Camera,
   Trash2,
   Heart,
+  Flag,
 } from "lucide-react";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ReportDialog from "../components/ReportDialog";
 import PublicHeatmap from "../components/PublicHeatmap";
 import AchievementBadge from "../components/AchievementBadge";
 import PhysiqueComposerModal from "../components/PhysiqueComposerModal";
@@ -64,6 +66,8 @@ function PublicProfile() {
   const [actionError, setActionError] = useState("");
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [messagePending, setMessagePending] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportMessage, setReportMessage] = useState("");
 
   const [heatmap, setHeatmap] = useState(null);
   const [heatmapYear, setHeatmapYear] = useState("current");
@@ -113,6 +117,8 @@ function PublicProfile() {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentDeleteTargetId, setCommentDeleteTargetId] = useState(null);
+  const [commentDeletePending, setCommentDeletePending] = useState(false);
 
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 
@@ -177,6 +183,12 @@ function PublicProfile() {
   }, [username, profile?.viewerCanSeeContent]);
 
   useEffect(() => {
+    if (!profile?.viewerCanSeeContent) {
+      setActivity([]);
+      setActivityPage(1);
+      setActivityHasMore(false);
+      return;
+    }
     setActivityLoading(true);
     getActivity(username, 1)
       .then((res) => {
@@ -349,14 +361,19 @@ function PublicProfile() {
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
-    if (!activePhysiquePost) return;
+  const handleConfirmDeleteComment = async () => {
+    if (!activePhysiquePost || !commentDeleteTargetId) return;
+    const commentId = commentDeleteTargetId;
+    setCommentDeletePending(true);
     try {
       await deletePhysiqueComment(commentId);
       setComments((prev) => prev.filter((c) => c._id !== commentId));
       applyPostUpdate({ ...activePhysiquePost, commentCount: Math.max(0, (activePhysiquePost.commentCount || 0) - 1) });
+      setCommentDeleteTargetId(null);
     } catch {
       /* empty */
+    } finally {
+      setCommentDeletePending(false);
     }
   };
 
@@ -565,6 +582,15 @@ function PublicProfile() {
                 {profile.viewerHasBlocked ? <ShieldCheck size={16} /> : <ShieldOff size={16} />}
                 {profile.viewerHasBlocked ? "Unblock" : "Block"}
               </button>
+
+              <button
+                type="button"
+                className="public-profile-btn public-profile-btn-ghost"
+                onClick={() => setReportTarget({ targetType: "user", targetId: profile._id })}
+              >
+                <Flag size={16} />
+                Report
+              </button>
             </div>
 
             {!canMessage && !profile.viewerHasBlocked && (
@@ -576,12 +602,12 @@ function PublicProfile() {
         )}
 
         {actionError && <p className="public-profile-error">{actionError}</p>}
+        {reportMessage && <p className="public-profile-message-hint">{reportMessage}</p>}
       </div>
       </div>
 
       <div className="public-profile-side">
-        {profile.viewerCanSeeContent && (
-          <div className="public-profile-side-block">
+        <div className="public-profile-side-block">
             <div className="public-profile-badges-header">
               <h2 className="public-profile-section-title">
                 <Award size={16} />
@@ -645,7 +671,6 @@ function PublicProfile() {
               </>
             )}
           </div>
-        )}
       </div>
       </div>
 
@@ -847,6 +872,11 @@ function PublicProfile() {
                 {activePhysiquePost.caption && <p>{activePhysiquePost.caption}</p>}
                 <span>{formatRelativeTime(activePhysiquePost.createdAt)}</span>
                 {profile.viewerIsSelf && (
+                  <span className="physique-lightbox-visibility">
+                    {activePhysiquePost.visibility === "public" ? "Public" : "Followers only"}
+                  </span>
+                )}
+                {profile.viewerIsSelf ? (
                   <button
                     type="button"
                     className="physique-lightbox-delete"
@@ -854,6 +884,17 @@ function PublicProfile() {
                   >
                     <Trash2 size={14} />
                     Delete
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="physique-lightbox-delete"
+                    onClick={() =>
+                      setReportTarget({ targetType: "physiquePost", targetId: activePhysiquePost._id })
+                    }
+                  >
+                    <Flag size={14} />
+                    Report
                   </button>
                 )}
               </div>
@@ -882,8 +923,8 @@ function PublicProfile() {
                 ) : (
                   <ul className="physique-lightbox-comment-list">
                     {comments.map((c) => {
-                      const canDelete =
-                        profile.viewerIsSelf || (currentUser && currentUser.username === c.user.username);
+                      const isOwnComment = currentUser && currentUser.username === c.user.username;
+                      const canDelete = profile.viewerIsSelf || isOwnComment;
                       return (
                         <li key={c._id} className="physique-lightbox-comment">
                           <div className="physique-lightbox-comment-avatar">
@@ -899,8 +940,16 @@ function PublicProfile() {
                             <div className="physique-lightbox-comment-meta">
                               <span>{formatRelativeTime(c.createdAt)}</span>
                               {canDelete && (
-                                <button type="button" onClick={() => handleDeleteComment(c._id)}>
+                                <button type="button" onClick={() => setCommentDeleteTargetId(c._id)}>
                                   Delete
+                                </button>
+                              )}
+                              {!isOwnComment && (
+                                <button
+                                  type="button"
+                                  onClick={() => setReportTarget({ targetType: "comment", targetId: c._id })}
+                                >
+                                  Report
                                 </button>
                               )}
                             </div>
@@ -949,6 +998,25 @@ function PublicProfile() {
         onConfirm={handleDeletePhysiquePost}
         onCancel={() => setPhysiqueDeleteConfirmOpen(false)}
         danger
+      />
+
+      <ConfirmDialog
+        open={!!commentDeleteTargetId}
+        icon={Trash2}
+        title="Delete this comment?"
+        body="This can't be undone."
+        confirmLabel={commentDeletePending ? "Deleting..." : "Delete"}
+        onConfirm={handleConfirmDeleteComment}
+        onCancel={() => setCommentDeleteTargetId(null)}
+        danger
+      />
+
+      <ReportDialog
+        open={!!reportTarget}
+        targetType={reportTarget?.targetType}
+        targetId={reportTarget?.targetId}
+        onClose={() => setReportTarget(null)}
+        onSubmitted={setReportMessage}
       />
 
       {badgesModalOpen && (

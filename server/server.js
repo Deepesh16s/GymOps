@@ -27,6 +27,7 @@ const userRoutes = require("./routes/userRoutes");
 const conversationRoutes = require("./routes/conversationRoutes");
 const physiqueRoutes = require("./routes/physiqueRoutes");
 const activityRoutes = require("./routes/activityRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/physique", physiqueRoutes);
 app.use("/api/activity", activityRoutes);
+app.use("/api/reports", reportRoutes);
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });

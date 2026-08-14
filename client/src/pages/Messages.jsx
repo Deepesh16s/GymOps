@@ -4,6 +4,7 @@ import { MessageCircle, ShieldOff } from "lucide-react";
 import { listConversations } from "../services/chatService";
 import * as chatSocket from "../services/chatSocket";
 import { formatRelativeTime } from "../utils/timeFormat";
+import Avatar from "../components/Avatar";
 import "./messages.css";
 
 function Messages() {
@@ -80,7 +81,7 @@ function Messages() {
             <li key={c._id}>
               <Link to={`/messages/${c._id}`} className="messages-item">
                 <span className="messages-avatar">
-                  {c.otherUser?.name?.charAt(0).toUpperCase() || "?"}
+                  <Avatar src={c.otherUser?.picture} name={c.otherUser?.name} />
                 </span>
                 <span className="messages-item-body">
                   <span className="messages-item-top">

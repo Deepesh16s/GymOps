@@ -30,6 +30,7 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Follow / unfollow** — public accounts follow instantly; private accounts require a follow request the owner approves or declines
 - **Block / unblock** — removes any existing follow relationship and prevents new ones (and all social interaction — profile, physique posts, likes, comments) while a block is active
 - **Direct messages** — one-to-one chat; open to anyone on a public account, requires a mutual follow on a private one
+- **Reporting** — report a user, physique post, or comment with a reason and optional description; duplicate reports against the same target are rejected, the reported party is never notified, reports are stored for future moderation review (no moderation dashboard yet)
 
 ## Tech stack
 
@@ -111,6 +112,7 @@ Full templates: [`server/.env.example`](server/.env.example), [`client/.env.exam
 | `NODE_ENV` | No | `production` enables strict CORS and disables the dev request logger |
 | `AUTH_RATE_LIMIT_*`, `AUTH_FORGOT_PASSWORD_RATE_LIMIT_*` | No | Override the default auth rate limits |
 | `PHYSIQUE_POST_RATE_LIMIT_*`, `PHYSIQUE_LIKE_RATE_LIMIT_*`, `PHYSIQUE_COMMENT_RATE_LIMIT_*` | No | Override the default physique-post/like/comment rate limits (keyed per authenticated user, not per IP) |
+| `FOLLOW_ACTION_RATE_LIMIT_*`, `BLOCK_ACTION_RATE_LIMIT_*`, `REPORT_RATE_LIMIT_*` | No | Override the default follow/block and report rate limits (keyed per authenticated user, not per IP) |
 
 **Client**
 
@@ -135,18 +137,19 @@ Two independent sign-in paths, both issuing the same JWT (`Authorization: Bearer
 
 ### Social foundation
 
-Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow`, `Block`, `Activity`, `PhysiquePost`, `PhysiqueLike`, `PhysiqueComment`, and `Conversation`/`Message` all reference the ID, never the username, so changing a username never breaks an existing relationship, post, like, comment, or activity entry.
+Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow`, `Block`, `Activity`, `PhysiquePost`, `PhysiqueLike`, `PhysiqueComment`, `Report`, and `Conversation`/`Message` all reference the ID, never the username, so changing a username never breaks an existing relationship, post, like, comment, report, or activity entry.
 
 - **Existing users** are assigned a temporary username automatically (derived from their email, with collision suffixes) the next time they log in, and see a one-time prompt — "Choose username" or "Maybe later" — that never reappears once either is chosen.
 - **New users** pick a username during registration; availability is checked server-side (a live client-side check is UX only, not the source of truth).
-- **Public profiles** (`/u/:username`) expose only `username`, `name`, `picture`, join date, and follower/following counts at minimum — never email, auth data, or Health Connect/health data. Badges, heatmap, PRs, sessions, physique posts, and activity are additionally gated by `profileVisibility` (`public`/`private`) and, for physique posts, their own per-post visibility on top of that.
+- **Public profiles** (`/u/:username`) expose only `username`, `name`, `picture`, join date, follower/following counts, and badges at minimum — never email, auth data, or Health Connect/health data. Badges and counts stay visible even on a private account (matching the account's own privacy-settings copy); heatmap, PRs, sessions, physique posts, and activity are additionally gated by `profileVisibility` (`public`/`private`) and, for physique posts, their own per-post visibility on top of that. A block — from either side — overrides all of the above, including badges and counts.
 - **Follow** — public accounts follow instantly; a private account's followers must be approved via a `FollowRequest` the target accepts or declines. **Block** removes any existing follow relationship in both directions, prevents new ones, and overrides all other visibility (public or followers-only) while active; unblocking does not restore a prior follow.
 - **Activity Feed** is queried fresh on every request (actor = current `Follow` rows, minus anyone currently blocked) rather than fanned out and cached, so unfollowing, blocking, or a privacy-setting change take effect immediately with no stale cache to invalidate.
-- Deleting an account removes that user's `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `PhysiqueComment` (both authored by them and left on their own posts), and every `Conversation`/`Message` they're a participant in.
+- **Reporting** — a user, physique post, or comment can be reported (reason + optional description); a reporter can't report the same target twice or report their own content; the reported party is never notified. Reports are stored (`pending`/`reviewed`/`actioned`/`dismissed`) for future moderation review — there is no moderation dashboard or automated action yet.
+- Deleting an account removes that user's `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `PhysiqueComment` (both authored by them and left on their own posts), `Report` (filed by them, filed against them, or against their own now-deleted posts/comments), and every `Conversation`/`Message` they're a participant in.
 
 Health Connect data (steps, heart rate, HRV, sleep, etc.) is architecturally private — nothing in the social layer can expose it; a future opt-in health-sharing feature would be a separate, explicit addition, not something the current social graph does implicitly. This identity/social architecture (public/private data separation, `_id`-based relationships, per-account deletion cleanup) is being built with eventual Google Play / Health Connect compliance in mind — Play Store submission itself is not underway.
 
-Not yet built: reposts, stories, social recommendations, challenges, leaderboards, and full moderation/reporting tooling (block is the enforcement primitive everything else builds on).
+Not yet built: reposts, stories, social recommendations, challenges, leaderboards, and a moderation dashboard / automated moderation workflow (a basic report-submission foundation exists; block remains the enforcement primitive everything else builds on).
 
 ## Development commands
 

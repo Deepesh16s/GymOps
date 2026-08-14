@@ -1,0 +1,32 @@
+.report-dialog-select,
+.report-dialog-textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 10px 12px;
+  margin-top: 12px;
+  border-radius: var(--go-radius-sm);
+  border: 1px solid var(--go-border-soft);
+  background: var(--go-surface-sunken);
+  color: var(--go-text);
+  text-align: left;
+}
+
+.report-dialog-select:focus,
+.report-dialog-textarea:focus {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 1px;
+}
+
+.report-dialog-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.report-dialog-error {
+  width: 100%;
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--go-danger-dark);
+  text-align: left;
+}

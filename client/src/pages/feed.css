@@ -242,6 +242,24 @@
   text-decoration: underline;
 }
 
+.feed-card-report {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--go-text-faint);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feed-card-report:hover {
+  color: var(--go-text-muted);
+}
+
 .feed-card-comment-form {
   display: flex;
   gap: 8px;

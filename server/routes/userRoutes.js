@@ -22,6 +22,7 @@ const {
 
 const { protect, optionalAuth } = require("../middleware/authMiddleware");
 const { usernameCheckLimiter } = require("../middleware/authRateLimiters");
+const { followActionLimiter, blockActionLimiter } = require("../middleware/socialRateLimiters");
 
 router.get("/search", usernameCheckLimiter, optionalAuth, searchUsers);
 
@@ -36,11 +37,11 @@ router.get("/:username/activity", optionalAuth, getActivity);
 router.get("/:username/followers", optionalAuth, getFollowers);
 router.get("/:username/following", optionalAuth, getFollowing);
 
-router.post("/:username/follow", protect, followUser);
-router.delete("/:username/follow", protect, unfollowUser);
-router.post("/:username/accept-follow-request", protect, acceptFollowRequest);
-router.post("/:username/decline-follow-request", protect, declineFollowRequest);
-router.post("/:username/block", protect, blockUser);
-router.delete("/:username/block", protect, unblockUser);
+router.post("/:username/follow", protect, followActionLimiter, followUser);
+router.delete("/:username/follow", protect, followActionLimiter, unfollowUser);
+router.post("/:username/accept-follow-request", protect, followActionLimiter, acceptFollowRequest);
+router.post("/:username/decline-follow-request", protect, followActionLimiter, declineFollowRequest);
+router.post("/:username/block", protect, blockActionLimiter, blockUser);
+router.delete("/:username/block", protect, blockActionLimiter, unblockUser);
 
 module.exports = router;

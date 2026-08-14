@@ -4,6 +4,7 @@ const PhysiquePost = require("../models/PhysiquePost");
 const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
 const Activity = require("../models/Activity");
+const Report = require("../models/Report");
 const { normalize: normalizeUsername } = require("../utils/username");
 const { isBlockedEitherWay } = require("../utils/blocking");
 const { canViewContent } = require("../utils/contentVisibility");
@@ -191,11 +192,20 @@ exports.deletePost = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    const comments = await PhysiqueComment.find({ post: post._id }).select("_id");
+    const commentIds = comments.map((c) => c._id);
+
     await destroyCloudinaryAsset(post.imageAssetId).catch((err) => console.log(err));
     await PhysiquePost.deleteOne({ _id: post._id });
     await Activity.deleteMany({ type: "physiquePost", refId: post._id });
     await PhysiqueLike.deleteMany({ post: post._id });
     await PhysiqueComment.deleteMany({ post: post._id });
+    await Report.deleteMany({
+      $or: [
+        { targetType: "physiquePost", targetId: post._id },
+        { targetType: "comment", targetId: { $in: commentIds } },
+      ],
+    });
 
     res.status(200).json({ message: "Post deleted" });
   } catch (error) {
@@ -357,6 +367,7 @@ exports.deleteComment = async (req, res) => {
     }
 
     await PhysiqueComment.deleteOne({ _id: comment._id });
+    await Report.deleteMany({ targetType: "comment", targetId: comment._id });
     res.status(200).json({ message: "Comment deleted" });
   } catch (error) {
     console.log(error);

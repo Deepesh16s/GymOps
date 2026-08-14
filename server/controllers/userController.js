@@ -196,31 +196,31 @@ exports.getPublicProfile = async (req, res) => {
     const isSelf = viewerId && String(viewerId) === String(user._id);
     const visibility = user.profileVisibility || "private";
 
-    const canSeeContent = await canViewContent({ _id: user._id, profileVisibility: visibility }, viewerId);
+    const [followerCount, followingCount, isFollowing, followsViewer, hasBlocked, blockedByOwner, requestPending] =
+      await Promise.all([
+        Follow.countDocuments({ following: user._id }),
+        Follow.countDocuments({ follower: user._id }),
+        isSelf || !viewerId ? false : Follow.exists({ follower: viewerId, following: user._id }),
+        isSelf || !viewerId ? false : Follow.exists({ follower: user._id, following: viewerId }),
+        isSelf || !viewerId ? false : Block.exists({ blocker: viewerId, blocked: user._id }),
+        isSelf || !viewerId ? false : Block.exists({ blocker: user._id, blocked: viewerId }),
+        isSelf || !viewerId
+          ? false
+          : FollowRequest.exists({ requester: viewerId, target: user._id }),
+      ]);
 
-    const [
-      followerCount,
-      followingCount,
-      isFollowing,
-      followsViewer,
-      hasBlocked,
-      requestPending,
-      badges,
-      fitnessStats,
-    ] = await Promise.all([
-      Follow.countDocuments({ following: user._id }),
-      Follow.countDocuments({ follower: user._id }),
-      isSelf || !viewerId ? false : Follow.exists({ follower: viewerId, following: user._id }),
-      isSelf || !viewerId ? false : Follow.exists({ follower: user._id, following: viewerId }),
-      isSelf || !viewerId ? false : Block.exists({ blocker: viewerId, blocked: user._id }),
-      isSelf || !viewerId
-        ? false
-        : FollowRequest.exists({ requester: viewerId, target: user._id }),
-      canSeeContent ? getBadgeSummary(user._id, { includeLocked: !!isSelf }) : [],
+    const isBlocked = !!hasBlocked || !!blockedByOwner;
+    const canSeeContent = isBlocked
+      ? false
+      : await canViewContent({ _id: user._id, profileVisibility: visibility }, viewerId);
+
+    const [badges, fitnessStats] = await Promise.all([
+      isBlocked ? [] : getBadgeSummary(user._id, { includeLocked: !!isSelf }),
       canSeeContent ? getFitnessStats(user._id) : null,
     ]);
 
     res.status(200).json({
+      _id: user._id,
       ...toPublicUser(user),
       createdAt: user.createdAt,
       followerCount,
@@ -232,10 +232,12 @@ exports.getPublicProfile = async (req, res) => {
       viewerFollowRequestPending: !!requestPending,
       profileVisibility: visibility,
       viewerCanSeeContent: canSeeContent,
-      heatmapVisible: canViewHeatmap(
-        { _id: user._id, profileVisibility: visibility, showTrainingActivity: user.showTrainingActivity },
-        viewerId
-      ),
+      heatmapVisible:
+        !isBlocked &&
+        canViewHeatmap(
+          { _id: user._id, profileVisibility: visibility, showTrainingActivity: user.showTrainingActivity },
+          viewerId
+        ),
       badges,
       fitnessStats,
     });

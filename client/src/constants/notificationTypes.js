@@ -28,12 +28,14 @@ export const NOTIFICATION_CATEGORIES = {
   CARDIO: "cardio",
   REMINDERS: "reminders",
   INSIGHTS: "insights",
+  SOCIAL: "social",
 };
 
 export const NOTIFICATION_FILTERS = [
   { key: "all", label: "All" },
   { key: "unread", label: "Unread" },
   { key: NOTIFICATION_CATEGORIES.PROGRESS, label: "Achievements" },
+  { key: NOTIFICATION_CATEGORIES.SOCIAL, label: "Social" },
   { key: NOTIFICATION_CATEGORIES.CARDIO, label: "Cardio" },
   { key: NOTIFICATION_CATEGORIES.REMINDERS, label: "Reminders" },
   { key: NOTIFICATION_CATEGORIES.INSIGHTS, label: "Insights" },
@@ -100,6 +102,11 @@ const TYPE_TONE = {
   weeklyGradeImproved: "insight",
   recoveryScoreIncreased: "recovery",
   volumeLandmarkAchieved: "insight",
+  newFollower: "social",
+  badgeEarned: "social",
+  newMessage: "social",
+  physiqueLiked: "social",
+  physiqueCommented: "social",
 };
 
 export const TYPE_PRIORITY = {
@@ -218,6 +225,7 @@ const CATEGORY_FALLBACK_TONE = {
   [NOTIFICATION_CATEGORIES.CARDIO]: "cardio",
   [NOTIFICATION_CATEGORIES.REMINDERS]: "reminder",
   [NOTIFICATION_CATEGORIES.INSIGHTS]: "insight",
+  [NOTIFICATION_CATEGORIES.SOCIAL]: "social",
 };
 
 export const getNotificationTone = (notification) =>

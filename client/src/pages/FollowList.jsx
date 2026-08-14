@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ChevronLeft, UserPlus, UserMinus, Clock } from "lucide-react";
 import { getFollowers, getFollowing, followUser, unfollowUser } from "../services/socialService";
+import Avatar from "../components/Avatar";
 import "./followList.css";
 
 const MODES = {
@@ -108,7 +109,9 @@ function FollowList({ mode }) {
           {users.map((u) => (
             <li key={u.username} className="follow-list-result">
               <Link to={`/u/${u.username}`} className="follow-list-result-link">
-                <span className="follow-list-avatar">{u.name?.charAt(0).toUpperCase() || "?"}</span>
+                <span className="follow-list-avatar">
+                  <Avatar src={u.picture} name={u.name} />
+                </span>
                 <span>
                   <span className="follow-list-result-name">
                     {u.name}

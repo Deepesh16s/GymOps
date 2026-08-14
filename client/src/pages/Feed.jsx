@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Rss, Trophy, Flame, Award, Dumbbell, Camera, Search, Heart } from "lucide-react";
+import { Rss, Trophy, Flame, Award, Dumbbell, Camera, Search, Heart, Flag } from "lucide-react";
 import Avatar from "../components/Avatar";
+import ReportDialog from "../components/ReportDialog";
 import { getFeed } from "../services/activityService";
 import { likePhysiquePost, unlikePhysiquePost, createPhysiqueComment } from "../services/physiqueService";
 import { formatRelativeTime } from "../utils/timeFormat";
@@ -15,7 +16,7 @@ const TYPE_ICON = {
   physiquePost: Camera,
 };
 
-function FeedCard({ activity, onToggleLike, onCommentPosted }) {
+function FeedCard({ activity, onToggleLike, onCommentPosted, onReport }) {
   const Icon = TYPE_ICON[activity.type] || Rss;
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +78,14 @@ function FeedCard({ activity, onToggleLike, onCommentPosted }) {
               <Link to={`/u/${activity.user.username}`} className="feed-card-comment-count">
                 {activity.commentCount || 0} comment{activity.commentCount === 1 ? "" : "s"}
               </Link>
+              <button
+                type="button"
+                className="feed-card-report"
+                onClick={() => onReport(activity.postId)}
+              >
+                <Flag size={13} />
+                Report
+              </button>
             </div>
 
             <form className="feed-card-comment-form" onSubmit={handleSubmitComment}>
@@ -106,6 +115,8 @@ function Feed() {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
   const [error, setError] = useState(false);
+  const [reportPostId, setReportPostId] = useState(null);
+  const [reportMessage, setReportMessage] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,7 +216,13 @@ function Feed() {
       {!loading && !error && activities.length > 0 && (
         <div className="feed-list">
           {activities.map((a) => (
-            <FeedCard key={a._id} activity={a} onToggleLike={handleToggleLike} onCommentPosted={handleCommentPosted} />
+            <FeedCard
+              key={a._id}
+              activity={a}
+              onToggleLike={handleToggleLike}
+              onCommentPosted={handleCommentPosted}
+              onReport={setReportPostId}
+            />
           ))}
           {hasMore && (
             <button type="button" className="feed-load-more" onClick={handleLoadMore} disabled={loadingMore}>
@@ -214,6 +231,16 @@ function Feed() {
           )}
         </div>
       )}
+
+      {reportMessage && <p className="feed-status">{reportMessage}</p>}
+
+      <ReportDialog
+        open={!!reportPostId}
+        targetType="physiquePost"
+        targetId={reportPostId}
+        onClose={() => setReportPostId(null)}
+        onSubmitted={setReportMessage}
+      />
     </div>
   );
 }

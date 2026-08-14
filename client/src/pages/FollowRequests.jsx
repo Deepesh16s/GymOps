@@ -6,6 +6,7 @@ import {
   acceptFollowRequest,
   declineFollowRequest,
 } from "../services/socialService";
+import Avatar from "../components/Avatar";
 import "./followRequests.css";
 
 function FollowRequests() {
@@ -83,7 +84,7 @@ function FollowRequests() {
             <li key={r._id} className="follow-requests-item">
               <Link to={`/u/${r.user.username}`} className="follow-requests-user">
                 <span className="follow-requests-avatar">
-                  {r.user.name?.charAt(0).toUpperCase() || "?"}
+                  <Avatar src={r.user.picture} name={r.user.name} />
                 </span>
                 <span>
                   <span className="follow-requests-name">{r.user.name}</span>

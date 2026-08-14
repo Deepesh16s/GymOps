@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Search as SearchIcon, UserPlus, UserMinus, Clock } from "lucide-react";
 import { searchUsers, followUser, unfollowUser } from "../services/socialService";
+import Avatar from "../components/Avatar";
 import "./userSearch.css";
 
 function UserSearch() {
@@ -105,7 +106,9 @@ function UserSearch() {
           {results.map((u) => (
             <li key={u.username} className="user-search-result">
               <Link to={`/u/${u.username}`} className="user-search-result-link">
-                <span className="user-search-avatar">{u.name?.charAt(0).toUpperCase() || "?"}</span>
+                <span className="user-search-avatar">
+                  <Avatar src={u.picture} name={u.name} />
+                </span>
                 <span>
                   <span className="user-search-result-name">
                     {u.name}

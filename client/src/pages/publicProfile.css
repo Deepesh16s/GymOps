@@ -780,6 +780,15 @@
   color: var(--go-text-faint);
 }
 
+.physique-lightbox-visibility {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-surface-sunken);
+  font-weight: 600;
+}
+
 .physique-lightbox-delete {
   align-self: flex-start;
   display: flex;
