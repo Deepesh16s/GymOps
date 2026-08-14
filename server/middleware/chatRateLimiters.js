@@ -1,8 +1,5 @@
 const rateLimit = require("express-rate-limit");
 
-// Keyed by authenticated user, not IP — every route this runs on sits behind
-// `protect`, so `req.user` is always set. Basic spam protection, not a full
-// moderation system (see Phase S3 scope notes).
 const byUser = (req) => String(req.user._id);
 
 const sendMessageLimiter = rateLimit({

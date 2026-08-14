@@ -17,9 +17,6 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    // Public, mutable handle — resolved to _id for discovery/display only,
-    // never stored as a foreign key anywhere else. _id remains the permanent
-    // identity for every relationship (Follow, Block, and future models).
     username: {
         type: String,
         unique: true,
@@ -37,9 +34,22 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    profileVisibility: {
+        type: String,
+        enum: ["public", "private"],
+        default: "private"
+    },
+    showTrainingActivity: {
+        type: Boolean,
+        default: false
+    },
     picture: {
         type: String,
         default: ""
+    },
+    pictureAssetId: {
+        type: String,
+        default: null
     },
     resetPasswordToken: {
         type: String,

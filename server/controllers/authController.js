@@ -1,8 +1,14 @@
 const User = require("../models/User");
 const Follow = require("../models/Follow");
+const FollowRequest = require("../models/FollowRequest");
 const Block = require("../models/Block");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
+const Badge = require("../models/Badge");
+const Activity = require("../models/Activity");
+const PhysiquePost = require("../models/PhysiquePost");
+const PhysiqueLike = require("../models/PhysiqueLike");
+const PhysiqueComment = require("../models/PhysiqueComment");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -11,6 +17,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const Exercise = require("../models/Exercise");
 const defaultExercises = require("../data/defaultExercises");
 const sendEmail = require("../utils/sendEmail");
+const { uploadBufferToCloudinary, destroyCloudinaryAsset } = require("../utils/cloudinary");
 const {
   normalize: normalizeUsername,
   validateFormat: validateUsernameFormat,
@@ -18,9 +25,6 @@ const {
   assignGeneratedUsername,
 } = require("../utils/username");
 
-// Included in every auth response's `user` object so clients (web + mobile)
-// always have what they need to decide whether to show the username prompt,
-// without a second round trip.
 const publicUsernameFields = (user) => ({
   username: user.username,
   usernameChosenByUser: user.usernameChosenByUser,
@@ -104,8 +108,6 @@ exports.registerUser = async (req, res) => {
         usernameChosenByUser: true,
       });
     } catch (error) {
-      // Availability was checked above, but a concurrent registration could
-      // still win the race — the unique index is the actual guarantee.
       if (error.code === 11000 || error.code === "E11000") {
         return res.status(400).json({ message: "Username is already taken" });
       }
@@ -158,9 +160,6 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // Existing-user migration lazy fallback — covers anyone the one-off
-    // batch script missed (see server/scripts/migrateUsernames.js). Never
-    // overwrites an existing username.
     if (!user.username) {
       await assignGeneratedUsername(user);
     }
@@ -209,6 +208,58 @@ exports.updateProfile = async (req, res) => {
     ).select("-password");
 
     res.status(200).json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.uploadProfilePicture = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    const result = await uploadBufferToCloudinary(req.file.buffer, {
+      folder: "repvyn/profile-pictures",
+      public_id: String(req.user._id),
+      overwrite: true,
+      resource_type: "image",
+      transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
+    });
+
+    const previousAssetId = req.user.pictureAssetId;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { picture: result.secure_url, pictureAssetId: result.public_id },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (previousAssetId && previousAssetId !== result.public_id) {
+      destroyCloudinaryAsset(previousAssetId).catch((err) => console.log(err));
+    }
+
+    res.status(200).json({ message: "Profile picture updated", user });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Could not upload profile picture" });
+  }
+};
+
+exports.deleteProfilePicture = async (req, res) => {
+  try {
+    if (req.user.pictureAssetId) {
+      await destroyCloudinaryAsset(req.user.pictureAssetId).catch((err) => console.log(err));
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { picture: "", pictureAssetId: null },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    res.status(200).json({ message: "Profile picture removed", user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
@@ -269,26 +320,30 @@ exports.deleteAccount = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Scoped to this phase only: clean up the Follow/Block/Conversation/
-    // Message records this and the prior social phase introduce, so neither
-    // adds to the account-deletion debt. The pre-existing gap (workouts,
-    // goals, notifications, health data, etc. are not cascaded) is a
-    // separate, already-documented issue not addressed here.
-    //
-    // Conversations (and every message in them) are hard-deleted for BOTH
-    // participants when either side deletes their account — matching the
-    // existing Follow/Block precedent of full removal rather than a
-    // per-user soft-delete/anonymization model. A conversation can't be
-    // kept for the remaining participant without leaving a message.sender
-    // pointing at a User._id that no longer exists.
     await Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] });
+    await FollowRequest.deleteMany({ $or: [{ requester: userId }, { target: userId }] });
     await Block.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] });
+    await Badge.deleteMany({ user: userId });
+    await Activity.deleteMany({ user: userId });
+
+    const physiquePosts = await PhysiquePost.find({ user: userId }).select("_id imageAssetId");
+    const physiquePostIds = physiquePosts.map((p) => p._id);
+    await Promise.all(
+      physiquePosts.map((p) => destroyCloudinaryAsset(p.imageAssetId).catch((err) => console.log(err)))
+    );
+    await PhysiqueLike.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
+    await PhysiqueComment.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
+    await PhysiquePost.deleteMany({ user: userId });
 
     const ownedConversations = await Conversation.find({ participants: userId }).select("_id");
     const conversationIds = ownedConversations.map((c) => c._id);
     if (conversationIds.length) {
       await Message.deleteMany({ conversation: { $in: conversationIds } });
       await Conversation.deleteMany({ _id: { $in: conversationIds } });
+    }
+
+    if (req.user.pictureAssetId) {
+      await destroyCloudinaryAsset(req.user.pictureAssetId).catch((err) => console.log(err));
     }
 
     await User.findByIdAndDelete(userId);
@@ -370,6 +425,54 @@ exports.dismissUsernamePrompt = async (req, res) => {
   }
 };
 
+exports.updateProfileVisibility = async (req, res) => {
+  try {
+    const { profileVisibility, showTrainingActivity } = req.body;
+    const update = {};
+
+    if (profileVisibility !== undefined) {
+      if (!["public", "private"].includes(profileVisibility)) {
+        return res.status(400).json({ message: "profileVisibility must be 'public' or 'private'" });
+      }
+      update.profileVisibility = profileVisibility;
+    }
+
+    if (showTrainingActivity !== undefined) {
+      update.showTrainingActivity = !!showTrainingActivity;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ message: "No changes provided" });
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, update, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+
+    if (update.profileVisibility === "public") {
+      const pending = await FollowRequest.find({ target: req.user._id });
+      if (pending.length) {
+        await Follow.bulkWrite(
+          pending.map((r) => ({
+            updateOne: {
+              filter: { follower: r.requester, following: req.user._id },
+              update: { $setOnInsert: { follower: r.requester, following: req.user._id } },
+              upsert: true,
+            },
+          }))
+        );
+        await FollowRequest.deleteMany({ target: req.user._id });
+      }
+    }
+
+    res.status(200).json({ message: "Profile settings updated", user });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 exports.googleLogin = async (req, res) => {
   try {
     const { token: googleToken } = req.body;
@@ -395,9 +498,6 @@ exports.googleLogin = async (req, res) => {
       await seedDefaultExercisesForUser(user._id);
     }
 
-    // Applies both to brand-new Google users and to pre-existing users the
-    // migration hasn't reached yet — same shared assignment path either way,
-    // no separate Google-specific username logic.
     if (!user.username) {
       await assignGeneratedUsername(user);
     }

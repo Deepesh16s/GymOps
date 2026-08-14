@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ChevronLeft, UserPlus, UserMinus } from "lucide-react";
+import { ChevronLeft, UserPlus, UserMinus, Clock } from "lucide-react";
 import { getFollowers, getFollowing, followUser, unfollowUser } from "../services/socialService";
 import "./followList.css";
 
@@ -52,15 +52,31 @@ function FollowList({ mode }) {
   const handleFollowToggle = async (target) => {
     setPendingUsername(target.username);
     try {
-      if (target.viewerIsFollowing) await unfollowUser(target.username);
-      else await followUser(target.username);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.username === target.username ? { ...u, viewerIsFollowing: !u.viewerIsFollowing } : u
-        )
-      );
+      if (target.viewerIsFollowing || target.viewerFollowRequestPending) {
+        await unfollowUser(target.username);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.username === target.username
+              ? { ...u, viewerIsFollowing: false, viewerFollowRequestPending: false }
+              : u
+          )
+        );
+      } else {
+        const res = await followUser(target.username);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.username === target.username
+              ? {
+                  ...u,
+                  viewerIsFollowing: res.data.status === "following",
+                  viewerFollowRequestPending: res.data.status === "requested",
+                }
+              : u
+          )
+        );
+      }
     } catch {
-      // Leave state untouched — the button simply reflects the last known state.
+      /* empty */
     } finally {
       setPendingUsername(null);
     }
@@ -94,19 +110,28 @@ function FollowList({ mode }) {
               <Link to={`/u/${u.username}`} className="follow-list-result-link">
                 <span className="follow-list-avatar">{u.name?.charAt(0).toUpperCase() || "?"}</span>
                 <span>
-                  <span className="follow-list-result-name">{u.name}</span>
+                  <span className="follow-list-result-name">
+                    {u.name}
+                    {u.followsViewer && <span className="follow-list-follows-you">Follows you</span>}
+                  </span>
                   <span className="follow-list-result-handle">@{u.username}</span>
                 </span>
               </Link>
               {!u.viewerIsSelf && u.viewerIsFollowing !== undefined && (
                 <button
                   type="button"
-                  className={`follow-list-btn ${u.viewerIsFollowing ? "follow-list-btn-outline" : "follow-list-btn-primary"}`}
+                  className={`follow-list-btn ${u.viewerIsFollowing || u.viewerFollowRequestPending ? "follow-list-btn-outline" : "follow-list-btn-primary"}`}
                   onClick={() => handleFollowToggle(u)}
                   disabled={pendingUsername === u.username}
                 >
-                  {u.viewerIsFollowing ? <UserMinus size={14} /> : <UserPlus size={14} />}
-                  {u.viewerIsFollowing ? "Unfollow" : "Follow"}
+                  {u.viewerFollowRequestPending ? (
+                    <Clock size={14} />
+                  ) : u.viewerIsFollowing ? (
+                    <UserMinus size={14} />
+                  ) : (
+                    <UserPlus size={14} />
+                  )}
+                  {u.viewerFollowRequestPending ? "Requested" : u.viewerIsFollowing ? "Unfollow" : "Follow"}
                 </button>
               )}
             </li>

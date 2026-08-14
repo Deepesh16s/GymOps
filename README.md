@@ -21,16 +21,21 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Google Sign-In** — alongside email/password auth with forgot/reset password via email
 - **Public landing page** — dark, marketing-style entry point at `/` (redirects straight to `/dashboard` if already signed in); sign-in itself lives at its own `/login` route
 - **Username & public identity** — every account has a unique, validated `@handle`; new users choose one at registration, existing users are assigned a temporary one automatically with a one-time prompt to personalize it
-- **Public profiles** — a deliberately scoped public page (`/u/:username`) showing name, avatar, and follower/following counts; private account data and Health Connect data are never exposed through it
+- **Public profiles** — a scoped public page (`/u/:username`) showing name, avatar, badges, training heatmap, personal records, recent sessions, physique posts, and recent activity, gated by the account's privacy setting; private account data and Health Connect data are never exposed through it
+- **Profile pictures** — upload/crop/remove via Cloudinary (server-mediated, type/size-validated, asset cleaned up on replace/remove/account deletion); falls back to an initial letter (WhatsApp-style) if unset or if the stored URL fails to load
+- **Badges** — automatic milestone awards (session counts, streaks, PR counts, monthly consistency) evaluated after each logged session
+- **Activity Feed** (`/feed`) — cursor-paginated feed of workout completions, PRs, streak milestones, badges, and physique posts from people you follow (never your own activity, which has its own "Recent Activity" section on your profile)
+- **Physique posts** — a profile photo update with optional caption/category and its own visibility (public or followers-only, capped by the account's own privacy setting), likeable and commentable by anyone permitted to see it
 - **User search** — find people by username
-- **Follow / unfollow** — one-directional social graph with follower/following counts
-- **Block / unblock** — removes any existing follow relationship and prevents new ones while a block is active
+- **Follow / unfollow** — public accounts follow instantly; private accounts require a follow request the owner approves or declines
+- **Block / unblock** — removes any existing follow relationship and prevents new ones (and all social interaction — profile, physique posts, likes, comments) while a block is active
+- **Direct messages** — one-to-one chat; open to anyone on a public account, requires a mutual follow on a private one
 
 ## Tech stack
 
 **Frontend** — React 19, Vite, React Router 7, Axios, Recharts, `@react-oauth/google`, `lucide-react`, `react-select`. Plain CSS (design tokens + shared auth/motion styles in `client/src/styles/`), no CSS framework, no animation library — page-entrance/scroll-reveal motion is a small native implementation (`client/src/components/Reveal.jsx`).
 
-**Backend** — Node.js, Express 5, Mongoose 9 (MongoDB), JWT auth (`jsonwebtoken`), `bcryptjs`, `google-auth-library` (Google ID token verification), `helmet`, `cors`, `express-rate-limit`, `compression`, `resend` (password reset email, sent over HTTPS — Render blocks outbound SMTP, so a transactional email API is used instead of raw SMTP), `web-push` (browser push).
+**Backend** — Node.js, Express 5, Mongoose 9 (MongoDB), JWT auth (`jsonwebtoken`), `bcryptjs`, `google-auth-library` (Google ID token verification), `helmet`, `cors`, `express-rate-limit`, `compression`, `resend` (password reset email, sent over HTTPS — Render blocks outbound SMTP, so a transactional email API is used instead of raw SMTP), `web-push` (browser push), `cloudinary` + `multer` (server-mediated profile picture / physique post image upload), a plain `ws` WebSocket server for chat.
 
 ## Project structure
 
@@ -101,9 +106,11 @@ Full templates: [`server/.env.example`](server/.env.example), [`client/.env.exam
 | `RESEND_API_KEY` | Yes (for password reset) | API key from [Resend](https://resend.com) used to send password-reset emails |
 | `RESEND_FROM_EMAIL` | No | Sender address; must be on a domain verified in Resend, otherwise defaults to `onboarding@resend.dev` |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT_EMAIL` | No | Web Push; push delivery is silently disabled if unset |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Yes (for profile pictures / physique posts) | From the [Cloudinary console](https://console.cloudinary.com); without these, image upload/removal fails with a server error, everything else keeps working |
 | `PORT` | No (default 5000) | API port |
 | `NODE_ENV` | No | `production` enables strict CORS and disables the dev request logger |
 | `AUTH_RATE_LIMIT_*`, `AUTH_FORGOT_PASSWORD_RATE_LIMIT_*` | No | Override the default auth rate limits |
+| `PHYSIQUE_POST_RATE_LIMIT_*`, `PHYSIQUE_LIKE_RATE_LIMIT_*`, `PHYSIQUE_COMMENT_RATE_LIMIT_*` | No | Override the default physique-post/like/comment rate limits (keyed per authenticated user, not per IP) |
 
 **Client**
 
@@ -128,17 +135,18 @@ Two independent sign-in paths, both issuing the same JWT (`Authorization: Bearer
 
 ### Social foundation
 
-Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow` and `Block` (and everything built on top of them later) reference the ID, never the username, so changing a username never breaks an existing relationship.
+Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow`, `Block`, `Activity`, `PhysiquePost`, `PhysiqueLike`, `PhysiqueComment`, and `Conversation`/`Message` all reference the ID, never the username, so changing a username never breaks an existing relationship, post, like, comment, or activity entry.
 
 - **Existing users** are assigned a temporary username automatically (derived from their email, with collision suffixes) the next time they log in, and see a one-time prompt — "Choose username" or "Maybe later" — that never reappears once either is chosen.
 - **New users** pick a username during registration; availability is checked server-side (a live client-side check is UX only, not the source of truth).
-- **Public profiles** (`/u/:username`) expose only `username`, `name`, `picture`, join date, and follower/following counts — never email, auth data, or Health Connect/health data.
-- **Follow/unfollow** is one-directional (not a request/accept system). **Block** removes any existing follow relationship in both directions and prevents new ones while active; unblocking does not restore a prior follow.
-- Deleting an account removes that user's `Follow` and `Block` records.
+- **Public profiles** (`/u/:username`) expose only `username`, `name`, `picture`, join date, and follower/following counts at minimum — never email, auth data, or Health Connect/health data. Badges, heatmap, PRs, sessions, physique posts, and activity are additionally gated by `profileVisibility` (`public`/`private`) and, for physique posts, their own per-post visibility on top of that.
+- **Follow** — public accounts follow instantly; a private account's followers must be approved via a `FollowRequest` the target accepts or declines. **Block** removes any existing follow relationship in both directions, prevents new ones, and overrides all other visibility (public or followers-only) while active; unblocking does not restore a prior follow.
+- **Activity Feed** is queried fresh on every request (actor = current `Follow` rows, minus anyone currently blocked) rather than fanned out and cached, so unfollowing, blocking, or a privacy-setting change take effect immediately with no stale cache to invalidate.
+- Deleting an account removes that user's `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `PhysiqueComment` (both authored by them and left on their own posts), and every `Conversation`/`Message` they're a participant in.
 
 Health Connect data (steps, heart rate, HRV, sleep, etc.) is architecturally private — nothing in the social layer can expose it; a future opt-in health-sharing feature would be a separate, explicit addition, not something the current social graph does implicitly. This identity/social architecture (public/private data separation, `_id`-based relationships, per-account deletion cleanup) is being built with eventual Google Play / Health Connect compliance in mind — Play Store submission itself is not underway.
 
-Not yet built: chat, activity feed, challenges, leaderboards, social notifications, shared achievements, and full moderation (block is the only foundation in place so far).
+Not yet built: reposts, stories, social recommendations, challenges, leaderboards, and full moderation/reporting tooling (block is the enforcement primitive everything else builds on).
 
 ## Development commands
 
@@ -180,7 +188,7 @@ Other hosts remain possible (any Node host for the API, any static host for the 
 
 - No automated test suite (unit, integration, or e2e) exists for either the client or the server.
 - No CI pipeline — lint/build/tests do not run automatically on push or PR.
-- Landing, Login, Register, Forgot/Reset Password, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, and Notifications have all been exercised live in a real browser (Playwright), including mobile viewports (down to 320px) and both light/dark theme — this is no longer unverified.
+- Landing, Login, Register, Forgot/Reset Password, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, Notifications, public profiles (badges/heatmap/physique posts), the Activity Feed, and physique-post likes/comments have all been exercised live in a real browser (Playwright) and/or automated API tests, including mobile viewports (down to 320px) and both light/dark theme.
 - Still not verified in a real browser: the full Google OAuth consent-screen round trip (needs a real Google account; blocked in this environment by origin configuration, not a code issue), screen-reader/assistive-technology behavior, and testing in browsers other than Chromium.
-- `DELETE /api/auth/account` removes only the `User` document — workouts, goals, exercises, and notifications are not cascade-deleted and become orphaned. Not fixed since it's a data-retention/product decision, not a clear bug.
+- `DELETE /api/auth/account` cascades the full social graph (see Social foundation above) but not workouts, goals, exercises, or notifications — those remain orphaned. Not fixed since it's a data-retention/product decision, not a clear bug.
 - `server/scripts/` contains six one-off data migration scripts. Five have already been applied to the live data they targeted and are kept only for historical reference. The sixth, `migrateUsernames.js` (Social Foundation), has been tested locally but not yet run against production data.

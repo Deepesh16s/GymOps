@@ -1,14 +1,3 @@
-// ENGINE layer — deterministic rules only. Takes the bundle from
-// guidanceData.js and turns it into a finite list of structured guidance
-// items. No React, no formatting/markup, no I/O — just data in, data out.
-// PRESENTATION (Guidance.jsx) is the only place that renders these.
-//
-// Categories are capped to what the existing engines can actually support
-// today: Progression, Plateau, Muscle Balance, Consistency, Goals, Training
-// Focus. Deliberately excludes Recovery/HRV/sleep (Health Connect data
-// stays out of Guidance for this phase) and never uses clinical language —
-// this is training feedback, not medical advice.
-
 const PLATEAU_ITEM_CAP = 3;
 
 function plateauItems(plateaus) {
@@ -186,7 +175,6 @@ function goalItems(goalEntries) {
   return items;
 }
 
-// Deterministic order: things that need attention first, positives last.
 const TONE_ORDER = { attention: 0, neutral: 1, positive: 2 };
 
 export function buildGuidance(data) {

@@ -28,10 +28,6 @@ function Messages() {
     load();
   }, [load]);
 
-  // Live-updates the list in place when a message arrives for a
-  // conversation already in view; falls back to a full reload for a
-  // conversation that isn't in the list yet (a new conversation someone
-  // else just started with the viewer).
   useEffect(() => {
     return chatSocket.subscribe((event) => {
       if (event.type !== "message:new") return;

@@ -21,7 +21,7 @@ function Register() {
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [usernameStatus, setUsernameStatus] = useState("idle"); // idle | checking | available | taken
+  const [usernameStatus, setUsernameStatus] = useState("idle");
   const [usernameMsg, setUsernameMsg] = useState("");
   const usernameCheckId = useRef(0);
 
@@ -33,8 +33,6 @@ function Register() {
     }));
   };
 
-  // Live availability check as the user types — server-side validation on
-  // submit is authoritative either way, this is UX only.
   useEffect(() => {
     if (!username) {
       setUsernameStatus("idle");
@@ -47,7 +45,7 @@ function Register() {
     const handle = setTimeout(async () => {
       try {
         const res = await api.get("/auth/username-available", { params: { username } });
-        if (checkId !== usernameCheckId.current) return; // a newer keystroke superseded this check
+        if (checkId !== usernameCheckId.current) return;
         setUsernameStatus(res.data.available ? "available" : "taken");
         setUsernameMsg(res.data.available ? "" : res.data.message || "Username is already taken");
       } catch (error) {

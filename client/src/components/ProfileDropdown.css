@@ -5,23 +5,9 @@
 .navbar-profile-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--go-text-muted);
+  gap: 4px;
   padding: 4px;
   border-radius: var(--go-radius-pill);
-  transition: background var(--go-fast);
-}
-
-.navbar-profile-btn:hover {
-  background: var(--go-primary-50);
-}
-
-.navbar-profile-btn:focus-visible {
-  outline: 2px solid var(--go-primary);
-  outline-offset: 2px;
 }
 
 .navbar-avatar {
@@ -35,6 +21,47 @@
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow var(--go-fast);
+}
+
+.navbar-avatar:hover {
+  box-shadow: 0 0 0 2px var(--go-primary-50);
+}
+
+.navbar-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.navbar-avatar:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.navbar-profile-chevron-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--go-text-muted);
+  padding: 6px;
+  border-radius: var(--go-radius-pill);
+  transition: background var(--go-fast);
+}
+
+.navbar-profile-chevron-btn:hover {
+  background: var(--go-primary-50);
+}
+
+.navbar-profile-chevron-btn:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
 }
 
 .navbar-chevron {

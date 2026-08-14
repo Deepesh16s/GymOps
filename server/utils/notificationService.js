@@ -1,6 +1,25 @@
 const Notification = require("../models/Notification");
-const { TYPE_CONFIDENCE } = require("../constants/notificationTypes");
+const { TYPE_CONFIDENCE, NOTIFICATION_TYPES } = require("../constants/notificationTypes");
 const { deliverPushIfEligible } = require("./pushDeliveryManager");
+const { recordActivity } = require("./activityFeed");
+
+const ACTIVITY_ELIGIBLE_TYPES = new Set([
+  NOTIFICATION_TYPES.PERSONAL_RECORD,
+  NOTIFICATION_TYPES.STREAK_MILESTONE,
+]);
+
+async function recordActivitySafely(userId, doc) {
+  try {
+    await recordActivity(userId, {
+      type: doc.type,
+      title: doc.title,
+      subtitle: doc.subtitle,
+      metadata: doc.metadata,
+    });
+  } catch (error) {
+    console.error("Activity recording failed:", error);
+  }
+}
 
 async function deliverPushSafely(userId, doc) {
   try {
@@ -49,6 +68,7 @@ const createNotificationIfNew = async (userId, payload, options = {}) => {
     try {
       const [doc] = await Notification.create([fields], { session: options.session });
       await deliverPushSafely(userId, doc);
+      if (ACTIVITY_ELIGIBLE_TYPES.has(doc.type)) await recordActivitySafely(userId, doc);
       return doc;
     } catch (error) {
       if (error.code === MONGO_DUPLICATE_KEY_ERROR) return null;
@@ -73,6 +93,7 @@ const createNotificationIfNew = async (userId, payload, options = {}) => {
   });
   await existing.save({ session: options.session });
   await deliverPushSafely(userId, existing);
+  if (ACTIVITY_ELIGIBLE_TYPES.has(existing.type)) await recordActivitySafely(userId, existing);
   return existing;
 };
 

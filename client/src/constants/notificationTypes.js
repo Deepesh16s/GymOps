@@ -19,6 +19,8 @@ import {
   Ban,
   Sparkles,
   Layers,
+  Heart,
+  MessageCircle,
 } from "lucide-react";
 
 export const NOTIFICATION_CATEGORIES = {
@@ -57,6 +59,8 @@ const NOTIFICATION_ICON_MAP = {
   Ban,
   Sparkles,
   Layers,
+  Heart,
+  MessageCircle,
 };
 
 export const getNotificationIcon = (iconName) => NOTIFICATION_ICON_MAP[iconName] || Bell;

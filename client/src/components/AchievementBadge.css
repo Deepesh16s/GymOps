@@ -1,0 +1,91 @@
+.achievement-badge {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--go-radius-md, 12px);
+  cursor: pointer;
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-strong);
+  color: var(--go-text);
+  transition: transform var(--go-fast), box-shadow var(--go-fast), border-color var(--go-fast);
+}
+
+.achievement-badge:hover {
+  transform: translateY(-2px);
+}
+
+.achievement-badge:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 2px;
+}
+
+.achievement-badge-icon {
+  color: var(--badge-accent);
+}
+
+.achievement-badge-value {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--go-text-muted);
+}
+
+.achievement-badge--tier1 {
+  border-color: color-mix(in srgb, var(--badge-accent) 30%, var(--go-border-strong));
+}
+
+.achievement-badge--tier2 {
+  border-color: color-mix(in srgb, var(--badge-accent) 55%, var(--go-border-strong));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--badge-accent) 18%, transparent);
+}
+
+.achievement-badge--tier3 {
+  border-color: var(--badge-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--badge-accent) 35%, transparent),
+    0 0 10px color-mix(in srgb, var(--badge-accent) 25%, transparent);
+}
+
+.achievement-badge--tier3 .achievement-badge-value {
+  color: var(--go-text);
+}
+
+.achievement-badge--locked {
+  opacity: 0.5;
+  border-color: var(--go-border-strong) !important;
+  box-shadow: none !important;
+}
+
+.achievement-badge--locked:hover {
+  opacity: 0.75;
+}
+
+.achievement-badge--locked .achievement-badge-icon {
+  color: var(--go-text-faint);
+}
+
+.achievement-badge-lock {
+  color: var(--go-text-faint);
+}
+
+@media (max-width: 760px) {
+  .achievement-badge {
+    width: 48px;
+    height: 48px;
+    gap: 2px;
+    border-radius: var(--go-radius-sm, 8px);
+  }
+
+  .achievement-badge-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  .achievement-badge-value {
+    font-size: 0.64rem;
+  }
+}

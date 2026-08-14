@@ -14,9 +14,6 @@ const {
 const { protect } = require("../middleware/authMiddleware");
 const { sendMessageLimiter, createConversationLimiter } = require("../middleware/chatRateLimiters");
 
-// Every route requires authentication and is scoped to the requester's own
-// conversations — ownership is re-checked inside each controller function
-// (loadOwnedConversation), not just implied by these routes existing.
 router.use(protect);
 
 router.get("/", listConversations);

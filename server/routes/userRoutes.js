@@ -4,10 +4,18 @@ const router = express.Router();
 const {
   searchUsers,
   getPublicProfile,
+  getHeatmap,
+  getHeatmapDay,
+  getSessions,
+  getPRs,
+  getActivity,
   getFollowers,
   getFollowing,
   followUser,
   unfollowUser,
+  getFollowRequests,
+  acceptFollowRequest,
+  declineFollowRequest,
   blockUser,
   unblockUser,
 } = require("../controllers/userController");
@@ -15,17 +23,23 @@ const {
 const { protect, optionalAuth } = require("../middleware/authMiddleware");
 const { usernameCheckLimiter } = require("../middleware/authRateLimiters");
 
-// Public reads — viewing a profile/search/followers doesn't require auth.
-// All four use optionalAuth so an identified viewer additionally gets their
-// own follow/block relationship to each returned profile in the response.
 router.get("/search", usernameCheckLimiter, optionalAuth, searchUsers);
+
+router.get("/follow-requests", protect, getFollowRequests);
+
 router.get("/:username", optionalAuth, getPublicProfile);
+router.get("/:username/heatmap", optionalAuth, getHeatmap);
+router.get("/:username/heatmap/:date", optionalAuth, getHeatmapDay);
+router.get("/:username/sessions", optionalAuth, getSessions);
+router.get("/:username/prs", optionalAuth, getPRs);
+router.get("/:username/activity", optionalAuth, getActivity);
 router.get("/:username/followers", optionalAuth, getFollowers);
 router.get("/:username/following", optionalAuth, getFollowing);
 
-// Writes — require the acting user to be authenticated.
 router.post("/:username/follow", protect, followUser);
 router.delete("/:username/follow", protect, unfollowUser);
+router.post("/:username/accept-follow-request", protect, acceptFollowRequest);
+router.post("/:username/decline-follow-request", protect, declineFollowRequest);
 router.post("/:username/block", protect, blockUser);
 router.delete("/:username/block", protect, unblockUser);
 

@@ -528,6 +528,7 @@
 }
 
 .training-heatmap {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -546,7 +547,7 @@
 
 .training-heatmap__months-spacer {
   flex-shrink: 0;
-  width: 28px;
+  width: 32px;
 }
 
 .training-heatmap__month {
@@ -560,6 +561,7 @@
 .training-heatmap__body {
   display: flex;
   gap: 4px;
+  position: relative;
 }
 
 .training-heatmap__day-labels {
@@ -567,37 +569,65 @@
   width: 28px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
 }
 
 .training-heatmap__day-labels span {
   height: 11px;
-  font-size: 10px;
+  font-size: 9.5px;
   line-height: 11px;
   color: var(--go-text-faint);
 }
 
 .training-heatmap__grid {
   display: flex;
-  gap: 3px;
+  gap: 1px;
 }
 
 .training-heatmap__col {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
+}
+
+.training-heatmap__col--month-start {
+  margin-left: 6px;
 }
 
 .training-heatmap__cell {
+  display: block;
+  box-sizing: border-box;
   width: 11px;
   height: 11px;
+  padding: 0;
+  margin: 0;
   border-radius: 2px;
   background: var(--go-surface-sunken);
   border: 1px solid var(--go-border-soft);
+  font: inherit;
+  cursor: default;
+}
+
+.training-heatmap__cell--clickable {
+  cursor: pointer;
+}
+
+.training-heatmap__cell--clickable:hover {
+  border-color: var(--go-text-faint);
+}
+
+.training-heatmap__cell--clickable:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 1px;
 }
 
 .training-heatmap__cell--t0 {
   background: var(--go-surface-sunken);
+}
+
+.training-heatmap__cell--blank {
+  background: transparent;
+  border-color: transparent;
 }
 
 .training-heatmap__cell--t1 {
@@ -618,6 +648,60 @@
 .training-heatmap__cell--t4 {
   background: var(--go-success);
   border-color: transparent;
+}
+
+.training-heatmap__day-popover {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 5;
+  min-width: 160px;
+  max-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--go-surface-raised, var(--go-surface));
+  border: 1px solid var(--go-border-strong);
+  border-radius: var(--go-radius-md, 10px);
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.78rem;
+  color: var(--go-text);
+}
+
+.training-heatmap__day-popover strong {
+  font-size: 0.8rem;
+}
+
+.training-heatmap__day-popover-empty {
+  color: var(--go-text-faint);
+}
+
+.training-heatmap__day-popover-session {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+.training-heatmap__day-popover-session:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.training-heatmap__day-popover-name {
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+.training-heatmap__day-popover-muscles {
+  color: var(--go-primary);
+  font-size: 0.74rem;
+}
+
+.training-heatmap__day-popover-meta {
+  color: var(--go-text-muted);
+  font-size: 0.72rem;
 }
 
 .training-heatmap__footer {
@@ -646,7 +730,6 @@
   height: 10px;
   border-radius: 2px;
 }
-
 
 .workout-log__skeleton {
   display: flex;

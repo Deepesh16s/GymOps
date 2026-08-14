@@ -9,6 +9,9 @@ const recalculateGoalsForExercise = require("../utils/recalculateGoals");
 const { recalculateGoalsForExercises } = require("../utils/recalculateGoals");
 const { detectWorkoutSessionNotifications } = require("../utils/notificationTriggers");
 const { createNotificationsIfNew, suppressNotifications } = require("../utils/notificationService");
+const { evaluateBadges } = require("../utils/badges");
+const { recordActivity } = require("../utils/activityFeed");
+const { OTHER_SESSION_TYPE } = require("../constants/sessionTypes");
 const {
   validateWorkoutPayload,
   validateWorkoutSets,
@@ -23,6 +26,14 @@ const {
 
 const NOTE_MAX_LENGTH = 500;
 const SESSION_NOTE_MAX_LENGTH = 1000;
+
+function describeCompletedSession(sessionType, customSessionType) {
+  if (!sessionType) return "completed a workout";
+  if (sessionType === OTHER_SESSION_TYPE) {
+    return customSessionType ? `completed ${customSessionType}` : "completed a workout";
+  }
+  return `completed a ${sessionType} session`;
+}
 
 exports.createWorkout = async (req, res) => {
   try {
@@ -54,6 +65,12 @@ exports.createWorkout = async (req, res) => {
     });
 
     await updateGoalsForWorkout(req.user._id, exercise, cleanSets);
+
+    try {
+      await evaluateBadges(req.user._id);
+    } catch (badgeError) {
+      console.error("Badge evaluation failed:", badgeError);
+    }
 
     res.status(201).json(workout);
   } catch (error) {
@@ -235,6 +252,21 @@ exports.createWorkoutSession = async (req, res) => {
       ]);
     } catch (notificationError) {
       console.error("Notification generation failed:", notificationError);
+    }
+
+    try {
+      await evaluateBadges(req.user._id);
+    } catch (badgeError) {
+      console.error("Badge evaluation failed:", badgeError);
+    }
+
+    try {
+      await recordActivity(req.user._id, {
+        type: "workoutCompleted",
+        title: describeCompletedSession(sessionType, normalizedCustomSessionType),
+      });
+    } catch (activityError) {
+      console.error("Activity recording failed:", activityError);
     }
 
     if (goalRecalculationFailed) {

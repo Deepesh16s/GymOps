@@ -1,9 +1,5 @@
 import * as SecureStore from "expo-secure-store";
 
-// EXPO_PUBLIC_-prefixed vars are inlined at build time by Expo, mirroring the
-// web client's VITE_API_URL pattern. Falls back to a LAN-reachable dev default
-// so a phone on the same network as the Repvyn API can reach it without env setup;
-// override with a real EXPO_PUBLIC_API_URL for anything beyond local dev.
 const DEFAULT_API_URL = "http://localhost:5000/api";
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;

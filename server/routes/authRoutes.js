@@ -7,6 +7,8 @@ const {
   googleLogin,
   getMe,
   updateProfile,
+  uploadProfilePicture,
+  deleteProfilePicture,
   changePassword,
   deleteAccount,
   forgotPassword,
@@ -14,6 +16,7 @@ const {
   checkUsernameAvailable,
   updateUsername,
   dismissUsernamePrompt,
+  updateProfileVisibility,
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -22,6 +25,7 @@ const {
   forgotPasswordLimiter,
   usernameCheckLimiter,
 } = require("../middleware/authRateLimiters");
+const uploadProfilePictureMiddleware = require("../middleware/uploadProfilePicture");
 
 router.post("/register", loginRegisterLimiter, registerUser);
 router.post("/login", loginRegisterLimiter, loginUser);
@@ -31,13 +35,14 @@ router.post("/reset-password/:token", resetPassword);
 
 router.get("/me", protect, getMe);
 router.put("/profile", protect, updateProfile);
+router.post("/profile-picture", protect, uploadProfilePictureMiddleware, uploadProfilePicture);
+router.delete("/profile-picture", protect, deleteProfilePicture);
 router.put("/change-password", protect, changePassword);
 router.delete("/account", protect, deleteAccount);
 
-// Unauthenticated on purpose — must work during registration, before a
-// token exists.
 router.get("/username-available", usernameCheckLimiter, checkUsernameAvailable);
 router.put("/username", protect, updateUsername);
 router.put("/username-prompt-dismissed", protect, dismissUsernamePrompt);
+router.put("/profile-visibility", protect, updateProfileVisibility);
 
 module.exports = router;

@@ -68,9 +68,6 @@ function Conversation() {
     }
   }, [messages]);
 
-  // One-shot refresh when the tab regains focus — a supplementary safety
-  // net alongside the WebSocket push, not a polling replacement (see
-  // chatSocket.js).
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") load();
@@ -113,7 +110,7 @@ function Conversation() {
         if (container) container.scrollTop = container.scrollHeight - prevHeight;
       });
     } catch {
-      // Leave the list as-is; the Load older button remains available to retry.
+      /* empty */
     } finally {
       setLoadingMore(false);
     }
@@ -148,7 +145,7 @@ function Conversation() {
         prev.map((m) => (m._id === target._id ? { ...m, deleted: true, body: null } : m))
       );
     } catch {
-      // The message stays as-is; nothing destructive happened client-side.
+      /* empty */
     }
   };
 

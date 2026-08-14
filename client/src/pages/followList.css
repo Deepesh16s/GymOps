@@ -105,6 +105,18 @@
   font-size: 0.8rem;
 }
 
+.follow-list-follows-you {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--go-radius-pill);
+  background: var(--go-surface-sunken);
+  color: var(--go-text-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
 .follow-list-btn {
   flex-shrink: 0;
   height: 32px;

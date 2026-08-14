@@ -2,10 +2,14 @@ const mongoose = require("mongoose");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const User = require("../models/User");
+const Follow = require("../models/Follow");
 const Block = require("../models/Block");
 const { toPublicUser } = require("../utils/publicUser");
 const { normalize: normalizeUsername } = require("../utils/username");
 const { notifyUser } = require("../realtime/chatSocket");
+const { isBlockedEitherWay } = require("../utils/blocking");
+const { createNotificationIfNew } = require("../utils/notificationService");
+const { NOTIFICATION_TYPES } = require("../constants/notificationTypes");
 
 const MAX_MESSAGE_PAGE_SIZE = 50;
 const DEFAULT_MESSAGE_PAGE_SIZE = 30;
@@ -16,18 +20,6 @@ function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
 }
 
-async function isBlockedEitherWay(userIdA, userIdB) {
-  const blocked = await Block.exists({
-    $or: [
-      { blocker: userIdA, blocked: userIdB },
-      { blocker: userIdB, blocked: userIdA },
-    ],
-  });
-  return !!blocked;
-}
-
-// Returns the participant that is NOT the viewer. Conversations are always
-// exactly 2 participants, so this is always well-defined.
 function otherParticipant(conversation, viewerId) {
   return conversation.participants.find((p) => String(p._id || p) !== String(viewerId));
 }
@@ -37,9 +29,6 @@ function truncatePreview(body) {
   return body.length > PREVIEW_LENGTH ? `${body.slice(0, PREVIEW_LENGTH)}…` : body;
 }
 
-// Loads a conversation and verifies the requester is a participant. Shared
-// by every route below a conversation ID so "only participants can access
-// their own conversation" is enforced in exactly one place.
 async function loadOwnedConversation(conversationId, viewerId, { populate = false } = {}) {
   if (!isValidObjectId(conversationId)) return { error: 400, message: "Invalid conversation ID" };
 
@@ -124,7 +113,9 @@ exports.createConversation = async (req, res) => {
     }
 
     const username = normalizeUsername(rawUsername);
-    const target = await User.findOne({ username }).select("_id username name picture");
+    const target = await User.findOne({ username }).select(
+      "_id username name picture profileVisibility"
+    );
     if (!target) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -135,6 +126,18 @@ exports.createConversation = async (req, res) => {
 
     if (await isBlockedEitherWay(viewerId, target._id)) {
       return res.status(403).json({ message: "Unable to start a conversation with this user" });
+    }
+
+    if (target.profileVisibility === "private") {
+      const [viewerFollowsTarget, targetFollowsViewer] = await Promise.all([
+        Follow.exists({ follower: viewerId, following: target._id }),
+        Follow.exists({ follower: target._id, following: viewerId }),
+      ]);
+      if (!viewerFollowsTarget || !targetFollowsViewer) {
+        return res.status(403).json({
+          message: "You need to follow each other to message this user",
+        });
+      }
     }
 
     const [low, high] = Conversation.canonicalPair(viewerId, target._id);
@@ -148,7 +151,6 @@ exports.createConversation = async (req, res) => {
           participantHigh: high,
         });
       } catch (error) {
-        // Concurrent creation of the same pair — the unique index caught it.
         if (error.code === 11000 || error.code === "E11000") {
           conversation = await Conversation.findOne({ participantLow: low, participantHigh: high });
         } else {
@@ -193,10 +195,6 @@ exports.getConversation = async (req, res) => {
   }
 };
 
-// Cursor-based (not skip/page) — history is being actively appended to while
-// a user scrolls, and skip/limit pagination can duplicate or skip rows
-// across pages when new messages land in between fetches. `before` is an
-// ISO timestamp; omit it for the most recent page.
 exports.getMessages = async (req, res) => {
   try {
     const viewerId = req.user._id;
@@ -287,6 +285,15 @@ exports.sendMessage = async (req, res) => {
 
     if (other) {
       notifyUser(other._id, { type: "message:new", conversationId: String(conversation._id), message: payload });
+      createNotificationIfNew(other._id, {
+        type: NOTIFICATION_TYPES.NEW_MESSAGE,
+        category: "social",
+        icon: "MessageCircle",
+        title: `New message from @${req.user.username}`,
+        subtitle: truncatePreview(body),
+        navigationTarget: `/messages/${conversation._id}`,
+        dedupeKey: `message:${conversation._id}:${viewerId}`,
+      }).catch((notifyError) => console.error("Message notification failed:", notifyError));
     }
 
     res.status(201).json(payload);
@@ -308,8 +315,6 @@ exports.markRead = async (req, res) => {
       { readAt: now }
     );
 
-    // Conversation was loaded without populating participants — `other` is
-    // a raw ObjectId here, not a populated doc, so it's the ID itself.
     const other = otherParticipant(conversation, viewerId);
     if (other && result.modifiedCount > 0) {
       notifyUser(other, { type: "message:read", conversationId: String(conversation._id), readAt: now });
@@ -346,7 +351,6 @@ exports.deleteMessage = async (req, res) => {
     target.body = "";
     await target.save();
 
-    // Same as markRead — participants weren't populated, `other` is the raw ID.
     const other = otherParticipant(conversation, viewerId);
     if (other) {
       notifyUser(other, {

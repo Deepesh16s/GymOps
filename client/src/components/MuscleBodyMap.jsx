@@ -24,11 +24,6 @@ const INTENSITY_LABELS = {
   extreme: "Extreme",
 };
 
-// Weekly thresholds anchored to the sports-science consensus on hypertrophy volume:
-// <5 sets/muscle/week is below the minimum effective dose, 5-9 yields some growth,
-// 10-20 is the evidence-based "sweet spot" (ACSM / Schoenfeld et al. dose-response
-// reviews), and >20 is past the point of typical diminishing returns. 30d/365d modes
-// scale these same per-week thresholds by the number of weeks in the window.
 const WEEKLY_INTENSITY_THRESHOLDS = { light: 1, moderate: 5, high: 10, extreme: 21 };
 const MODE_WEEKS = { "7d": 1, "30d": 30 / 7, "365d": 365 / 7 };
 
@@ -43,8 +38,6 @@ function intensityLevel(sets, max, mode) {
     return "light";
   }
 
-  // "Lifetime" has no fixed window to compare against, so fall back to ranking
-  // muscles relative to the most-trained one over the account's full history.
   if (max === 0) return "none";
   const ratio = sets / max;
   if (ratio > 0.75) return "extreme";

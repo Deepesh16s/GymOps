@@ -43,8 +43,6 @@ export function getExerciseHistorySnapshot(historicalWorkouts, exerciseId) {
 }
 
 export function getNextSetSuggestion(snapshot, sessionSetsSoFar = []) {
-  // Prefer what the user is actually doing right now over stale history: a set
-  // already logged today is always more relevant than a different past session.
   if (sessionSetsSoFar.length) {
     const lastInSession = sessionSetsSoFar[sessionSetsSoFar.length - 1];
     const sessionBest = bestSet(sessionSetsSoFar);

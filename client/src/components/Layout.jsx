@@ -12,9 +12,6 @@ function Layout() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [promptUser, setPromptUser] = useState(null);
 
-  // Opened once per authenticated session, not per page — same lifecycle as
-  // the username-prompt fetch below. See chatSocket.js for why this is a
-  // convenience layer, not something chat correctness depends on.
   useEffect(() => {
     chatSocket.connect();
     return () => chatSocket.disconnect();
@@ -35,9 +32,6 @@ function Layout() {
     );
   }, [searchParams, setSearchParams]);
 
-  // Fetches fresh (not the possibly-stale cached localStorage copy — a
-  // session started before this feature shipped wouldn't have these fields
-  // cached yet) once per authenticated-session mount, not per page.
   useEffect(() => {
     let cancelled = false;
 

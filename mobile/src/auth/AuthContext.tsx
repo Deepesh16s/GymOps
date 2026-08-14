@@ -12,9 +12,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Session is kept minimal on purpose: only the JWT is persisted (SecureStore).
-// The user profile is re-derived from the login response each session rather
-// than cached, since this app never needs to render it beyond a greeting.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<RepvynUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,10 +19,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       const existingToken = await getToken();
-      // A stored token without a cached user means a previous session's token
-      // is still valid but we don't know who it belongs to until first use;
-      // treat presence of a token as "authenticated enough" to reach Home,
-      // which re-fetches whatever it needs from authenticated endpoints.
       if (existingToken) {
         setUser((prev) => prev ?? { _id: "", name: "", email: "" });
       }

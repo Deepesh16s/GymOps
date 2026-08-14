@@ -11,6 +11,7 @@ import {
   Search,
   MessageCircle,
   Compass,
+  Rss,
   Menu,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import "./Navbar.css";
 
 const NAV_LINKS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/feed", label: "Feed", icon: Rss },
   { to: "/workouts", label: "Workouts", icon: Dumbbell },
   { to: "/progression", label: "Progression", icon: TrendingUp },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
@@ -57,9 +59,6 @@ function Navbar() {
     });
   }, []);
 
-  // Approximation, not a precise per-conversation read count: visiting the
-  // Messages area clears the dot. Good enough for a nav-level "something's
-  // new" indicator — the conversation list itself shows exact unread counts.
   useEffect(() => {
     if (location.pathname.startsWith("/messages")) setHasUnreadMessages(false);
   }, [location.pathname]);

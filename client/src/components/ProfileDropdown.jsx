@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, LogOut, ChevronDown, AtSign } from "lucide-react";
+import { User, LogOut, ChevronDown, AtSign, UserPlus } from "lucide-react";
 import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
+import Avatar from "./Avatar";
 import "./ProfileDropdown.css";
 
 const readStoredUser = () => JSON.parse(localStorage.getItem("user") || "null");
@@ -40,27 +41,36 @@ function ProfileDropdown() {
 
   return (
     <div className="navbar-profile" ref={dropdownRef}>
-      <button
-        type="button"
-        className="navbar-profile-btn"
-        onClick={() => setDropdownOpen((o) => !o)}
-        aria-expanded={dropdownOpen}
-        aria-haspopup="true"
-      >
-        <span className="navbar-avatar">
-          {storedUser?.name?.charAt(0).toUpperCase() || "?"}
-        </span>
-        <ChevronDown
-          size={14}
-          strokeWidth={2}
-          className={`navbar-chevron ${dropdownOpen ? "navbar-chevron-open" : ""}`}
-        />
-      </button>
+      <div className="navbar-profile-btn">
+        {storedUser?.username ? (
+          <Link to={`/u/${storedUser.username}`} className="navbar-avatar" aria-label="View public profile">
+            <Avatar src={storedUser?.picture} name={storedUser?.name} imgClassName="navbar-avatar-img" />
+          </Link>
+        ) : (
+          <span className="navbar-avatar">
+            <Avatar src={storedUser?.picture} name={storedUser?.name} imgClassName="navbar-avatar-img" />
+          </span>
+        )}
+        <button
+          type="button"
+          className="navbar-profile-chevron-btn"
+          onClick={() => setDropdownOpen((o) => !o)}
+          aria-expanded={dropdownOpen}
+          aria-haspopup="true"
+          aria-label="Open profile menu"
+        >
+          <ChevronDown
+            size={14}
+            strokeWidth={2}
+            className={`navbar-chevron ${dropdownOpen ? "navbar-chevron-open" : ""}`}
+          />
+        </button>
+      </div>
 
       <div className={`navbar-dropdown ${dropdownOpen ? "navbar-dropdown-open" : ""}`}>
         <div className="navbar-dropdown-header">
           <span className="navbar-dropdown-avatar">
-            {storedUser?.name?.charAt(0).toUpperCase() || "?"}
+            <Avatar src={storedUser?.picture} name={storedUser?.name} imgClassName="navbar-avatar-img" />
           </span>
           <div>
             <p className="navbar-dropdown-name">{storedUser?.name}</p>
@@ -76,7 +86,7 @@ function ProfileDropdown() {
           onClick={() => setDropdownOpen(false)}
         >
           <User size={15} strokeWidth={1.8} />
-          Profile
+          Profile Settings
         </Link>
         {storedUser?.username && (
           <Link
@@ -88,6 +98,14 @@ function ProfileDropdown() {
             View public profile
           </Link>
         )}
+        <Link
+          to="/follow-requests"
+          className="navbar-dropdown-item"
+          onClick={() => setDropdownOpen(false)}
+        >
+          <UserPlus size={15} strokeWidth={1.8} />
+          Follow Requests
+        </Link>
         <button
           type="button"
           className="navbar-dropdown-item navbar-dropdown-logout"

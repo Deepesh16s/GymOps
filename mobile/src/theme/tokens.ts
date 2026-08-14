@@ -1,5 +1,3 @@
-// Mirrors the accent/neutral palette from client/src/styles/design-tokens.css
-// (dark theme values) so the companion app reads as part of the same product.
 export const colors = {
   bg: "#050505",
   surface: "#0a0a0a",

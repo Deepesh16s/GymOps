@@ -1,17 +1,3 @@
-// Real-time chat transport — a thin, optional convenience layer, not a
-// dependency chat correctness relies on. REST (chatService.js) is the
-// source of truth for every read and write; this module only pushes a
-// "here's what just happened" event to whoever's listening so open chat
-// screens/the conversation list can update live instead of waiting for the
-// next navigation or manual refresh. If the socket never connects or drops
-// (e.g. the free-tier backend instance spun down), nothing breaks — the
-// app just isn't "live" until it reconnects or the user revisits a page.
-//
-// No global state library in this app — this follows the same
-// module-singleton + custom `window` event pattern as the existing
-// "repvyn:user-updated" convention (see Layout.jsx/ProfileDropdown.jsx)
-// rather than introducing one.
-
 const EVENT_NAME = "repvyn:chat-event";
 const MAX_BACKOFF_MS = 30000;
 
@@ -53,7 +39,7 @@ export function connect() {
       const payload = JSON.parse(event.data);
       window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: payload }));
     } catch {
-      // Ignore malformed frames rather than throwing inside a socket handler.
+      /* empty */
     }
   };
 
@@ -63,8 +49,6 @@ export function connect() {
   };
 
   socket.onerror = () => {
-    // onclose always follows onerror for browser WebSocket — reconnect is
-    // scheduled there, nothing additional needed here.
   };
 }
 
@@ -81,8 +65,6 @@ export function disconnect() {
   }
 }
 
-// Components subscribe with: chatSocket.subscribe(handler) inside useEffect,
-// and call the returned function to unsubscribe on cleanup.
 export function subscribe(handler) {
   const listener = (event) => handler(event.detail);
   window.addEventListener(EVENT_NAME, listener);

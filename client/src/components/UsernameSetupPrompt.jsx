@@ -2,14 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import "./UsernameSetupPrompt.css";
 
-// One-time prompt shown when a logged-in user has a system-generated
-// username they haven't explicitly confirmed yet. Rendered by Layout.jsx
-// (mounts once per authenticated session) rather than login/register, so it
-// also catches existing sessions revisiting the app, not just fresh logins.
 function UsernameSetupPrompt({ user, onDone }) {
-  const [step, setStep] = useState("intro"); // "intro" | "choose"
+  const [step, setStep] = useState("intro");
   const [username, setUsername] = useState(user.username || "");
-  const [status, setStatus] = useState("idle"); // idle | checking | available | taken
+  const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dismissing, setDismissing] = useState(false);

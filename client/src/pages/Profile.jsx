@@ -7,10 +7,15 @@ import {
   Lock,
   Trash2,
   AtSign,
+  Globe,
+  ShieldOff,
+  Camera,
 } from "lucide-react";
 
 import "./profile.css";
 import api from "../services/api";
+import AvatarCropModal from "../components/AvatarCropModal";
+import Avatar from "../components/Avatar";
 
 function Profile() {
   const navigate = useNavigate();
@@ -25,7 +30,7 @@ function Profile() {
   const [username, setUsername] = useState("");
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameMsg, setUsernameMsg] = useState("");
-  const [usernameStatus, setUsernameStatus] = useState("idle"); // idle | checking | available | taken
+  const [usernameStatus, setUsernameStatus] = useState("idle");
   const usernameCheckId = useRef(0);
 
   const [newPassword, setNewPassword] = useState("");
@@ -36,6 +41,17 @@ function Profile() {
     useState(false);
   const [passwordMsg, setPasswordMsg] =
     useState("");
+
+  const [profileVisibility, setProfileVisibility] = useState("private");
+  const [showTrainingActivity, setShowTrainingActivity] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
+  const [visibilityMsg, setVisibilityMsg] = useState("");
+
+  const [savingPicture, setSavingPicture] = useState(false);
+  const [pictureMsg, setPictureMsg] = useState("");
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingPictureFile, setPendingPictureFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] =
     useState(false);
@@ -51,6 +67,8 @@ function Profile() {
         setUser(res.data);
         setName(res.data.name || "");
         setUsername(res.data.username || "");
+        setProfileVisibility(res.data.profileVisibility || "private");
+        setShowTrainingActivity(!!res.data.showTrainingActivity);
       } catch (error) {
         console.log(error);
       } finally {
@@ -61,8 +79,6 @@ function Profile() {
     fetchProfile();
   }, []);
 
-  // Live availability check as the user edits their username — the actual
-  // guarantee is server-side on save, this is UX only.
   useEffect(() => {
     if (!username || username === user?.username) {
       setUsernameStatus("idle");
@@ -112,6 +128,23 @@ function Profile() {
     }
   };
 
+  const handleVisibilitySave = async (nextVisibility, nextShowTrainingActivity) => {
+    setSavingVisibility(true);
+    setVisibilityMsg("");
+    try {
+      const res = await api.put("/auth/profile-visibility", {
+        profileVisibility: nextVisibility,
+        showTrainingActivity: nextShowTrainingActivity,
+      });
+      setProfileVisibility(res.data.user.profileVisibility);
+      setShowTrainingActivity(!!res.data.user.showTrainingActivity);
+    } catch (error) {
+      setVisibilityMsg(error.response?.data?.message || "Could not update privacy settings.");
+    } finally {
+      setSavingVisibility(false);
+    }
+  };
+
   const handleNameSave = async (e) => {
     e.preventDefault();
 
@@ -155,6 +188,69 @@ function Profile() {
       );
     } finally {
       setSavingName(false);
+    }
+  };
+
+  const handlePictureSelect = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPictureMsg("");
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setPictureMsg("Image must be a JPEG, PNG, or WebP file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPictureMsg("Image must be under 5MB.");
+      return;
+    }
+
+    setPendingPictureFile(file);
+    setCropModalOpen(true);
+  };
+
+  const handleCropCancel = () => {
+    setCropModalOpen(false);
+    setPendingPictureFile(null);
+  };
+
+  const handleCropConfirm = async (blob) => {
+    setSavingPicture(true);
+    try {
+      const formData = new FormData();
+      formData.append("picture", blob, "avatar.jpg");
+      const res = await api.post("/auth/profile-picture", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setUser(res.data.user);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      window.dispatchEvent(new Event("repvyn:user-updated"));
+      setPictureMsg("Profile picture updated.");
+      setCropModalOpen(false);
+      setPendingPictureFile(null);
+    } catch (error) {
+      setPictureMsg(error.response?.data?.message || "Could not upload profile picture.");
+    } finally {
+      setSavingPicture(false);
+    }
+  };
+
+  const handleRemovePicture = async () => {
+    setPictureMsg("");
+    setSavingPicture(true);
+    try {
+      const res = await api.delete("/auth/profile-picture");
+      setUser(res.data.user);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      window.dispatchEvent(new Event("repvyn:user-updated"));
+      setPictureMsg("Profile picture removed.");
+    } catch (error) {
+      setPictureMsg(error.response?.data?.message || "Could not remove profile picture.");
+    } finally {
+      setSavingPicture(false);
     }
   };
 
@@ -277,12 +373,40 @@ function Profile() {
         <div className="profile-grid">
 
           <section className="profile-card profile-hero-card">
-            <div className="profile-avatar">
-              {user?.name
-                ?.charAt(0)
-                .toUpperCase() ||
-                "?"}
+            <div className="profile-avatar-wrap">
+              <div className="profile-avatar">
+                <Avatar src={user?.picture} name={user?.name} imgClassName="profile-avatar-img" />
+              </div>
+              <button
+                type="button"
+                className="profile-avatar-edit-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={savingPicture}
+                aria-label="Change profile picture"
+              >
+                <Camera size={14} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={handlePictureSelect}
+              />
             </div>
+
+            {user?.picture && (
+              <button
+                type="button"
+                className="profile-avatar-remove"
+                onClick={handleRemovePicture}
+                disabled={savingPicture}
+              >
+                Remove photo
+              </button>
+            )}
+
+            {pictureMsg && <p className="profile-msg">{pictureMsg}</p>}
 
             <h1 className="profile-name">
               {user?.name}
@@ -365,6 +489,53 @@ function Profile() {
             </form>
           </section>
 
+          <section className="profile-card">
+            <div className="profile-section-header">
+              <Globe size={20} />
+              <h2 className="profile-card-title">Privacy</h2>
+            </div>
+
+            <div className="profile-visibility-toggle">
+              <button
+                type="button"
+                className={`profile-visibility-btn ${profileVisibility === "public" ? "profile-visibility-btn-active" : ""}`}
+                onClick={() => handleVisibilitySave("public", showTrainingActivity)}
+                disabled={savingVisibility}
+              >
+                <Globe size={15} />
+                Public
+              </button>
+              <button
+                type="button"
+                className={`profile-visibility-btn ${profileVisibility === "private" ? "profile-visibility-btn-active" : ""}`}
+                onClick={() => handleVisibilitySave("private", showTrainingActivity)}
+                disabled={savingVisibility}
+              >
+                <ShieldOff size={15} />
+                Private
+              </button>
+            </div>
+
+            <p className="profile-visibility-hint">
+              {profileVisibility === "public"
+                ? "Anyone can see your sessions, PRs, and training activity."
+                : "Only badges and follower counts are visible to others."}
+            </p>
+
+            {profileVisibility === "private" && (
+              <label className="profile-visibility-checkbox">
+                <input
+                  type="checkbox"
+                  checked={showTrainingActivity}
+                  disabled={savingVisibility}
+                  onChange={(e) => handleVisibilitySave(profileVisibility, e.target.checked)}
+                />
+                Show training activity on my profile
+              </label>
+            )}
+
+            {visibilityMsg && <p className="profile-msg">{visibilityMsg}</p>}
+          </section>
 
           <section className="profile-card">
             <div className="profile-section-header">
@@ -597,6 +768,14 @@ function Profile() {
           </section>
         </div>
       </main>
+
+      <AvatarCropModal
+        open={cropModalOpen}
+        imageFile={pendingPictureFile}
+        saving={savingPicture}
+        onCancel={handleCropCancel}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   );
 }
