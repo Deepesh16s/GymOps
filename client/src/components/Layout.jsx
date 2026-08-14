@@ -40,6 +40,8 @@ function Layout() {
       .then((res) => {
         if (cancelled) return;
         const user = res.data;
+        localStorage.setItem("user", JSON.stringify(user));
+        window.dispatchEvent(new Event("repvyn:user-updated"));
         if (!user.usernameChosenByUser && !user.usernamePromptDismissedAt) {
           setPromptUser(user);
         }
