@@ -10,6 +10,7 @@ const PhysiquePost = require("../models/PhysiquePost");
 const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
 const Report = require("../models/Report");
+const Reaction = require("../models/Reaction");
 const Subscription = require("../models/Subscription");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -340,6 +341,9 @@ exports.deleteAccount = async (req, res) => {
     const affectedCommentIds = affectedComments.map((c) => c._id);
     await PhysiqueLike.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
     await PhysiqueComment.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
+    await Reaction.deleteMany({
+      $or: [{ user: userId }, { targetType: "physiquePost", targetId: { $in: physiquePostIds } }],
+    });
     await PhysiquePost.deleteMany({ user: userId });
 
     await Report.deleteMany({

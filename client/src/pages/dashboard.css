@@ -1531,23 +1531,6 @@ section.charts-row {
   color: var(--go-primary);
 }
 
-.skeleton {
-  border-radius: 6px;
-  background: linear-gradient(
-    90deg,
-    var(--go-surface-sunken) 25%,
-    color-mix(in srgb, var(--go-surface-sunken) 50%, var(--go-surface) 50%) 50%,
-    var(--go-surface-sunken) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-}
-
-@keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 @media (max-width: 960px) {
   .dash-main {
     padding: 24px 28px 56px;

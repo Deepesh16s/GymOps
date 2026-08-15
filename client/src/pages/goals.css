@@ -177,6 +177,10 @@
   background: linear-gradient(90deg, var(--go-danger-dark, #dc2626), color-mix(in srgb, var(--go-danger-dark, #dc2626) 70%, transparent));
 }
 
+.progress-track--at-risk .progress-fill {
+  background: linear-gradient(90deg, var(--go-warning), color-mix(in srgb, var(--go-warning) 70%, transparent));
+}
+
 .progress-track--completed .progress-fill {
   background: linear-gradient(90deg, var(--go-success-light), var(--go-success));
 }
@@ -270,6 +274,18 @@
   color: var(--go-danger-dark, #dc2626);
   background: var(--go-danger-50, rgba(239, 68, 68, 0.08));
   border: 1px solid color-mix(in srgb, var(--go-danger-dark, #dc2626) 18%, transparent);
+}
+
+.goal-badge--at-risk {
+  color: var(--go-warning);
+  background: var(--go-warning-50, rgba(180, 83, 9, 0.08));
+  border: 1px solid color-mix(in srgb, var(--go-warning) 20%, transparent);
+}
+
+.goal-badge--insufficient {
+  color: var(--go-text-faint);
+  background: var(--go-surface-sunken);
+  border: 1px solid var(--go-border-soft);
 }
 
 .goal-card__progress-row {
@@ -782,7 +798,7 @@
 
 .goal-stats-header {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
 }
 
@@ -850,7 +866,7 @@
 
 @media (max-width: 1280px) {
   .goal-stats-header {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

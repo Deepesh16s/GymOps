@@ -64,6 +64,8 @@ export function getProjectedCompletionDate(goal, now = new Date()) {
 }
 
 const HEALTH_TOLERANCE = 0.1;
+const AT_RISK_TOLERANCE = 0.25;
+const MIN_DAYS_FOR_RELIABLE_READ = 2;
 
 export function getGoalHealth(goal, now = new Date()) {
   if ((goal?.current ?? 0) >= (goal?.target ?? 0)) return "Completed";
@@ -73,6 +75,7 @@ export function getGoalHealth(goal, now = new Date()) {
   if (daysTotal === null) return null;
 
   const daysRemaining = getDaysRemaining(goal, now);
+  const daysElapsed = getDaysElapsed(goal, now);
 
   if (daysTotal <= 0) {
     return daysRemaining < 0 ? "Behind" : "On Track";
@@ -80,15 +83,18 @@ export function getGoalHealth(goal, now = new Date()) {
 
   if (daysRemaining < 0) return "Behind";
 
-  const daysElapsed = getDaysElapsed(goal, now);
+  if ((daysElapsed ?? 0) < MIN_DAYS_FOR_RELIABLE_READ) return "Insufficient Data";
+
   const clampedElapsed = Math.min(Math.max(daysElapsed ?? 0, 0), daysTotal);
   const expected = goal.target * (clampedElapsed / daysTotal);
   const diff = goal.current - expected;
   const tolerance = goal.target * HEALTH_TOLERANCE;
+  const atRiskTolerance = goal.target * AT_RISK_TOLERANCE;
 
   if (diff >= tolerance) return "Ahead";
-  if (diff <= -tolerance) return "Behind";
-  return "On Track";
+  if (diff >= -tolerance) return "On Track";
+  if (diff >= -atRiskTolerance) return "At Risk";
+  return "Behind";
 }
 
 export function getGoalInsight(goal, analytics) {
@@ -97,6 +103,7 @@ export function getGoalInsight(goal, analytics) {
   if (health === "Completed") return "Goal completed — nice work.";
   if (!hasDeadline) return "Add a deadline to see pace and projection insights.";
   if (isOverdue) return "The deadline has passed. Consider updating the target or deadline.";
+  if (health === "Insufficient Data") return "More data is needed before a reliable pace read is possible.";
 
   if (health === "Ahead") return "Ahead of schedule — keep it up.";
 
@@ -104,6 +111,12 @@ export function getGoalInsight(goal, analytics) {
     return averageRequiredPerDay != null
       ? `Behind pace. Log about ${formatAmount(averageRequiredPerDay)} ${goal.unit}/day to catch up.`
       : "Behind pace.";
+  }
+
+  if (health === "At Risk") {
+    return averageRequiredPerDay != null
+      ? `At risk of falling behind. About ${formatAmount(averageRequiredPerDay)} ${goal.unit}/day gets you back on pace.`
+      : "At risk of falling behind.";
   }
 
   if (health === "On Track") {
@@ -140,5 +153,5 @@ export function getGoalAnalytics(goal, now = new Date()) {
 }
 
 export function usesHealthBadge() {
-  return false;
+  return true;
 }

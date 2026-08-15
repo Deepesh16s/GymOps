@@ -8,6 +8,8 @@ import {
   Target,
   ListChecks,
   CheckCircle2,
+  TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import {
   GOAL_CATEGORIES,
@@ -129,9 +131,10 @@ function GoalStatCard({ label, value, icon: Icon }) {
 function GoalStatsHeader({ stats }) {
   return (
     <div className="goal-stats-header">
-      <GoalStatCard label="Total Goals" value={stats.total} icon={ListChecks} />
+      <GoalStatCard label="Active Goals" value={stats.active} icon={ListChecks} />
+      <GoalStatCard label="On Track" value={stats.onTrack} icon={TrendingUp} />
+      <GoalStatCard label="At Risk" value={stats.atRisk} icon={AlertTriangle} />
       <GoalStatCard label="Completed" value={stats.completed} icon={CheckCircle2} />
-      <GoalStatCard label="Avg Progress" value={`${stats.avgPercent}%`} />
     </div>
   );
 }
@@ -274,12 +277,19 @@ function Goals() {
   const goalStats = useMemo(() => {
     const total = goalsWithAnalytics.length;
     const completed = goalsWithAnalytics.filter(({ goal }) => goal.status === "Completed").length;
+    const active = total - completed;
+    const onTrack = goalsWithAnalytics.filter(
+      ({ analytics }) => analytics.health === "On Track" || analytics.health === "Ahead"
+    ).length;
+    const atRisk = goalsWithAnalytics.filter(
+      ({ analytics }) => analytics.health === "At Risk" || analytics.health === "Behind"
+    ).length;
     const avgPercent = total
       ? Math.round(
           goalsWithAnalytics.reduce((sum, { analytics }) => sum + analytics.percent, 0) / total
         )
       : 0;
-    return { total, completed, avgPercent };
+    return { total, completed, active, onTrack, atRisk, avgPercent };
   }, [goalsWithAnalytics]);
 
   const isFilterOrSortActive = statusFilter !== "All" || sortKey !== DEFAULT_SORT_KEY;
@@ -916,6 +926,7 @@ function Goals() {
                 <input
                   type="date"
                   name="deadline"
+                  min={toDateInputValue(new Date())}
                   value={formData.deadline}
                   onChange={handleChange}
                 />

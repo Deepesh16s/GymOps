@@ -115,6 +115,26 @@
   border-radius: var(--go-radius-md);
 }
 
+.feed-card--skeleton {
+  align-items: flex-start;
+}
+
+.feed-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.feed-card-reactions {
+  margin-top: 10px;
+}
+
 .feed-card-avatar {
   flex-shrink: 0;
   width: 40px;

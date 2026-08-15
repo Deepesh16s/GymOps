@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
+import ReactionBar from "../components/ReactionBar";
+import PhysiqueImage from "../components/PhysiqueImage";
 import PublicHeatmap from "../components/PublicHeatmap";
 import AchievementBadge from "../components/AchievementBadge";
 import PhysiqueComposerModal from "../components/PhysiqueComposerModal";
@@ -44,6 +46,8 @@ import {
   deletePhysiquePost,
   likePhysiquePost,
   unlikePhysiquePost,
+  reactToPhysiquePost,
+  removePhysiqueReaction,
   getPhysiqueComments,
   createPhysiqueComment,
   deletePhysiqueComment,
@@ -71,6 +75,7 @@ function PublicProfile() {
 
   const [heatmap, setHeatmap] = useState(null);
   const [heatmapYear, setHeatmapYear] = useState("current");
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [activeBadgeId, setActiveBadgeId] = useState(null);
   const [badgesModalOpen, setBadgesModalOpen] = useState(false);
   const badgesContainerRef = useRef(null);
@@ -151,11 +156,14 @@ function PublicProfile() {
   useEffect(() => {
     if (!profile?.heatmapVisible) {
       setHeatmap(null);
+      setHeatmapLoading(false);
       return;
     }
+    setHeatmapLoading(true);
     getHeatmap(username, heatmapYear === "current" ? undefined : heatmapYear)
       .then((res) => setHeatmap(res.data))
-      .catch(() => setHeatmap(null));
+      .catch(() => setHeatmap(null))
+      .finally(() => setHeatmapLoading(false));
   }, [username, profile?.heatmapVisible, heatmapYear]);
 
   useEffect(() => {
@@ -342,6 +350,28 @@ function PublicProfile() {
       applyPostUpdate(before);
     } finally {
       setLikePending(false);
+    }
+  };
+
+  const handleReact = async (type) => {
+    if (!activePhysiquePost) return;
+    const before = activePhysiquePost;
+    try {
+      const res = await reactToPhysiquePost(before._id, type);
+      applyPostUpdate({ ...before, reactions: res.data.reactions, viewerReaction: res.data.viewerReaction });
+    } catch {
+      /* empty */
+    }
+  };
+
+  const handleRemoveReaction = async () => {
+    if (!activePhysiquePost) return;
+    const before = activePhysiquePost;
+    try {
+      const res = await removePhysiqueReaction(before._id);
+      applyPostUpdate({ ...before, reactions: res.data.reactions, viewerReaction: res.data.viewerReaction });
+    } catch {
+      /* empty */
     }
   };
 
@@ -674,6 +704,15 @@ function PublicProfile() {
       </div>
       </div>
 
+      {heatmapLoading && !heatmap && (
+        <div className="public-profile-section">
+          <div className="public-profile-badges-header">
+            <h2 className="public-profile-section-title">Training Activity</h2>
+          </div>
+          <span className="skeleton" style={{ display: "block", width: "100%", height: 140, borderRadius: 8 }} />
+        </div>
+      )}
+
       {heatmap && (
         <div className="public-profile-section">
           <div className="public-profile-badges-header">
@@ -721,7 +760,7 @@ function PublicProfile() {
                     className="public-profile-physique-tile"
                     onClick={() => setActivePhysiquePost(p)}
                   >
-                    <img src={p.imageUrl} alt={p.caption || "Physique update"} loading="lazy" />
+                    <PhysiqueImage src={p.imageUrl} alt={p.caption || "Physique update"} loading="lazy" />
                   </button>
                 ))}
               </div>
@@ -866,7 +905,10 @@ function PublicProfile() {
             <button type="button" className="physique-lightbox-close" onClick={closePhysiqueLightbox} aria-label="Close">
               <X size={18} />
             </button>
-            <img src={activePhysiquePost.imageUrl} alt={activePhysiquePost.caption || "Physique update"} />
+            <PhysiqueImage
+              src={activePhysiquePost.imageUrl}
+              alt={activePhysiquePost.caption || "Physique update"}
+            />
             <div className="physique-lightbox-body">
               <div className="physique-lightbox-info">
                 {activePhysiquePost.caption && <p>{activePhysiquePost.caption}</p>}
@@ -913,6 +955,15 @@ function PublicProfile() {
                 <span className="physique-lightbox-comment-count">
                   {activePhysiquePost.commentCount || 0} comment{activePhysiquePost.commentCount === 1 ? "" : "s"}
                 </span>
+              </div>
+
+              <div className="physique-lightbox-reactions">
+                <ReactionBar
+                  reactions={activePhysiquePost.reactions || {}}
+                  viewerReaction={activePhysiquePost.viewerReaction}
+                  onReact={handleReact}
+                  onRemove={handleRemoveReaction}
+                />
               </div>
 
               <div className="physique-lightbox-comments">

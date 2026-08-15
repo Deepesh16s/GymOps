@@ -11,7 +11,7 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Workout History** — session timeline with filtering, editing, and timing corrections
 - **Progression** — per-exercise and per-muscle trend charts, personal records, training heatmap
 - **Analytics** — muscle group distribution, volume trends
-- **Goals** — Strength PR, weekly/monthly volume or session-count, session-level, streak, cardio, and weight goals, with automatic progress recalculation
+- **Goals** — Strength PR, weekly/monthly volume or session-count, session-level, streak, cardio, and weight goals, with automatic progress recalculation and a deterministic On Track / At Risk / Behind / Completed / Insufficient Data health read plus current pace, required pace, and projected completion date — computed client-side from each goal's own history, no extra API calls
 - **Calendar** — day-level view of logged and planned workouts
 - **Planned Workout / Planner** — schedule workouts (including recurring series), reschedule, duplicate, cancel, or convert into a real session
 - **Cardio ecosystem** — activity-specific cardio entries and cardio-specific goal metrics
@@ -25,7 +25,8 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Profile pictures** — upload/crop/remove via Cloudinary (server-mediated, type/size-validated, asset cleaned up on replace/remove/account deletion); falls back to an initial letter (WhatsApp-style) if unset or if the stored URL fails to load
 - **Badges** — automatic milestone awards (session counts, streaks, PR counts, monthly consistency) evaluated after each logged session
 - **Activity Feed** (`/feed`) — cursor-paginated feed of workout completions, PRs, streak milestones, badges, and physique posts from people you follow (never your own activity, which has its own "Recent Activity" section on your profile)
-- **Physique posts** — a profile photo update with optional caption/category and its own visibility (public or followers-only, capped by the account's own privacy setting), likeable and commentable by anyone permitted to see it
+- **Physique posts** — a profile photo update with optional caption/category and its own visibility (public or followers-only, capped by the account's own privacy setting), likeable, reactable, and commentable by anyone permitted to see it
+- **Reactions** — a curated reaction set (🔥 Fire, 💪 Strong, 👏 Respect, 🚀 Progress, ❤️ Like) on physique posts, visible on both the post itself and the Activity Feed; additive and independent from the existing Like system, not a replacement for it; at most one reaction per user per post enforced by a unique database index (picking a new one replaces, never stacks)
 - **User search** — find people by username
 - **Follow / unfollow** — public accounts follow instantly; private accounts require a follow request the owner approves or declines
 - **Block / unblock** — removes any existing follow relationship and prevents new ones (and all social interaction — profile, physique posts, likes, comments) while a block is active
@@ -112,7 +113,7 @@ Full templates: [`server/.env.example`](server/.env.example), [`client/.env.exam
 | `PORT` | No (default 5000) | API port |
 | `NODE_ENV` | No | `production` enables strict CORS and disables the dev request logger |
 | `AUTH_RATE_LIMIT_*`, `AUTH_FORGOT_PASSWORD_RATE_LIMIT_*` | No | Override the default auth rate limits |
-| `PHYSIQUE_POST_RATE_LIMIT_*`, `PHYSIQUE_LIKE_RATE_LIMIT_*`, `PHYSIQUE_COMMENT_RATE_LIMIT_*` | No | Override the default physique-post/like/comment rate limits (keyed per authenticated user, not per IP) |
+| `PHYSIQUE_POST_RATE_LIMIT_*`, `PHYSIQUE_LIKE_RATE_LIMIT_*`, `PHYSIQUE_COMMENT_RATE_LIMIT_*`, `PHYSIQUE_REACTION_RATE_LIMIT_*` | No | Override the default physique-post/like/comment/reaction rate limits (keyed per authenticated user, not per IP) |
 | `FOLLOW_ACTION_RATE_LIMIT_*`, `BLOCK_ACTION_RATE_LIMIT_*`, `REPORT_RATE_LIMIT_*` | No | Override the default follow/block and report rate limits (keyed per authenticated user, not per IP) |
 
 **Client**
@@ -138,7 +139,7 @@ Two independent sign-in paths, both issuing the same JWT (`Authorization: Bearer
 
 ### Social foundation
 
-Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow`, `Block`, `Activity`, `PhysiquePost`, `PhysiqueLike`, `PhysiqueComment`, `Report`, and `Conversation`/`Message` all reference the ID, never the username, so changing a username never breaks an existing relationship, post, like, comment, report, or activity entry.
+Every account has a unique, mutable `username`. `User._id` remains the permanent identity — `Follow`, `Block`, `Activity`, `PhysiquePost`, `PhysiqueLike`, `Reaction`, `PhysiqueComment`, `Report`, and `Conversation`/`Message` all reference the ID, never the username, so changing a username never breaks an existing relationship, post, like, comment, report, or activity entry.
 
 - **Existing users** are assigned a temporary username automatically (derived from their email, with collision suffixes) the next time they log in, and see a one-time prompt — "Choose username" or "Maybe later" — that never reappears once either is chosen.
 - **New users** pick a username during registration; availability is checked server-side (a live client-side check is UX only, not the source of truth).
@@ -146,7 +147,7 @@ Every account has a unique, mutable `username`. `User._id` remains the permanent
 - **Follow** — public accounts follow instantly; a private account's followers must be approved via a `FollowRequest` the target accepts or declines. **Block** removes any existing follow relationship in both directions, prevents new ones, and overrides all other visibility (public or followers-only) while active; unblocking does not restore a prior follow.
 - **Activity Feed** is queried fresh on every request (actor = current `Follow` rows, minus anyone currently blocked) rather than fanned out and cached, so unfollowing, blocking, or a privacy-setting change take effect immediately with no stale cache to invalidate.
 - **Reporting** — a user, physique post, or comment can be reported (reason + optional description); a reporter can't report the same target twice or report their own content; the reported party is never notified. Reports are stored (`pending`/`reviewed`/`actioned`/`dismissed`) for future moderation review — there is no moderation dashboard or automated action yet.
-- Deleting an account removes that user's `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `PhysiqueComment` (both authored by them and left on their own posts), `Report` (filed by them, filed against them, or against their own now-deleted posts/comments), and every `Conversation`/`Message` they're a participant in.
+- Deleting an account removes that user's `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `Reaction` (both given by them and left on their own posts), `PhysiqueComment` (both authored by them and left on their own posts), `Report` (filed by them, filed against them, or against their own now-deleted posts/comments), and every `Conversation`/`Message` they're a participant in.
 
 Health Connect data (steps, heart rate, HRV, sleep, etc.) is architecturally private — nothing in the social layer can expose it; a future opt-in health-sharing feature would be a separate, explicit addition, not something the current social graph does implicitly. This identity/social architecture (public/private data separation, `_id`-based relationships, per-account deletion cleanup) is being built with eventual Google Play / Health Connect compliance in mind — Play Store submission itself is not underway.
 
@@ -203,8 +204,9 @@ Other hosts remain possible (any Node host for the API, any static host for the 
 
 - No automated test suite (unit, integration, or e2e) exists for either the client or the server.
 - No CI pipeline — lint/build/tests do not run automatically on push or PR.
-- Landing, Login, Register, Forgot/Reset Password, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, Notifications, public profiles (badges/heatmap/physique posts), the Activity Feed, and physique-post likes/comments have all been exercised live in a real browser (Playwright) and/or automated API tests, including mobile viewports (down to 320px) and both light/dark theme.
+- Landing, Login, Register, Forgot/Reset Password, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, Notifications, public profiles (badges/heatmap/physique posts), the Activity Feed, physique-post likes/comments/reactions, and Smart Goals health/pace status have all been exercised live in a real browser (Playwright) and/or automated API tests, including mobile viewports (down to 320px) and both light/dark theme.
 - Still not verified in a real browser: the full Google OAuth consent-screen round trip (needs a real Google account; blocked in this environment by origin configuration, not a code issue), screen-reader/assistive-technology behavior, and testing in browsers other than Chromium.
 - `DELETE /api/auth/account` cascades the full social graph (see Social foundation above) but not workouts, goals, exercises, or notifications — those remain orphaned. Not fixed since it's a data-retention/product decision, not a clear bug.
+- The Weight Goal type has no concept of direction: completion is always `current >= target`, so a goal meant to track weight loss (e.g. "cut to 80kg" starting from a heavier weight) is marked Completed the moment it's created rather than when the weight is actually reached. Pre-existing goal-model behavior, left unchanged to avoid altering stored goal semantics — a real fix would need a per-goal direction field.
 - `server/scripts/` contains six one-off data migration scripts. Five have already been applied to the live data they targeted and are kept only for historical reference. The sixth, `migrateUsernames.js` (Social Foundation), has been tested locally but not yet run against production data.
 - There is no billing integration yet, so `Subscription.currentPeriodEnd` is never enforced/swept — a Premium grant does not expire on its own. This is expected to be resolved by whichever payment provider is integrated later, not before.

@@ -7,12 +7,19 @@ const {
   deletePost,
   likePost,
   unlikePost,
+  reactToPost,
+  removeReaction,
   listComments,
   createComment,
   deleteComment,
 } = require("../controllers/physiqueController");
 const { protect, optionalAuth } = require("../middleware/authMiddleware");
-const { physiquePostLimiter, physiqueLikeLimiter, physiqueCommentLimiter } = require("../middleware/physiqueRateLimiters");
+const {
+  physiquePostLimiter,
+  physiqueLikeLimiter,
+  physiqueCommentLimiter,
+  physiqueReactionLimiter,
+} = require("../middleware/physiqueRateLimiters");
 const uploadPhysiqueImageMiddleware = require("../middleware/uploadPhysiqueImage");
 const validateObjectId = require("../middleware/validateObjectId");
 
@@ -22,6 +29,9 @@ router.delete("/:id", protect, validateObjectId(), deletePost);
 
 router.post("/:id/like", protect, validateObjectId(), physiqueLikeLimiter, likePost);
 router.delete("/:id/like", protect, validateObjectId(), unlikePost);
+
+router.post("/:id/reactions", protect, validateObjectId(), physiqueReactionLimiter, reactToPost);
+router.delete("/:id/reactions", protect, validateObjectId(), removeReaction);
 
 router.get("/:id/comments", optionalAuth, validateObjectId(), listComments);
 router.post("/:id/comments", protect, validateObjectId(), physiqueCommentLimiter, createComment);

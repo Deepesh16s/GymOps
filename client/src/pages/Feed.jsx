@@ -3,10 +3,31 @@ import { Link } from "react-router-dom";
 import { Rss, Trophy, Flame, Award, Dumbbell, Camera, Search, Heart, Flag } from "lucide-react";
 import Avatar from "../components/Avatar";
 import ReportDialog from "../components/ReportDialog";
+import ReactionBar from "../components/ReactionBar";
+import PhysiqueImage from "../components/PhysiqueImage";
 import { getFeed } from "../services/activityService";
-import { likePhysiquePost, unlikePhysiquePost, createPhysiqueComment } from "../services/physiqueService";
+import {
+  likePhysiquePost,
+  unlikePhysiquePost,
+  createPhysiqueComment,
+  reactToPhysiquePost,
+  removePhysiqueReaction,
+} from "../services/physiqueService";
 import { formatRelativeTime } from "../utils/timeFormat";
 import "./feed.css";
+
+function FeedCardSkeleton() {
+  return (
+    <div className="feed-card feed-card--skeleton" aria-hidden="true">
+      <span className="skeleton" style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0 }} />
+      <div className="feed-card-body">
+        <span className="skeleton" style={{ width: "40%", height: 14, display: "block", marginBottom: 8 }} />
+        <span className="skeleton" style={{ width: "70%", height: 12, display: "block", marginBottom: 6 }} />
+        <span className="skeleton" style={{ width: "50%", height: 12, display: "block" }} />
+      </div>
+    </div>
+  );
+}
 
 const TYPE_ICON = {
   personalRecord: Trophy,
@@ -16,7 +37,7 @@ const TYPE_ICON = {
   physiquePost: Camera,
 };
 
-function FeedCard({ activity, onToggleLike, onCommentPosted, onReport }) {
+function FeedCard({ activity, onToggleLike, onCommentPosted, onReport, onReact, onRemoveReaction }) {
   const Icon = TYPE_ICON[activity.type] || Rss;
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -59,7 +80,7 @@ function FeedCard({ activity, onToggleLike, onCommentPosted, onReport }) {
 
         {activity.image && (
           <div className="feed-card-image-wrap">
-            <img src={activity.image} alt="" className="feed-card-image" loading="lazy" />
+            <PhysiqueImage src={activity.image} alt="" className="feed-card-image" loading="lazy" />
           </div>
         )}
 
@@ -86,6 +107,15 @@ function FeedCard({ activity, onToggleLike, onCommentPosted, onReport }) {
                 <Flag size={13} />
                 Report
               </button>
+            </div>
+
+            <div className="feed-card-reactions">
+              <ReactionBar
+                reactions={activity.reactions || {}}
+                viewerReaction={activity.viewerReaction}
+                onReact={(type) => onReact(activity, type)}
+                onRemove={() => onRemoveReaction(activity)}
+              />
             </div>
 
             <form className="feed-card-comment-form" onSubmit={handleSubmitComment}>
@@ -177,6 +207,34 @@ function Feed() {
     );
   };
 
+  const applyReactionResult = (activity, data) => {
+    setActivities((prev) =>
+      prev.map((a) =>
+        a._id === activity._id ? { ...a, reactions: data.reactions, viewerReaction: data.viewerReaction } : a
+      )
+    );
+  };
+
+  const handleReact = async (activity, type) => {
+    const before = activity;
+    try {
+      const res = await reactToPhysiquePost(activity.postId, type);
+      applyReactionResult(activity, res.data);
+    } catch {
+      applyReactionResult(activity, { reactions: before.reactions, viewerReaction: before.viewerReaction });
+    }
+  };
+
+  const handleRemoveReaction = async (activity) => {
+    const before = activity;
+    try {
+      const res = await removePhysiqueReaction(activity.postId);
+      applyReactionResult(activity, res.data);
+    } catch {
+      applyReactionResult(activity, { reactions: before.reactions, viewerReaction: before.viewerReaction });
+    }
+  };
+
   return (
     <div className="feed-page">
       <div className="feed-header">
@@ -187,7 +245,14 @@ function Feed() {
         <p>Training milestones and physique updates from people you follow.</p>
       </div>
 
-      {loading && <p className="feed-status">Loading your feed...</p>}
+      {loading && (
+        <div className="feed-list" aria-busy="true" aria-live="polite">
+          <span className="feed-sr-only">Loading your feed…</span>
+          <FeedCardSkeleton />
+          <FeedCardSkeleton />
+          <FeedCardSkeleton />
+        </div>
+      )}
 
       {!loading && error && (
         <p className="feed-status">
@@ -222,6 +287,8 @@ function Feed() {
               onToggleLike={handleToggleLike}
               onCommentPosted={handleCommentPosted}
               onReport={setReportPostId}
+              onReact={handleReact}
+              onRemoveReaction={handleRemoveReaction}
             />
           ))}
           {hasMore && (

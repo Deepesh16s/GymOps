@@ -29,4 +29,18 @@ const physiqueCommentLimiter = rateLimit({
   message: { message: "Too many comments. Please try again later." },
 });
 
-module.exports = { physiquePostLimiter, physiqueLikeLimiter, physiqueCommentLimiter };
+const physiqueReactionLimiter = rateLimit({
+  windowMs: Number(process.env.PHYSIQUE_REACTION_RATE_LIMIT_WINDOW_MS) || 60 * 60 * 1000,
+  max: Number(process.env.PHYSIQUE_REACTION_RATE_LIMIT_MAX) || 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyByUser,
+  message: { message: "Too many reactions. Please try again later." },
+});
+
+module.exports = {
+  physiquePostLimiter,
+  physiqueLikeLimiter,
+  physiqueCommentLimiter,
+  physiqueReactionLimiter,
+};

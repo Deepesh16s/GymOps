@@ -4,6 +4,7 @@ const Activity = require("../models/Activity");
 const PhysiquePost = require("../models/PhysiquePost");
 const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
+const Reaction = require("../models/Reaction");
 
 const MAX_FEED_PAGE_SIZE = 30;
 const DEFAULT_FEED_PAGE_SIZE = 20;
@@ -44,7 +45,7 @@ exports.getFeed = async (req, res) => {
     const page = rows.slice(0, limit);
 
     const postIds = page.filter((a) => a.type === "physiquePost" && a.refId).map((a) => a.refId);
-    const [posts, likeCounts, commentCounts, viewerLikes] = postIds.length
+    const [posts, likeCounts, commentCounts, viewerLikes, reactionCounts, viewerReactions] = postIds.length
       ? await Promise.all([
           PhysiquePost.find({ _id: { $in: postIds } }).select("imageUrl visibility"),
           PhysiqueLike.aggregate([
@@ -56,12 +57,27 @@ exports.getFeed = async (req, res) => {
             { $group: { _id: "$post", count: { $sum: 1 } } },
           ]),
           PhysiqueLike.find({ post: { $in: postIds }, user: viewerId }).select("post"),
+          Reaction.aggregate([
+            { $match: { targetType: "physiquePost", targetId: { $in: postIds } } },
+            { $group: { _id: { post: "$targetId", type: "$type" }, count: { $sum: 1 } } },
+          ]),
+          Reaction.find({ targetType: "physiquePost", targetId: { $in: postIds }, user: viewerId }).select(
+            "targetId type"
+          ),
         ])
-      : [[], [], [], []];
+      : [[], [], [], [], [], []];
     const postById = new Map(posts.map((p) => [String(p._id), p]));
     const likeCountByPost = new Map(likeCounts.map((l) => [String(l._id), l.count]));
     const commentCountByPost = new Map(commentCounts.map((c) => [String(c._id), c.count]));
     const likedPostSet = new Set(viewerLikes.map((l) => String(l.post)));
+
+    const reactionsByPost = new Map();
+    reactionCounts.forEach((r) => {
+      const postId = String(r._id.post);
+      if (!reactionsByPost.has(postId)) reactionsByPost.set(postId, {});
+      reactionsByPost.get(postId)[r._id.type] = r.count;
+    });
+    const viewerReactionByPost = new Map(viewerReactions.map((r) => [String(r.targetId), r.type]));
 
     const activities = page
       .filter((a) => a.user)
@@ -85,6 +101,8 @@ exports.getFeed = async (req, res) => {
           likeCount: postId ? likeCountByPost.get(postId) || 0 : null,
           commentCount: postId ? commentCountByPost.get(postId) || 0 : null,
           viewerHasLiked: postId ? likedPostSet.has(postId) : null,
+          reactions: postId ? reactionsByPost.get(postId) || {} : null,
+          viewerReaction: postId ? viewerReactionByPost.get(postId) || null : null,
         };
       });
 

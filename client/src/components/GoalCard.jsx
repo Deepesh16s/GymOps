@@ -8,6 +8,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  AlertTriangle,
+  HelpCircle,
   Trophy,
   Bell,
 } from "lucide-react";
@@ -18,7 +20,9 @@ const HEALTH_ICONS = {
   Completed: CheckCircle2,
   Ahead: TrendingUp,
   "On Track": Minus,
+  "At Risk": AlertTriangle,
   Behind: TrendingDown,
+  "Insufficient Data": HelpCircle,
 };
 
 const healthBadgeClass = (status) => {
@@ -29,8 +33,12 @@ const healthBadgeClass = (status) => {
       return "goal-badge--ahead";
     case "On Track":
       return "goal-badge--on-track";
+    case "At Risk":
+      return "goal-badge--at-risk";
     case "Behind":
       return "goal-badge--behind";
+    case "Insufficient Data":
+      return "goal-badge--insufficient";
     default:
       return "goal-badge--progress";
   }
@@ -43,6 +51,8 @@ function ProgressBar({ percent, health, isCompleted, showHealth }) {
       : undefined
     : health === "Behind"
     ? "behind"
+    : health === "At Risk"
+    ? "at-risk"
     : health === "Ahead"
     ? "ahead"
     : isCompleted

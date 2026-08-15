@@ -1,5 +1,5 @@
 import { Link, Navigate } from "react-router-dom";
-import { Dumbbell, LineChart, Target, Activity } from "lucide-react";
+import { Dumbbell, LineChart, Target, Activity, ChevronDown } from "lucide-react";
 import hero from "../assets/hero.jpg";
 import BrandMark from "../components/BrandMark";
 import Reveal from "../components/Reveal";
@@ -50,6 +50,10 @@ function Landing() {
           <Link to="/register" className="land-cta-primary">Start Training</Link>
           <Link to="/login" className="land-cta-secondary">Sign In</Link>
         </div>
+
+        <span className="land-scroll-cue" aria-hidden="true">
+          <ChevronDown size={18} strokeWidth={1.8} />
+        </span>
       </main>
 
       <section className="land-features">

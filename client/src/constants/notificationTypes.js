@@ -107,6 +107,7 @@ const TYPE_TONE = {
   newMessage: "social",
   physiqueLiked: "social",
   physiqueCommented: "social",
+  physiqueReacted: "social",
 };
 
 export const TYPE_PRIORITY = {

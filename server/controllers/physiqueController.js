@@ -5,6 +5,7 @@ const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
 const Activity = require("../models/Activity");
 const Report = require("../models/Report");
+const Reaction = require("../models/Reaction");
 const { normalize: normalizeUsername } = require("../utils/username");
 const { isBlockedEitherWay } = require("../utils/blocking");
 const { canViewContent } = require("../utils/contentVisibility");
@@ -12,6 +13,7 @@ const { recordActivity } = require("../utils/activityFeed");
 const { uploadBufferToCloudinary, destroyCloudinaryAsset } = require("../utils/cloudinary");
 const { createNotificationIfNew } = require("../utils/notificationService");
 const { NOTIFICATION_TYPES } = require("../constants/notificationTypes");
+const { REACTION_TYPES } = require("../constants/reactionTypes");
 const {
   PHYSIQUE_CATEGORIES,
   PHYSIQUE_VISIBILITIES,
@@ -53,25 +55,56 @@ async function attachEngagement(posts, viewerId) {
   const postIds = posts.map((p) => p._id);
   if (postIds.length === 0) return [];
 
-  const [likeCounts, commentCounts, viewerLikes] = await Promise.all([
+  const [likeCounts, commentCounts, viewerLikes, reactionCounts, viewerReactions] = await Promise.all([
     PhysiqueLike.aggregate([{ $match: { post: { $in: postIds } } }, { $group: { _id: "$post", count: { $sum: 1 } } }]),
     PhysiqueComment.aggregate([
       { $match: { post: { $in: postIds } } },
       { $group: { _id: "$post", count: { $sum: 1 } } },
     ]),
     viewerId ? PhysiqueLike.find({ post: { $in: postIds }, user: viewerId }).select("post") : [],
+    Reaction.aggregate([
+      { $match: { targetType: "physiquePost", targetId: { $in: postIds } } },
+      { $group: { _id: { post: "$targetId", type: "$type" }, count: { $sum: 1 } } },
+    ]),
+    viewerId
+      ? Reaction.find({ targetType: "physiquePost", targetId: { $in: postIds }, user: viewerId }).select(
+          "targetId type"
+        )
+      : [],
   ]);
 
   const likeMap = new Map(likeCounts.map((l) => [String(l._id), l.count]));
   const commentMap = new Map(commentCounts.map((c) => [String(c._id), c.count]));
   const likedSet = new Set(viewerLikes.map((l) => String(l.post)));
 
+  const reactionMap = new Map();
+  reactionCounts.forEach((r) => {
+    const postId = String(r._id.post);
+    if (!reactionMap.has(postId)) reactionMap.set(postId, {});
+    reactionMap.get(postId)[r._id.type] = r.count;
+  });
+  const viewerReactionMap = new Map(viewerReactions.map((r) => [String(r.targetId), r.type]));
+
   return posts.map((p) => ({
     ...serializePost(p),
     likeCount: likeMap.get(String(p._id)) || 0,
     commentCount: commentMap.get(String(p._id)) || 0,
     viewerHasLiked: likedSet.has(String(p._id)),
+    reactions: reactionMap.get(String(p._id)) || {},
+    viewerReaction: viewerReactionMap.get(String(p._id)) || null,
   }));
+}
+
+async function getReactionCounts(postId) {
+  const rows = await Reaction.aggregate([
+    { $match: { targetType: "physiquePost", targetId: postId } },
+    { $group: { _id: "$type", count: { $sum: 1 } } },
+  ]);
+  const counts = {};
+  rows.forEach((r) => {
+    counts[r._id] = r.count;
+  });
+  return counts;
 }
 
 exports.createPost = async (req, res) => {
@@ -124,7 +157,16 @@ exports.createPost = async (req, res) => {
       console.error("Activity recording failed:", activityError);
     }
 
-    res.status(201).json({ post: { ...serializePost(post), likeCount: 0, commentCount: 0, viewerHasLiked: false } });
+    res.status(201).json({
+      post: {
+        ...serializePost(post),
+        likeCount: 0,
+        commentCount: 0,
+        viewerHasLiked: false,
+        reactions: {},
+        viewerReaction: null,
+      },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Could not create post" });
@@ -200,6 +242,7 @@ exports.deletePost = async (req, res) => {
     await Activity.deleteMany({ type: "physiquePost", refId: post._id });
     await PhysiqueLike.deleteMany({ post: post._id });
     await PhysiqueComment.deleteMany({ post: post._id });
+    await Reaction.deleteMany({ targetType: "physiquePost", targetId: post._id });
     await Report.deleteMany({
       $or: [
         { targetType: "physiquePost", targetId: post._id },
@@ -262,6 +305,72 @@ exports.unlikePost = async (req, res) => {
     await PhysiqueLike.deleteOne({ post: post._id, user: req.user._id });
     const likeCount = await PhysiqueLike.countDocuments({ post: post._id });
     res.status(200).json({ liked: false, likeCount });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.reactToPost = async (req, res) => {
+  try {
+    const type = String(req.body.type || "");
+    if (!REACTION_TYPES.includes(type)) {
+      return res.status(400).json({ message: "Invalid reaction type" });
+    }
+
+    const post = await PhysiquePost.findById(req.params.id).select("user visibility");
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    if (!(await canViewPost(post, req.user._id))) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const existing = await Reaction.findOne({
+      targetType: "physiquePost",
+      targetId: post._id,
+      user: req.user._id,
+    }).select("_id");
+
+    await Reaction.findOneAndUpdate(
+      { targetType: "physiquePost", targetId: post._id, user: req.user._id },
+      { targetType: "physiquePost", targetId: post._id, user: req.user._id, type },
+      { upsert: true }
+    );
+
+    if (!existing && String(post.user) !== String(req.user._id)) {
+      createNotificationIfNew(post.user, {
+        type: NOTIFICATION_TYPES.PHYSIQUE_REACTED,
+        category: "social",
+        icon: "Sparkles",
+        title: `@${req.user.username} reacted to your physique update`,
+        navigationTarget: `/u/${req.user.username}`,
+        dedupeKey: `physique-reaction:${post._id}:${req.user._id}`,
+      }).catch((error) => console.error("Physique reaction notification failed:", error));
+    }
+
+    const reactions = await getReactionCounts(post._id);
+    res.status(200).json({ reactions, viewerReaction: type });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.removeReaction = async (req, res) => {
+  try {
+    const post = await PhysiquePost.findById(req.params.id).select("user visibility");
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    if (!(await canViewPost(post, req.user._id))) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    await Reaction.deleteOne({ targetType: "physiquePost", targetId: post._id, user: req.user._id });
+
+    const reactions = await getReactionCounts(post._id);
+    res.status(200).json({ reactions, viewerReaction: null });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
