@@ -31,6 +31,7 @@ import WorkoutLogTable from "../components/progression/WorkoutLogTable";
 import DistributionRow from "../components/progression/DistributionRow";
 import ConfidenceBadge from "../components/ConfidenceBadge";
 import LoadErrorBanner from "../components/LoadErrorBanner";
+import AdvancedInsights from "../components/progression/AdvancedInsights";
 import { getExercisePlateau } from "../intelligence/plateauEngine";
 import { getOverloadSuggestion } from "../intelligence/overloadEngine";
 import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
@@ -665,6 +666,8 @@ function Progression() {
             </div>
           )}
         </div>
+
+        <AdvancedInsights />
 
         <section className="progression-panel progression-analytics-pointer">
           <div>

@@ -878,6 +878,11 @@
   color: var(--go-danger-dark);
 }
 
+.distribution-row__badge--neutral {
+  background: var(--go-surface-sunken);
+  color: var(--go-text-faint);
+}
+
 .prog-exdist__row-track {
   grid-area: track;
   height: 4px;

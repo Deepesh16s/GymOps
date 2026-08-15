@@ -10,6 +10,7 @@ const PhysiquePost = require("../models/PhysiquePost");
 const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
 const Report = require("../models/Report");
+const Subscription = require("../models/Subscription");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -326,6 +327,7 @@ exports.deleteAccount = async (req, res) => {
     await Block.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] });
     await Badge.deleteMany({ user: userId });
     await Activity.deleteMany({ user: userId });
+    await Subscription.deleteOne({ user: userId });
 
     const physiquePosts = await PhysiquePost.find({ user: userId }).select("_id imageAssetId");
     const physiquePostIds = physiquePosts.map((p) => p._id);

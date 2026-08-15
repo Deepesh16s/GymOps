@@ -31,6 +31,7 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Block / unblock** — removes any existing follow relationship and prevents new ones (and all social interaction — profile, physique posts, likes, comments) while a block is active
 - **Direct messages** — one-to-one chat; open to anyone on a public account, requires a mutual follow on a private one
 - **Reporting** — report a user, physique post, or comment with a reason and optional description; duplicate reports against the same target are rejected, the reported party is never notified, reports are stored for future moderation review (no moderation dashboard yet)
+- **Premium — Advanced Progression Analytics** — deterministic, server-computed plateau detection, estimated-1RM trends, volume landmarks, muscle balance, and 30/60/90-day exercise comparisons for Premium accounts, on top of (not replacing) the free Progression page; see "Premium foundation" below
 
 ## Tech stack
 
@@ -151,6 +152,17 @@ Health Connect data (steps, heart rate, HRV, sleep, etc.) is architecturally pri
 
 Not yet built: reposts, stories, social recommendations, challenges, leaderboards, and a moderation dashboard / automated moderation workflow (a basic report-submission foundation exists; block remains the enforcement primitive everything else builds on).
 
+### Premium foundation
+
+Entitlement is provider-agnostic and does not assume Stripe (or any payment provider) exists yet:
+
+- `User.premiumTier` (`free`/`premium`) is the fast-path flag every request checks — no extra query, read once as part of the already-loaded authenticated user.
+- A separate `Subscription` model (user, tier, status, provider, `providerSubscriptionId`, `currentPeriodEnd`, one record per user) is the provider-agnostic audit record a future billing integration (Stripe or otherwise) would write to, keeping `User.premiumTier` in sync. Nothing in the app currently writes to it — there is no checkout flow yet.
+- A single reusable `requirePremium` middleware (`server/middleware/entitlement.js`) gates Premium routes; no per-controller tier checks are scattered through the codebase.
+- There is currently no way for a user to self-upgrade through the app — no checkout, no self-service endpoint. Premium status can only be set directly at the data layer, which is intentional until real billing exists.
+
+**Advanced Progression Analytics** (`GET /api/progression/advanced`, Premium-gated) is the first Premium feature: deterministic, server-side analysis of the requesting user's own last 365 days of strength training (`server/utils/progressionAnalytics.js`) — plateau detection (frequency + trend + performance-volatility aware, not "no PR in N days"), estimated-1RM trend and best-ever per exercise, weekly volume vs. historical baseline (overall and per muscle), muscle-balance distribution with an imbalance flag, and 30/60/90-day exercise comparisons. Every engine has an explicit minimum-data threshold and returns an `insufficient_data` result rather than a fabricated conclusion. The endpoint never accepts a target-user parameter — it only ever returns the authenticated caller's own data. The free Progression page and its existing plateau/recovery/deload intelligence are unchanged.
+
 ## Development commands
 
 | Command | Where | Does |
@@ -195,3 +207,4 @@ Other hosts remain possible (any Node host for the API, any static host for the 
 - Still not verified in a real browser: the full Google OAuth consent-screen round trip (needs a real Google account; blocked in this environment by origin configuration, not a code issue), screen-reader/assistive-technology behavior, and testing in browsers other than Chromium.
 - `DELETE /api/auth/account` cascades the full social graph (see Social foundation above) but not workouts, goals, exercises, or notifications — those remain orphaned. Not fixed since it's a data-retention/product decision, not a clear bug.
 - `server/scripts/` contains six one-off data migration scripts. Five have already been applied to the live data they targeted and are kept only for historical reference. The sixth, `migrateUsernames.js` (Social Foundation), has been tested locally but not yet run against production data.
+- There is no billing integration yet, so `Subscription.currentPeriodEnd` is never enforced/swept — a Premium grant does not expire on its own. This is expected to be resolved by whichever payment provider is integrated later, not before.

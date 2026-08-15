@@ -43,6 +43,11 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    premiumTier: {
+        type: String,
+        enum: ["free", "premium"],
+        default: "free"
+    },
     picture: {
         type: String,
         default: ""
