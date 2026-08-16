@@ -62,21 +62,9 @@ import PlannedWorkoutModal from "../components/PlannedWorkoutModal";
 import { getPlannerAnalytics } from "../utils/plannedWorkoutAnalytics";
 import { generateWorkoutReminders } from "../reminders/workoutReminders";
 import { generatePlannerReminders } from "../reminders/plannerReminders";
-import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
-import { MUSCLES, MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
-import ConfidenceBadge from "../components/ConfidenceBadge";
 import LoadErrorBanner from "../components/LoadErrorBanner";
 import ConfirmDialog from "../components/ConfirmDialog";
 import useModalEscapeAndFocus from "../hooks/useModalEscapeAndFocus";
-
-const WORKOUT_TYPE_MUSCLES = {
-  Push: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Push"),
-  Pull: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Pull"),
-  Legs: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Legs"),
-  Upper: MUSCLES.filter((m) => ["Push", "Pull"].includes(MUSCLE_SPLIT_CATEGORY[m])),
-  Lower: MUSCLES.filter((m) => MUSCLE_SPLIT_CATEGORY[m] === "Legs"),
-  "Full Body": MUSCLES,
-};
 
 function intensityTier(volume, maxVolume) {
   if (!volume || !maxVolume) return null;
@@ -235,48 +223,6 @@ function CalendarPage() {
     return ids;
   }, [plannedWorkouts]);
 
-  const planRecoveryByPlanId = useMemo(() => {
-    const recoveryScores = getMuscleRecoveryScores(workouts);
-    const byMuscle = new Map(recoveryScores.map((r) => [r.muscle, r]));
-    const map = new Map();
-
-    plannedWorkouts.forEach((plan) => {
-      if (plan.status !== PLANNED_STATUS.PLANNED) return;
-
-      const muscleSet = new Set();
-      (plan.exercises || []).forEach((e) => {
-        if (e.exercise?.muscleGroup) muscleSet.add(e.exercise.muscleGroup);
-      });
-      if (!muscleSet.size && WORKOUT_TYPE_MUSCLES[plan.workoutType]) {
-        WORKOUT_TYPE_MUSCLES[plan.workoutType].forEach((m) => muscleSet.add(m));
-      }
-      if (!muscleSet.size) return;
-
-      const muscleScores = Array.from(muscleSet)
-        .map((m) => byMuscle.get(m))
-        .filter(Boolean);
-      if (!muscleScores.length) return;
-
-      const worst = [...muscleScores].sort((a, b) => a.recoveryScore - b.recoveryScore)[0];
-      const avgScore = Math.round(
-        muscleScores.reduce((s, r) => s + r.recoveryScore, 0) / muscleScores.length
-      );
-
-      const CONFIDENCE_RANK = { Low: 0, Medium: 1, High: 2 };
-      const leastConfident = muscleScores.reduce((worstConf, r) =>
-        CONFIDENCE_RANK[r.confidence] < CONFIDENCE_RANK[worstConf.confidence] ? r : worstConf
-      );
-
-      map.set(plan._id, {
-        readiness: avgScore >= 85 ? "High" : avgScore >= 50 ? "Medium" : "Low",
-        confidence: leastConfident.confidence,
-        confidenceReason: leastConfident.confidenceReason,
-        conflict: worst.recoveryScore < 50 ? `${worst.muscle} still recovering — recommend rescheduling` : null,
-      });
-    });
-
-    return map;
-  }, [plannedWorkouts, workouts]);
 
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -896,7 +842,6 @@ function CalendarPage() {
                   isToday={isSelectedDateToday}
                   busy={actionBusyId === plan._id}
                   hasReminder={reminderPlanIds.has(plan._id)}
-                  intel={planRecoveryByPlanId.get(plan._id)}
                   onStart={handleStartPlannedWorkout}
                   onEdit={handleOpenEditPlan}
                   onReschedule={handleReschedulePlan}
@@ -1311,7 +1256,6 @@ function PlannedWorkoutCard({
   isToday,
   busy,
   hasReminder,
-  intel,
   onStart,
   onEdit,
   onReschedule,
@@ -1357,17 +1301,7 @@ function PlannedWorkoutCard({
         {plan.priority === "High" && (
           <span className="planned-workout-card__priority planned-workout-card__priority--high">High</span>
         )}
-        {intel && (
-          <span
-            className={`planned-workout-card__readiness planned-workout-card__readiness--${intel.readiness.toLowerCase()}`}
-          >
-            {intel.readiness} readiness
-          </span>
-        )}
       </div>
-      {intel && (
-        <ConfidenceBadge level={intel.confidence} reason={intel.confidenceReason} label="Recovery estimate" />
-      )}
 
       <p className="planned-workout-card__title">{plan.title}</p>
       <p className="planned-workout-card__meta">
@@ -1378,12 +1312,6 @@ function PlannedWorkoutCard({
         {plan.exercises?.length ? ` · ${plan.exercises.length} exercises` : ""}
       </p>
       {plan.notes && <p className="planned-workout-card__notes">{plan.notes}</p>}
-      {intel?.conflict && (
-        <p className="planned-workout-card__conflict">
-          <AlertTriangle size={12} strokeWidth={2} />
-          {intel.conflict}
-        </p>
-      )}
 
       <div className="planned-workout-card__actions">
         {isActivePlan && isToday && (

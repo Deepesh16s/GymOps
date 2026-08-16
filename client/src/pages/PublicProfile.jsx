@@ -68,6 +68,7 @@ function PublicProfile() {
   const [loadError, setLoadError] = useState(false);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [reactionError, setReactionError] = useState("");
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [messagePending, setMessagePending] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -356,22 +357,24 @@ function PublicProfile() {
   const handleReact = async (type) => {
     if (!activePhysiquePost) return;
     const before = activePhysiquePost;
+    setReactionError("");
     try {
       const res = await reactToPhysiquePost(before._id, type);
       applyPostUpdate({ ...before, reactions: res.data.reactions, viewerReaction: res.data.viewerReaction });
-    } catch {
-      /* empty */
+    } catch (err) {
+      setReactionError(err.response?.data?.message || "Couldn't update your reaction.");
     }
   };
 
   const handleRemoveReaction = async () => {
     if (!activePhysiquePost) return;
     const before = activePhysiquePost;
+    setReactionError("");
     try {
       const res = await removePhysiqueReaction(before._id);
       applyPostUpdate({ ...before, reactions: res.data.reactions, viewerReaction: res.data.viewerReaction });
-    } catch {
-      /* empty */
+    } catch (err) {
+      setReactionError(err.response?.data?.message || "Couldn't update your reaction.");
     }
   };
 
@@ -758,7 +761,10 @@ function PublicProfile() {
                     type="button"
                     key={p._id}
                     className="public-profile-physique-tile"
-                    onClick={() => setActivePhysiquePost(p)}
+                    onClick={() => {
+                      setReactionError("");
+                      setActivePhysiquePost(p);
+                    }}
                   >
                     <PhysiqueImage src={p.imageUrl} alt={p.caption || "Physique update"} loading="lazy" />
                   </button>
@@ -894,13 +900,18 @@ function PublicProfile() {
       />
 
       {activePhysiquePost && (
-        <div className="physique-lightbox-overlay" onMouseDown={closePhysiqueLightbox}>
+        <div
+          className="physique-lightbox-overlay"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closePhysiqueLightbox();
+          }}
+        >
           <div
             className="physique-lightbox-card"
             role="dialog"
             aria-modal="true"
             aria-label="Physique update"
-            onMouseDown={(e) => e.stopPropagation()}
           >
             <button type="button" className="physique-lightbox-close" onClick={closePhysiqueLightbox} aria-label="Close">
               <X size={18} />
@@ -964,6 +975,11 @@ function PublicProfile() {
                   onReact={handleReact}
                   onRemove={handleRemoveReaction}
                 />
+                {reactionError && (
+                  <p className="public-profile-error public-profile-error--inline" role="alert">
+                    {reactionError}
+                  </p>
+                )}
               </div>
 
               <div className="physique-lightbox-comments">
@@ -1071,13 +1087,18 @@ function PublicProfile() {
       />
 
       {badgesModalOpen && (
-        <div className="badges-modal-overlay" onMouseDown={closeBadgesModal}>
+        <div
+          className="badges-modal-overlay"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeBadgesModal();
+          }}
+        >
           <div
             className="badges-modal-card"
             role="dialog"
             aria-modal="true"
             aria-labelledby="badges-modal-title"
-            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="badges-modal-header">
               <h2 id="badges-modal-title">All Badges ({earnedBadgeCount})</h2>

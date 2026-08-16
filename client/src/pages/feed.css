@@ -135,6 +135,12 @@
   margin-top: 10px;
 }
 
+.feed-card-reaction-error {
+  margin: 6px 0 0;
+  font-size: 0.76rem;
+  color: var(--go-danger-dark);
+}
+
 .feed-card-avatar {
   flex-shrink: 0;
   width: 40px;

@@ -30,11 +30,11 @@ import MetricCard from "../components/progression/MetricCard";
 import WorkoutLogTable from "../components/progression/WorkoutLogTable";
 import DistributionRow from "../components/progression/DistributionRow";
 import ConfidenceBadge from "../components/ConfidenceBadge";
+import EvidenceBadge from "../components/EvidenceBadge";
 import LoadErrorBanner from "../components/LoadErrorBanner";
 import AdvancedInsights from "../components/progression/AdvancedInsights";
 import { getExercisePlateau } from "../intelligence/plateauEngine";
 import { getOverloadSuggestion } from "../intelligence/overloadEngine";
-import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
 import {
   DEFAULT_TIME_RANGE,
   DEFAULT_METRIC,
@@ -244,16 +244,8 @@ function Progression() {
       viewMode === "exercise" && exercise ? getOverloadSuggestion(workouts, exercise, { rangeKey: timeRange }) : null,
     [viewMode, exercise, workouts, timeRange]
   );
-  const exerciseMuscleGroup =
-    viewMode === "exercise" ? scopedWorkouts[0]?.exercise?.muscleGroup || null : null;
-  const muscleRecoveryScores = useMemo(() => getMuscleRecoveryScores(workouts), [workouts]);
-  const exerciseRecovery = useMemo(
-    () => (exerciseMuscleGroup ? muscleRecoveryScores.find((r) => r.muscle === exerciseMuscleGroup) || null : null),
-    [exerciseMuscleGroup, muscleRecoveryScores]
-  );
   const hasExerciseIntel =
     (exercisePlateau && exercisePlateau.plateauLevel !== "None") ||
-    !!exerciseRecovery ||
     (exerciseOverloadSuggestion?.available && exerciseOverloadSuggestion.metric !== "hold");
 
   const cardioScopedWorkouts = useMemo(() => {
@@ -454,24 +446,12 @@ function Progression() {
                     {exercisePlateau.plateauLevel === "Confirmed" ? "Plateau Confirmed" : "Possible Plateau"}
                     {exercisePlateau.maskedByVolume ? " · volume masked" : ""}
                   </span>
-                  <ConfidenceBadge level={exercisePlateau.confidence} reason={exercisePlateau.confidenceReason} label="Plateau read" />
-                </span>
-              )}
-
-              {exerciseRecovery && (
-                <span className="progression-intel-row__item">
-                  <span
-                    className={`distribution-row__badge distribution-row__badge--${
-                      exerciseRecovery.status === "Recovered"
-                        ? "balanced"
-                        : exerciseRecovery.status === "Recovering"
-                        ? "warning"
-                        : "danger"
-                    }`}
-                  >
-                    {exerciseRecovery.muscle}: {exerciseRecovery.status}
-                  </span>
-                  <ConfidenceBadge level={exerciseRecovery.confidence} reason={exerciseRecovery.confidenceReason} label="Recovery estimate" />
+                  <ConfidenceBadge level={exercisePlateau.confidence} reason={exercisePlateau.confidenceReason} label="Data confidence" />
+                  <EvidenceBadge
+                    strength={exercisePlateau.evidenceStrength}
+                    explanation={exercisePlateau.evidenceDisclaimer}
+                    metricKey="plateau"
+                  />
                 </span>
               )}
 

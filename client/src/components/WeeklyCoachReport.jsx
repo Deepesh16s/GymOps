@@ -1,6 +1,5 @@
 import "./WeeklyCoachReport.css";
 import ConfidenceBadge from "./ConfidenceBadge";
-import RecoveryBreakdownDisclosure from "./RecoveryBreakdownDisclosure";
 
 const GRADE_TONE = {
   "A+": "excellent",
@@ -34,19 +33,6 @@ function WeeklyCoachReport({ report }) {
         </div>
 
         <div className="coach-report__stats">
-          {report.recovery != null && (
-            <div className="coach-report__stat">
-              <span className="coach-report__stat-label">Recovery</span>
-              <span className="coach-report__stat-value">{report.recovery}</span>
-              <ConfidenceBadge
-                level={report.recoveryConfidence}
-                reason={report.recoveryConfidenceReason}
-                label="Recovery estimate"
-              />
-              <RecoveryBreakdownDisclosure score={report.recovery} breakdown={report.recoveryBreakdown} />
-            </div>
-          )}
-
           <div className="coach-report__stat">
             <span className="coach-report__stat-label">Consistency</span>
             <span className="coach-report__stat-value">
@@ -54,9 +40,30 @@ function WeeklyCoachReport({ report }) {
             </span>
           </div>
 
+          {report.sessionCount > 0 && (
+            <div className="coach-report__stat">
+              <span className="coach-report__stat-label">Sessions</span>
+              <span className="coach-report__stat-value">{report.sessionCount}</span>
+            </div>
+          )}
+
+          {report.prCount > 0 && (
+            <div className="coach-report__stat">
+              <span className="coach-report__stat-label">PRs Set</span>
+              <span className="coach-report__stat-value coach-report__stat-value--up">{report.prCount}</span>
+            </div>
+          )}
+
+          {report.totalVolume > 0 && (
+            <div className="coach-report__stat">
+              <span className="coach-report__stat-label">Total Volume</span>
+              <span className="coach-report__stat-value">{report.totalVolume.toLocaleString()} kg</span>
+            </div>
+          )}
+
           {hasVolumeChange && (
             <div className="coach-report__stat">
-              <span className="coach-report__stat-label">Volume</span>
+              <span className="coach-report__stat-label">Volume vs Prior Week</span>
               <span
                 className={`coach-report__stat-value ${
                   report.volumeChangePct >= 0 ? "coach-report__stat-value--up" : "coach-report__stat-value--down"

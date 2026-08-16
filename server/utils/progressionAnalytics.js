@@ -169,6 +169,9 @@ function detectPlateau(series, exerciseName, now) {
       high: highVolatility,
     },
     confidence,
+    evidenceStrength: "LIMITED",
+    evidenceDisclaimer:
+      "Repvyn detection heuristic based on e1RM trend, volatility, and recent training frequency — the specific session-count thresholds are a product heuristic, not a scientifically validated plateau definition. A flat or declining e1RM trend does not necessarily mean no progress; volume and technique can still be improving.",
   };
 }
 

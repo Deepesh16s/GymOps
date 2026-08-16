@@ -157,4 +157,6 @@ workoutSchema.index({ user: 1, exercise: 1 });
 
 workoutSchema.index({ user: 1, createdAt: -1 });
 
+workoutSchema.index({ user: 1, date: -1 });
+
 module.exports = mongoose.model("Workout", workoutSchema);

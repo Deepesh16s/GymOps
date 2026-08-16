@@ -8,10 +8,15 @@ function Drawer({ open, onClose, title, children }) {
   if (!open) return null;
 
   return (
-    <div className="drawer-overlay" onClick={onClose}>
+    <div
+      className="drawer-overlay"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
         className="drawer-panel"
-        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={title}

@@ -4,8 +4,6 @@ import { getAvailableExercises } from "../progression/progressionFilters";
 import { prHistory } from "../utils/strengthUtils";
 import { filterWorkoutsByExercise } from "../progression/progressionFilters";
 import { buildExerciseSessionSeries } from "../progression/progressionEngine";
-import { getMuscleRecoveryScores } from "./recoveryEngine";
-import { getMusclePlateaus } from "./plateauEngine";
 import { getDeloadRecommendation } from "./deloadEngine";
 import { getMusclePriorities } from "./musclePriorityEngine";
 
@@ -49,18 +47,6 @@ function findExerciseCloseToRecord(workouts) {
   return closest;
 }
 
-function findRecoveryLimitedMuscle(workouts) {
-  const recoveryScores = getMuscleRecoveryScores(workouts);
-  const poorRecoveryMuscles = new Set(
-    recoveryScores.filter((r) => r.status === "Needs Rest").map((r) => r.muscle)
-  );
-  if (!poorRecoveryMuscles.size) return null;
-
-  const plateaus = getMusclePlateaus(workouts, [...poorRecoveryMuscles]);
-  const plateaued = plateaus.find((p) => p.plateauLevel !== "None");
-  return plateaued ? plateaued.muscle : null;
-}
-
 export function getSmartInsights(workouts) {
   const insights = [];
 
@@ -74,11 +60,6 @@ export function getSmartInsights(workouts) {
     insights.push(
       `You haven't trained ${priorities.mostOverdue.muscle} in ${priorities.mostOverdue.daysAgo} days.`
     );
-  }
-
-  const recoveryLimited = findRecoveryLimitedMuscle(workouts);
-  if (recoveryLimited) {
-    insights.push(`Recovery is limiting ${recoveryLimited} progression.`);
   }
 
   const closeToRecord = findExerciseCloseToRecord(workouts);

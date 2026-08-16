@@ -37,7 +37,15 @@ const TYPE_ICON = {
   physiquePost: Camera,
 };
 
-function FeedCard({ activity, onToggleLike, onCommentPosted, onReport, onReact, onRemoveReaction }) {
+function FeedCard({
+  activity,
+  onToggleLike,
+  onCommentPosted,
+  onReport,
+  onReact,
+  onRemoveReaction,
+  reactionError,
+}) {
   const Icon = TYPE_ICON[activity.type] || Rss;
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -116,6 +124,11 @@ function FeedCard({ activity, onToggleLike, onCommentPosted, onReport, onReact, 
                 onReact={(type) => onReact(activity, type)}
                 onRemove={() => onRemoveReaction(activity)}
               />
+              {reactionError && (
+                <p className="feed-card-reaction-error" role="alert">
+                  {reactionError}
+                </p>
+              )}
             </div>
 
             <form className="feed-card-comment-form" onSubmit={handleSubmitComment}>
@@ -147,6 +160,19 @@ function Feed() {
   const [error, setError] = useState(false);
   const [reportPostId, setReportPostId] = useState(null);
   const [reportMessage, setReportMessage] = useState("");
+  const [reactionErrors, setReactionErrors] = useState({});
+
+  const flashReactionError = (activityId, message) => {
+    setReactionErrors((prev) => ({ ...prev, [activityId]: message }));
+    setTimeout(() => {
+      setReactionErrors((prev) => {
+        if (prev[activityId] !== message) return prev;
+        const next = { ...prev };
+        delete next[activityId];
+        return next;
+      });
+    }, 4000);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -220,8 +246,9 @@ function Feed() {
     try {
       const res = await reactToPhysiquePost(activity.postId, type);
       applyReactionResult(activity, res.data);
-    } catch {
+    } catch (err) {
       applyReactionResult(activity, { reactions: before.reactions, viewerReaction: before.viewerReaction });
+      flashReactionError(activity._id, err.response?.data?.message || "Couldn't update your reaction.");
     }
   };
 
@@ -230,8 +257,9 @@ function Feed() {
     try {
       const res = await removePhysiqueReaction(activity.postId);
       applyReactionResult(activity, res.data);
-    } catch {
+    } catch (err) {
       applyReactionResult(activity, { reactions: before.reactions, viewerReaction: before.viewerReaction });
+      flashReactionError(activity._id, err.response?.data?.message || "Couldn't update your reaction.");
     }
   };
 
@@ -289,6 +317,7 @@ function Feed() {
               onReport={setReportPostId}
               onReact={handleReact}
               onRemoveReaction={handleRemoveReaction}
+              reactionError={reactionErrors[a._id]}
             />
           ))}
           {hasMore && (

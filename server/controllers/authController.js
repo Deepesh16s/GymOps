@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Follow = require("../models/Follow");
 const FollowRequest = require("../models/FollowRequest");
@@ -12,6 +13,17 @@ const PhysiqueComment = require("../models/PhysiqueComment");
 const Report = require("../models/Report");
 const Reaction = require("../models/Reaction");
 const Subscription = require("../models/Subscription");
+const Notification = require("../models/Notification");
+const Workout = require("../models/workout");
+const PlannedWorkout = require("../models/PlannedWorkout");
+const Goal = require("../models/Goal");
+const PushSubscription = require("../models/PushSubscription");
+const PushPreferences = require("../models/PushPreferences");
+const HealthConnection = require("../models/HealthConnection");
+const HealthSyncState = require("../models/HealthSyncState");
+const HealthSample = require("../models/HealthSample");
+const HealthSleepSession = require("../models/HealthSleepSession");
+const DailySteps = require("../models/DailySteps");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -231,17 +243,11 @@ exports.uploadProfilePicture = async (req, res) => {
       transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
     });
 
-    const previousAssetId = req.user.pictureAssetId;
-
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { picture: result.secure_url, pictureAssetId: result.public_id },
       { new: true, runValidators: true }
     ).select("-password");
-
-    if (previousAssetId && previousAssetId !== result.public_id) {
-      destroyCloudinaryAsset(previousAssetId).catch((err) => console.log(err));
-    }
 
     res.status(200).json({ message: "Profile picture updated", user });
   } catch (error) {
@@ -320,58 +326,92 @@ exports.changePassword = async (req, res) => {
 };
 
 exports.deleteAccount = async (req, res) => {
+  const userId = req.user._id;
+  const session = await mongoose.startSession();
+
+  let cloudinaryAssetIds = [];
+
   try {
-    const userId = req.user._id;
+    await session.withTransaction(async () => {
+      await Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] }, { session });
+      await FollowRequest.deleteMany({ $or: [{ requester: userId }, { target: userId }] }, { session });
+      await Block.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] }, { session });
+      await Badge.deleteMany({ user: userId }, { session });
+      await Activity.deleteMany({ user: userId }, { session });
+      await Subscription.deleteOne({ user: userId }, { session });
 
-    await Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] });
-    await FollowRequest.deleteMany({ $or: [{ requester: userId }, { target: userId }] });
-    await Block.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] });
-    await Badge.deleteMany({ user: userId });
-    await Activity.deleteMany({ user: userId });
-    await Subscription.deleteOne({ user: userId });
+      await Workout.deleteMany({ user: userId }, { session });
+      await PlannedWorkout.deleteMany({ user: userId }, { session });
+      await Goal.deleteMany({ user: userId }, { session });
+      await Exercise.deleteMany({ createdBy: userId }, { session });
 
-    const physiquePosts = await PhysiquePost.find({ user: userId }).select("_id imageAssetId");
-    const physiquePostIds = physiquePosts.map((p) => p._id);
-    await Promise.all(
-      physiquePosts.map((p) => destroyCloudinaryAsset(p.imageAssetId).catch((err) => console.log(err)))
-    );
-    const affectedComments = await PhysiqueComment.find({
-      $or: [{ user: userId }, { post: { $in: physiquePostIds } }],
-    }).select("_id");
-    const affectedCommentIds = affectedComments.map((c) => c._id);
-    await PhysiqueLike.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
-    await PhysiqueComment.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] });
-    await Reaction.deleteMany({
-      $or: [{ user: userId }, { targetType: "physiquePost", targetId: { $in: physiquePostIds } }],
+      await PushSubscription.deleteMany({ user: userId }, { session });
+      await PushPreferences.deleteOne({ user: userId }, { session });
+      await HealthConnection.deleteOne({ user: userId }, { session });
+      await HealthSyncState.deleteOne({ user: userId }, { session });
+      await HealthSample.deleteMany({ user: userId }, { session });
+      await HealthSleepSession.deleteMany({ user: userId }, { session });
+      await DailySteps.deleteMany({ user: userId }, { session });
+
+      const physiquePosts = await PhysiquePost.find({ user: userId })
+        .select("_id imageAssetId")
+        .session(session);
+      const physiquePostIds = physiquePosts.map((p) => p._id);
+
+      const affectedComments = await PhysiqueComment.find({
+        $or: [{ user: userId }, { post: { $in: physiquePostIds } }],
+      })
+        .select("_id")
+        .session(session);
+      const affectedCommentIds = affectedComments.map((c) => c._id);
+
+      await PhysiqueLike.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] }, { session });
+      await PhysiqueComment.deleteMany({ $or: [{ user: userId }, { post: { $in: physiquePostIds } }] }, { session });
+      await Reaction.deleteMany(
+        { $or: [{ user: userId }, { targetType: "physiquePost", targetId: { $in: physiquePostIds } }] },
+        { session }
+      );
+      await Notification.deleteMany({ user: userId }, { session });
+      await PhysiquePost.deleteMany({ user: userId }, { session });
+
+      await Report.deleteMany(
+        {
+          $or: [
+            { reporter: userId },
+            { targetType: "user", targetId: userId },
+            { targetType: "physiquePost", targetId: { $in: physiquePostIds } },
+            { targetType: "comment", targetId: { $in: affectedCommentIds } },
+          ],
+        },
+        { session }
+      );
+
+      const ownedConversations = await Conversation.find({ participants: userId })
+        .select("_id")
+        .session(session);
+      const conversationIds = ownedConversations.map((c) => c._id);
+      if (conversationIds.length) {
+        await Message.deleteMany({ conversation: { $in: conversationIds } }, { session });
+        await Conversation.deleteMany({ _id: { $in: conversationIds } }, { session });
+      }
+
+      await User.findByIdAndDelete(userId, { session });
+
+      cloudinaryAssetIds = physiquePosts.map((p) => p.imageAssetId).filter(Boolean);
+      if (req.user.pictureAssetId) cloudinaryAssetIds.push(req.user.pictureAssetId);
     });
-    await PhysiquePost.deleteMany({ user: userId });
-
-    await Report.deleteMany({
-      $or: [
-        { reporter: userId },
-        { targetType: "user", targetId: userId },
-        { targetType: "physiquePost", targetId: { $in: physiquePostIds } },
-        { targetType: "comment", targetId: { $in: affectedCommentIds } },
-      ],
-    });
-
-    const ownedConversations = await Conversation.find({ participants: userId }).select("_id");
-    const conversationIds = ownedConversations.map((c) => c._id);
-    if (conversationIds.length) {
-      await Message.deleteMany({ conversation: { $in: conversationIds } });
-      await Conversation.deleteMany({ _id: { $in: conversationIds } });
-    }
-
-    if (req.user.pictureAssetId) {
-      await destroyCloudinaryAsset(req.user.pictureAssetId).catch((err) => console.log(err));
-    }
-
-    await User.findByIdAndDelete(userId);
-    res.status(200).json({ message: "Account deleted successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Server Error" });
+    return res.status(500).json({ message: "Server Error" });
+  } finally {
+    await session.endSession();
   }
+
+  await Promise.all(
+    cloudinaryAssetIds.map((assetId) => destroyCloudinaryAsset(assetId).catch((err) => console.log(err)))
+  );
+
+  res.status(200).json({ message: "Account deleted successfully" });
 };
 
 exports.checkUsernameAvailable = async (req, res) => {
@@ -503,7 +543,11 @@ exports.googleLogin = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { sub, email, name, picture } = payload;
+    const { sub, email, email_verified: emailVerified, name, picture } = payload;
+
+    if (!emailVerified) {
+      return res.status(401).json({ message: "Google account email is not verified" });
+    }
 
     let user = await User.findOne({ email });
 

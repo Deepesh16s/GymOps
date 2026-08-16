@@ -221,6 +221,10 @@
   color: var(--go-danger-dark);
 }
 
+.public-profile-error--inline {
+  margin: 6px 0 0;
+}
+
 .public-profile-edit-link {
   text-decoration: none;
 }

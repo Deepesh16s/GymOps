@@ -34,10 +34,12 @@ const MAX_WORKOUTS_SCANNED = 2000;
 const MAX_PR_CARDS = 5;
 const HEATMAP_DAYS = 365;
 
-function canViewHeatmap(profileUser, viewerId) {
+async function canViewHeatmap(profileUser, viewerId) {
   if (viewerId && String(viewerId) === String(profileUser._id)) return true;
   if (profileUser.profileVisibility === "public") return true;
-  return !!profileUser.showTrainingActivity;
+  if (!profileUser.showTrainingActivity) return false;
+  if (!viewerId) return false;
+  return !!(await Follow.exists({ follower: viewerId, following: profileUser._id }));
 }
 
 function toPublicUser(user, viewerContext) {
@@ -214,9 +216,15 @@ exports.getPublicProfile = async (req, res) => {
       ? false
       : await canViewContent({ _id: user._id, profileVisibility: visibility }, viewerId);
 
-    const [badges, fitnessStats] = await Promise.all([
+    const [badges, fitnessStats, heatmapVisible] = await Promise.all([
       isBlocked ? [] : getBadgeSummary(user._id, { includeLocked: !!isSelf }),
       canSeeContent ? getFitnessStats(user._id) : null,
+      isBlocked
+        ? false
+        : canViewHeatmap(
+            { _id: user._id, profileVisibility: visibility, showTrainingActivity: user.showTrainingActivity },
+            viewerId
+          ),
     ]);
 
     res.status(200).json({
@@ -232,12 +240,7 @@ exports.getPublicProfile = async (req, res) => {
       viewerFollowRequestPending: !!requestPending,
       profileVisibility: visibility,
       viewerCanSeeContent: canSeeContent,
-      heatmapVisible:
-        !isBlocked &&
-        canViewHeatmap(
-          { _id: user._id, profileVisibility: visibility, showTrainingActivity: user.showTrainingActivity },
-          viewerId
-        ),
+      heatmapVisible: !!heatmapVisible,
       badges,
       fitnessStats,
     });
@@ -264,7 +267,7 @@ exports.getHeatmap = async (req, res) => {
     const { target, error, message } = await loadContentTarget(req.params.username, viewerId);
     if (error) return res.status(error).json({ message });
 
-    if (!canViewHeatmap(target, viewerId)) {
+    if (!(await canViewHeatmap(target, viewerId))) {
       return res.status(403).json({ message: "This account's training activity is not shared" });
     }
 
@@ -335,8 +338,8 @@ exports.getHeatmapDay = async (req, res) => {
     const { target, error, message } = await loadContentTarget(req.params.username, viewerId);
     if (error) return res.status(error).json({ message });
 
-    if (!(await canViewContent(target, viewerId))) {
-      return res.status(403).json({ message: "This account is private" });
+    if (!(await canViewHeatmap(target, viewerId))) {
+      return res.status(403).json({ message: "This account's training activity is not shared" });
     }
 
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(req.params.date || "");

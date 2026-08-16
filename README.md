@@ -1,6 +1,6 @@
 # Repvyn
 
-A full-stack fitness tracking application: workout logging, live workout sessions, a workout planner, cardio tracking, goals, and a deterministic (non-AI) training intelligence layer that surfaces recovery, fatigue, plateau, and training-balance insights from a user's own logged data.
+A full-stack fitness tracking application: workout logging, live workout sessions, a workout planner, cardio tracking, goals, and a deterministic (non-AI) training intelligence layer that surfaces fatigue, plateau, and training-balance insights from a user's own logged data. Repvyn deliberately does not attempt to predict muscle-specific physiological recovery time — the evidence for individualized, per-muscle recovery estimation is not strong enough to present as fact, so the app sticks to training-data-derived heuristics instead.
 
 There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a rule-based calculation over the user's workout history, computed client-side.
 
@@ -11,13 +11,13 @@ There is no LLM/AI API integration. Every "intelligence" or "coach" feature is a
 - **Workout History** — session timeline with filtering, editing, and timing corrections
 - **Progression** — per-exercise and per-muscle trend charts, personal records, training heatmap
 - **Analytics** — muscle group distribution, volume trends
-- **Goals** — Strength PR, weekly/monthly volume or session-count, session-level, streak, cardio, and weight goals, with automatic progress recalculation and a deterministic On Track / At Risk / Behind / Completed / Insufficient Data health read plus current pace, required pace, and projected completion date — computed client-side from each goal's own history, no extra API calls
+- **Goals** — Strength PR, weekly/monthly volume or session-count, session-level, streak, cardio, and weight goals, with automatic progress recalculation and a deterministic Ahead / On Track / At Risk / Behind / Completed / Insufficient Data health read plus current pace, required pace, and projected completion date — computed client-side from each goal's own history, no extra API calls
 - **Calendar** — day-level view of logged and planned workouts
 - **Planned Workout / Planner** — schedule workouts (including recurring series), reschedule, duplicate, cancel, or convert into a real session
 - **Cardio ecosystem** — activity-specific cardio entries and cardio-specific goal metrics
-- **Notifications & Reminder Engine** — in-app notification center plus a client-side reminder engine (workout/goal/recovery/streak/neglect/planner/achievement reminders) that generates candidates the server dedupes and persists
+- **Notifications & Reminder Engine** — in-app notification center plus a client-side reminder engine (workout/goal/streak/neglect/planner/achievement/plateau reminders) that generates candidates the server dedupes and persists
 - **Browser push notifications** — optional Web Push delivery for a subset of notification types, via a dedicated service worker
-- **Training intelligence** — recovery scores, readiness, fatigue level, plateau detection, deload recommendations, training balance (upper/lower, strength/cardio splits), volume landmarks, muscle priority, weekly grade, and a deterministic "coach priority" summary — all derived from the user's own logged workouts, no external API calls
+- **Training intelligence** — readiness, fatigue level, plateau detection, deload recommendations, training balance (upper/lower, strength/cardio splits), volume landmarks, muscle priority, weekly grade, and a deterministic "coach priority" summary — all derived from the user's own logged workouts, no external API calls
 - **Google Sign-In** — alongside email/password auth with forgot/reset password via email
 - **Public landing page** — dark, marketing-style entry point at `/` (redirects straight to `/dashboard` if already signed in); sign-in itself lives at its own `/login` route
 - **Username & public identity** — every account has a unique, validated `@handle`; new users choose one at registration, existing users are assigned a temporary one automatically with a one-time prompt to personalize it
@@ -55,7 +55,7 @@ Repvyn/
 │       ├── context/                ThemeContext (dark mode)
 │       ├── constants/               Shared enums (goal types, muscle groups, session types, ...)
 │       ├── utils/                    Pure helper functions (dates, formatting, scoring)
-│       ├── intelligence/              Training intelligence engines (recovery, fatigue, plateau, ...)
+│       ├── intelligence/              Training intelligence engines (fatigue, plateau, readiness, ...)
 │       ├── progression/               Progression metrics/filters/insights engines
 │       ├── trainingIntelligence/      Orchestration layer composing intelligence/ + progression/ for each UI surface
 │       └── reminders/                 Client-side reminder engine (candidate generation, prioritization, grouping)
@@ -147,7 +147,7 @@ Every account has a unique, mutable `username`. `User._id` remains the permanent
 - **Follow** — public accounts follow instantly; a private account's followers must be approved via a `FollowRequest` the target accepts or declines. **Block** removes any existing follow relationship in both directions, prevents new ones, and overrides all other visibility (public or followers-only) while active; unblocking does not restore a prior follow.
 - **Activity Feed** is queried fresh on every request (actor = current `Follow` rows, minus anyone currently blocked) rather than fanned out and cached, so unfollowing, blocking, or a privacy-setting change take effect immediately with no stale cache to invalidate.
 - **Reporting** — a user, physique post, or comment can be reported (reason + optional description); a reporter can't report the same target twice or report their own content; the reported party is never notified. Reports are stored (`pending`/`reviewed`/`actioned`/`dismissed`) for future moderation review — there is no moderation dashboard or automated action yet.
-- Deleting an account removes that user's `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `Reaction` (both given by them and left on their own posts), `PhysiqueComment` (both authored by them and left on their own posts), `Report` (filed by them, filed against them, or against their own now-deleted posts/comments), and every `Conversation`/`Message` they're a participant in.
+- Deleting an account removes every collection that user owns: `Follow`, `FollowRequest`, `Block`, `Badge`, `Activity`, `Subscription`, `PhysiquePost` (and their Cloudinary assets), `PhysiqueLike`, `Reaction` (both given by them and left on their own posts), `PhysiqueComment` (both authored by them and left on their own posts), `Report` (filed by them, filed against them, or against their own now-deleted posts/comments), every `Conversation`/`Message` they're a participant in, their own `Notification` records, `Workout`, `PlannedWorkout`, `Goal`, `Exercise` (every exercise doc — default-seeded or custom — is created scoped to a single owning user, never shared, so this can't affect anyone else), `PushSubscription`, `PushPreferences`, and all Health Connect-derived data (`HealthConnection`, `HealthSyncState`, `HealthSample`, `HealthSleepSession`, `DailySteps`). The whole cascade runs inside a single MongoDB transaction (Cloudinary asset cleanup happens afterward, since it can't participate in the transaction) — a mid-cascade failure rolls back every DB change instead of leaving a partially-deleted account. Notifications that merely *mention* the deleted user (e.g. "X reacted to your post") are not swept, since who-did-it is stored as plain text in the notification, not a queryable reference.
 
 Health Connect data (steps, heart rate, HRV, sleep, etc.) is architecturally private — nothing in the social layer can expose it; a future opt-in health-sharing feature would be a separate, explicit addition, not something the current social graph does implicitly. This identity/social architecture (public/private data separation, `_id`-based relationships, per-account deletion cleanup) is being built with eventual Google Play / Health Connect compliance in mind — Play Store submission itself is not underway.
 
@@ -162,7 +162,7 @@ Entitlement is provider-agnostic and does not assume Stripe (or any payment prov
 - A single reusable `requirePremium` middleware (`server/middleware/entitlement.js`) gates Premium routes; no per-controller tier checks are scattered through the codebase.
 - There is currently no way for a user to self-upgrade through the app — no checkout, no self-service endpoint. Premium status can only be set directly at the data layer, which is intentional until real billing exists.
 
-**Advanced Progression Analytics** (`GET /api/progression/advanced`, Premium-gated) is the first Premium feature: deterministic, server-side analysis of the requesting user's own last 365 days of strength training (`server/utils/progressionAnalytics.js`) — plateau detection (frequency + trend + performance-volatility aware, not "no PR in N days"), estimated-1RM trend and best-ever per exercise, weekly volume vs. historical baseline (overall and per muscle), muscle-balance distribution with an imbalance flag, and 30/60/90-day exercise comparisons. Every engine has an explicit minimum-data threshold and returns an `insufficient_data` result rather than a fabricated conclusion. The endpoint never accepts a target-user parameter — it only ever returns the authenticated caller's own data. The free Progression page and its existing plateau/recovery/deload intelligence are unchanged.
+**Advanced Progression Analytics** (`GET /api/progression/advanced`, Premium-gated) is the first Premium feature: deterministic, server-side analysis of the requesting user's own last 365 days of strength training (`server/utils/progressionAnalytics.js`) — plateau detection (frequency + trend + performance-volatility aware, not "no PR in N days"), estimated-1RM trend and best-ever per exercise, weekly volume vs. historical baseline (overall and per muscle), muscle-balance distribution with an imbalance flag, and 30/60/90-day exercise comparisons. Every engine has an explicit minimum-data threshold and returns an `insufficient_data` result rather than a fabricated conclusion. The endpoint never accepts a target-user parameter — it only ever returns the authenticated caller's own data. The free Progression page and its existing plateau/deload intelligence are unchanged.
 
 ## Development commands
 
@@ -173,7 +173,10 @@ Entitlement is provider-agnostic and does not assume Stripe (or any payment prov
 | `npm run dev` | `client/` | Starts the Vite dev server |
 | `npm run build` | `client/` | Production build to `client/dist/` |
 | `npm run preview` | `client/` | Serves the production build locally |
-| `npm run lint` | `client/` | ESLint over `client/src` |
+| `npm run lint` | `client/` | ESLint (incl. `jsx-a11y`) over `client/src` |
+| `npm test` | `server/` | Vitest — unit + integration, isolated in-memory MongoDB |
+| `npm test` | `client/` | Vitest — pure-function unit tests |
+| `npx playwright test` | `client/` | E2E critical-flow suite (Chromium/Firefox/WebKit/mobile) |
 
 ## Production build
 
@@ -200,13 +203,15 @@ Steps:
 
 Other hosts remain possible (any Node host for the API, any static host for the client) — the env vars and CORS/OAuth requirements above apply regardless; only the two files above are Vercel/Render-specific.
 
+## Testing & CI
+
+- **Server** (`server/`) — Vitest + Supertest, running against an isolated, ephemeral `mongodb-memory-server` replica set (never the real `MONGO_URI`), so transactions (e.g. account deletion) work the same as in production. `npm test` runs everything; `npm run test:unit` / `npm run test:integration` run one layer at a time. Covers: username generation/collision handling, auth (register/login/JWT authorization), Goals (including full Weight Goal gain/loss direction coverage), Workouts, account deletion (every owned collection, cross-user isolation, Cloudinary cleanup), Follow/Block/privacy enforcement, the Activity Feed, Reactions, and Premium entitlement (401/403/200, including subscription-expiry enforcement).
+- **Client** (`client/`) — Vitest + jsdom. `npm test` runs unit tests for the pure calculation modules most worth guarding: `goalAnalytics.js` (all Weight Goal direction/pace/projection/status-transition cases) and `strengthUtils.js` (1RM estimation, PR history).
+- **E2E** (`client/tests/e2e/`, `client/playwright.config.js`) — Playwright, run via `npx playwright test` from `client/`. `webServer` boots the real Express app against its own isolated in-memory MongoDB (`server/tests/e2e/startTestServer.js`) plus a dedicated Vite dev server, so a full run needs no manual setup and never touches real data. One spec (`criticalJourney.spec.js`) walks registration → login → dashboard → creating a weight-loss goal → logging a workout → Progression → Feed → own profile → account deletion, run across Chromium, Firefox, WebKit, and a mobile Chrome viewport.
+- **CI** (`.github/workflows/ci.yml`) — GitHub Actions on every PR and push to `main`: a `server` job (syntax-checks every file, runs the Vitest suite), a `client` job (lint, unit tests, production build), and an `e2e` job (Playwright on Chromium) that only runs once the other two pass. Every job installs its own dependencies from the committed lockfiles and uses the same isolated in-memory MongoDB as local runs — nothing in CI ever touches a real database.
+- Not covered by a dedicated automated test: badge-awarding and stale-exercise-reference handling (what `progressionAnalytics.js`/goal recalculation do when a workout references an exercise that's since been deleted).
+
 ## Known limitations
 
-- No automated test suite (unit, integration, or e2e) exists for either the client or the server.
-- No CI pipeline — lint/build/tests do not run automatically on push or PR.
-- Landing, Login, Register, Forgot/Reset Password, Dashboard, Analytics, Progression, Goals, Calendar, Workout History, Profile, Notifications, public profiles (badges/heatmap/physique posts), the Activity Feed, physique-post likes/comments/reactions, and Smart Goals health/pace status have all been exercised live in a real browser (Playwright) and/or automated API tests, including mobile viewports (down to 320px) and both light/dark theme.
-- Still not verified in a real browser: the full Google OAuth consent-screen round trip (needs a real Google account; blocked in this environment by origin configuration, not a code issue), screen-reader/assistive-technology behavior, and testing in browsers other than Chromium.
-- `DELETE /api/auth/account` cascades the full social graph (see Social foundation above) but not workouts, goals, exercises, or notifications — those remain orphaned. Not fixed since it's a data-retention/product decision, not a clear bug.
-- The Weight Goal type has no concept of direction: completion is always `current >= target`, so a goal meant to track weight loss (e.g. "cut to 80kg" starting from a heavier weight) is marked Completed the moment it's created rather than when the weight is actually reached. Pre-existing goal-model behavior, left unchanged to avoid altering stored goal semantics — a real fix would need a per-goal direction field.
-- `server/scripts/` contains six one-off data migration scripts. Five have already been applied to the live data they targeted and are kept only for historical reference. The sixth, `migrateUsernames.js` (Social Foundation), has been tested locally but not yet run against production data.
-- There is no billing integration yet, so `Subscription.currentPeriodEnd` is never enforced/swept — a Premium grant does not expire on its own. This is expected to be resolved by whichever payment provider is integrated later, not before.
+- **Transactional email doesn't yet reach real users.** Resend's sandbox mode restricts sending to only the account owner's own address until a sending domain is verified (resend.com/domains) — forgot-password and any future transactional email will fail for every other recipient until that's done. This is an account setup step, not a code issue.
+- The app hasn't been tested with a real screen reader. Automated accessibility linting (zero violations) and manual keyboard/focus verification are in place, but that's not a substitute for real assistive-technology testing before a wider release.

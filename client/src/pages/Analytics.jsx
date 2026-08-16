@@ -35,7 +35,6 @@ import {
   getStrengthCardioSplit,
 } from "../intelligence/balanceEngine";
 import { getMusclePlateaus } from "../intelligence/plateauEngine";
-import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
 import { getFatigueLevel } from "../intelligence/fatigueEngine";
 import { getWeeklyGrade } from "../intelligence/weeklyGradeEngine";
 import { getAllVolumeLandmarks } from "../intelligence/volumeLandmarkEngine";
@@ -65,6 +64,7 @@ import PersonalRecordRow from "../components/progression/PersonalRecordRow";
 import PanelEmptyState from "../components/progression/PanelEmptyState";
 import TrainingHeatmap from "../components/progression/TrainingHeatmap";
 import ConfidenceBadge from "../components/ConfidenceBadge";
+import EvidenceBadge from "../components/EvidenceBadge";
 import LoadErrorBanner from "../components/LoadErrorBanner";
 import {
   TIME_RANGE_OPTIONS,
@@ -505,7 +505,6 @@ function Analytics() {
     [workouts, availableMuscles, advancedRange]
   );
 
-  const muscleRecoveryScores = useMemo(() => getMuscleRecoveryScores(workouts), [workouts]);
   const fatigueLevel = useMemo(() => getFatigueLevel(workouts), [workouts]);
   const trainingBalanceReport = useMemo(() => getTrainingBalance(workouts), [workouts]);
   const upperLowerSplit = useMemo(() => getUpperLowerSplit(workouts), [workouts]);
@@ -825,7 +824,7 @@ function Analytics() {
             ]}
           />
           <StatGroupCard
-            title="Recovery & Balance"
+            title="Training Balance"
             icon={Activity}
             rows={[
               { label: "Most trained", value: muscleBySets[0]?.muscle || "—" },
@@ -1377,46 +1376,19 @@ function Analytics() {
         <>
 
         <section className="analytics-section">
-          <p className="analytics-section__label">Recovery</p>
-          <div className="progression-panel">
-            {muscleRecoveryScores.length === 0 ? (
-              <PanelEmptyState icon={HeartPulse} message="Log a workout to see per-muscle recovery." />
-            ) : (
-              <div className="prog-exdist">
-                {muscleRecoveryScores.map((r) => (
-                  <DistributionRow
-                    key={r.muscle}
-                    label={r.muscle}
-                    sub={
-                      r.hoursUntilRecovered > 0
-                        ? `${Math.round(r.hoursUntilRecovered)}h left`
-                        : "Recovered"
-                    }
-                    pct={r.recoveryScore}
-                    badge={{
-                      label: r.status,
-                      tone:
-                        r.status === "Recovered" ? "balanced" : r.status === "Recovering" ? "warning" : "danger",
-                    }}
-                    confidence={r.confidence}
-                    confidenceReason={r.confidenceReason}
-                    confidenceLabel="Recovery estimate"
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="analytics-section">
-          <p className="analytics-section__label">Fatigue</p>
+          <p className="analytics-section__label">Training Load Trend</p>
           <div className="progression-panel">
             <div className="analytics-latest-pr__head">
               <Flame size={16} strokeWidth={2} />
               <p className="progression-panel__label" style={{ marginBottom: 0 }}>
-                {fatigueLevel.band} Fatigue
+                {fatigueLevel.band} Training Load
               </p>
-              <ConfidenceBadge level={fatigueLevel.confidence} reason={fatigueLevel.confidenceReason} label="Fatigue read" />
+              <ConfidenceBadge level={fatigueLevel.confidence} reason={fatigueLevel.confidenceReason} label="Data confidence" />
+              <EvidenceBadge
+                strength={fatigueLevel.evidenceStrength}
+                explanation={fatigueLevel.evidenceDisclaimer}
+                metricKey="fatigue"
+              />
             </div>
             <div className="progression-stats-rail" style={{ marginTop: 12 }}>
               <MetricCard
@@ -1444,7 +1416,7 @@ function Analytics() {
               />
             ) : (
               <div className="analytics-plateau-list">
-                {plateauedMuscles.map(({ muscle, trend, plateauLevel, confidence }) => (
+                {plateauedMuscles.map(({ muscle, trend, plateauLevel, confidence, evidenceStrength, evidenceDisclaimer }) => (
                   <div className="analytics-plateau-row" key={muscle}>
                     <div>
                       <p className="analytics-plateau-row__name">
@@ -1458,7 +1430,8 @@ function Analytics() {
                     </div>
                     <div className="analytics-plateau-row__badges">
                       <TrendBadge trend={trend} />
-                      <ConfidenceBadge level={confidence} label="Plateau read" />
+                      <ConfidenceBadge level={confidence} label="Data confidence" />
+                      <EvidenceBadge strength={evidenceStrength} explanation={evidenceDisclaimer} metricKey="plateau" />
                     </div>
                   </div>
                 ))}
@@ -1571,7 +1544,12 @@ function Analytics() {
                   <p className="progression-panel__label" style={{ marginBottom: 0 }}>
                     Grade: {weeklyGrade.grade} ({weeklyGrade.score}/100)
                   </p>
-                  <ConfidenceBadge level={weeklyGrade.confidence} reason={weeklyGrade.confidenceReason} label="Weekly grade" />
+                  <ConfidenceBadge level={weeklyGrade.confidence} reason={weeklyGrade.confidenceReason} label="Data confidence" />
+                  <EvidenceBadge
+                    strength={weeklyGrade.evidenceStrength}
+                    explanation={weeklyGrade.evidenceDisclaimer}
+                    metricKey="weeklyGrade"
+                  />
                 </div>
                 <div className="analytics-score-breakdown__list" style={{ marginTop: 10 }}>
                   {weeklyGrade.factors.map((f) => (
@@ -1598,12 +1576,12 @@ function Analytics() {
 
         <section className="analytics-section">
           <div className="analytics-section__head">
-            <p className="analytics-section__label">Volume Guidelines</p>
+            <p className="analytics-section__label">Personal Volume Range</p>
             <select
               className="progression-filterbar__select"
               value={advancedRange}
               onChange={(e) => setAdvancedRange(e.target.value)}
-              aria-label="Select time range for Volume Guidelines"
+              aria-label="Select time range for Personal Volume Range"
             >
               {TIME_RANGE_OPTIONS.map((opt) => (
                 <option key={opt.key} value={opt.key}>
@@ -1616,7 +1594,7 @@ function Analytics() {
             {volumeLandmarks.length === 0 ? (
               <PanelEmptyState
                 icon={Gauge}
-                message="Log at least 4 trained weeks per muscle to estimate volume landmarks."
+                message="Log at least 4 trained weeks per muscle to see your personal volume range."
               />
             ) : (
               <div className="analytics-pr-groups">
@@ -1626,13 +1604,18 @@ function Analytics() {
                       <p className="analytics-pr-group__label" style={{ marginBottom: 0 }}>
                         {l.muscle}
                       </p>
-                      <ConfidenceBadge level={l.confidence} reason={l.confidenceReason} label="Volume guideline" />
+                      <ConfidenceBadge level={l.confidence} reason={l.confidenceReason} label="Data confidence" />
+                      <EvidenceBadge
+                        strength={l.evidenceStrength}
+                        explanation={l.evidenceDisclaimer}
+                        metricKey="volumeLandmarks"
+                      />
                     </div>
                     <div className="progression-stats-rail">
-                      <MetricCard label="Maintenance" value={`${l.maintenance} kg`} icon={Gauge} />
-                      <MetricCard label="MEV" value={`${l.mev} kg`} icon={Gauge} />
-                      <MetricCard label="MAV" value={`${l.mav} kg`} icon={Gauge} />
-                      <MetricCard label="MRV" value={`${l.mrv} kg`} icon={Gauge} />
+                      <MetricCard label="Low" value={`${l.low} kg`} icon={Gauge} />
+                      <MetricCard label="Typical" value={`${l.typical} kg`} icon={Gauge} />
+                      <MetricCard label="Elevated" value={`${l.elevated} kg`} icon={Gauge} />
+                      <MetricCard label="Personal High" value={`${l.personalHigh} kg`} icon={Gauge} />
                     </div>
                   </div>
                 ))}
@@ -1702,7 +1685,14 @@ function Analytics() {
               <PanelEmptyState message={musclePriorities.reason} />
             ) : (
               <>
-                <ConfidenceBadge level={musclePriorities.confidence} reason={musclePriorities.confidenceReason} compact />
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <ConfidenceBadge level={musclePriorities.confidence} reason={musclePriorities.confidenceReason} compact />
+                  <EvidenceBadge
+                    strength={musclePriorities.evidenceStrength}
+                    explanation={musclePriorities.evidenceDisclaimer}
+                    metricKey="muscleNeglect"
+                  />
+                </div>
                 <div className="progression-stats-rail" style={{ marginTop: 10 }}>
                   <MetricCard
                     label="Most Overdue"
@@ -1721,9 +1711,9 @@ function Analytics() {
                     icon={TrendingUp}
                   />
                 </div>
-                {musclePriorities.neglected.length > 0 && (
+                {musclePriorities.lowerRecentExposure.length > 0 && (
                   <p className="prog-exdist__hint" style={{ marginTop: 10 }}>
-                    Neglected: {musclePriorities.neglected.join(", ")}
+                    Lower recent training exposure: {musclePriorities.lowerRecentExposure.join(", ")}
                   </p>
                 )}
               </>

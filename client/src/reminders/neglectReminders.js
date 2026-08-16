@@ -17,7 +17,7 @@ const SEVERITY_PRIORITY = { critical: "high", warning: "medium", info: "low" };
 function phraseFor(muscle, days, isPlural) {
   if (days >= 30) return `${muscle} ${isPlural ? "haven't" : "hasn't"} been trained this month`;
   const weeks = Math.floor(days / 7);
-  return `${muscle}: not trained in over ${weeks} week${weeks === 1 ? "" : "s"}`;
+  return `${muscle}: no logged training in over ${weeks} week${weeks === 1 ? "" : "s"}`;
 }
 
 export function generateNeglectReminders(workouts) {
@@ -41,14 +41,14 @@ export function generateNeglectReminders(workouts) {
     const subtitle =
       entries.length === 1
         ? phraseFor(entries[0].muscle, entries[0].days, /s$/.test(entries[0].muscle))
-        : `${entries.length} muscle groups are becoming overdue`;
+        : `${entries.length} muscle groups have gone a while without logged training`;
 
     reminders.push({
       type: "muscleGroupNeglected",
       category: "insights",
       priority: SEVERITY_PRIORITY[severity],
       icon: "TrendingDown",
-      title: entries.length === 1 ? "Muscle Group Neglected" : "Muscles Neglected",
+      title: entries.length === 1 ? "Training Gap" : "Training Gaps",
       subtitle,
       navigationTarget: "/progression",
       action: { page: "/progression", entityId: null, focus: null },

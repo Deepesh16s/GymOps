@@ -7,6 +7,10 @@ import {
 import { prHistory, calculateRelativeIntensity, bestSet, estimate1RM } from "../utils/strengthUtils";
 import { computeFatigueScore, fatigueScoreToBand } from "../utils/fatigueUtils";
 import { getConfidence } from "../utils/confidenceUtils";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+
+const FATIGUE_DISCLAIMER =
+  "Training-load trend signal (this week's volume vs. your recent baseline), not an individual injury or overtraining prediction. Research on this type of ratio shows a real association with injury risk at a population level, but wide individual variation.";
 
 const MS_PER_DAY = 86400000;
 const LONG_SESSION_MINUTES = 75;
@@ -98,6 +102,8 @@ export function getFatigueLevel(workouts) {
     band: fatigueScoreToBand(fatigueScore),
     confidence,
     confidenceReason,
+    evidenceStrength: EVIDENCE_STRENGTH.MIXED,
+    evidenceDisclaimer: FATIGUE_DISCLAIMER,
     inputs: {
       weeklyVolumeRatio: Math.round(weeklyVolumeRatio * 100) / 100,
       consecutiveTrainingDays,

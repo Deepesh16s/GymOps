@@ -1,5 +1,4 @@
 import { computeMuscleBreakdown, getWorkoutVolume, isCardioEntry } from "../utils/workoutUtils";
-import { getMuscleRecoveryScores } from "../intelligence";
 
 const MS_PER_DAY = 86400000;
 
@@ -11,9 +10,6 @@ export function generateSessionIntelligence(workouts, session) {
 
   const sessionBreakdown = computeMuscleBreakdown(session.workouts).sort((a, b) => b.volume - a.volume);
   const highestFatigueContributor = sessionBreakdown[0] || null;
-
-  const recoveryScores = getMuscleRecoveryScores(workouts);
-  const recoveryImpact = recoveryScores.find((r) => muscles.includes(r.muscle)) || null;
 
   const sessionDate = new Date(session.date);
   const weekStart = new Date(sessionDate);
@@ -35,15 +31,6 @@ export function generateSessionIntelligence(workouts, session) {
     highestFatigueContributor: highestFatigueContributor
       ? { muscle: highestFatigueContributor.muscle, volume: Math.round(highestFatigueContributor.volume) }
       : null,
-    recoveryImpact: recoveryImpact
-      ? {
-          muscle: recoveryImpact.muscle,
-          status: recoveryImpact.status,
-          hoursUntilRecovered: recoveryImpact.hoursUntilRecovered,
-        }
-      : null,
     weeklyVolumeContributionPct,
-    suggestedRecoveryHours:
-      recoveryImpact?.hoursUntilRecovered > 0 ? Math.round(recoveryImpact.hoursUntilRecovered) : null,
   };
 }

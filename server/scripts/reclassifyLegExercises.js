@@ -19,6 +19,7 @@ const RECLASSIFY = {
     "Adductor Machine",
   ],
   Glutes: ["Hip Thrust", "Cable Kickback", "Abductor Machine"],
+  Hamstrings: ["Leg Curl", "Lying Leg Curl", "Seated Leg Curl", "Romanian Deadlift", "Nordic Curl"],
   Calves: ["Calf Raise", "Seated Calf Raise"],
 };
 

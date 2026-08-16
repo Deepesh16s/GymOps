@@ -1,4 +1,3 @@
-export { getMuscleRecoveryScores } from "./recoveryEngine";
 export { getTodaysReadiness } from "./readinessEngine";
 export { getMusclePlateaus, getExercisePlateau, getAllExercisePlateaus } from "./plateauEngine";
 export { getOverloadSuggestion } from "./overloadEngine";

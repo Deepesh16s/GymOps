@@ -94,6 +94,7 @@ function NotificationItem({ notification, onNavigate, onDismiss, onSnooze, onMar
   }, [snoozeOpen]);
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <li
       className={`notif-item notif-item--${tone} notif-item--priority-${priority} ${
         notification.read ? "notif-item--read" : "notif-item--unread"

@@ -1,0 +1,129 @@
+@import "../styles/design-tokens.css";
+
+.evidence-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.evidence-badge__trigger {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  color: var(--go-text-faint);
+  cursor: pointer;
+}
+
+.evidence-badge__trigger:hover,
+.evidence-badge__trigger:focus-visible {
+  color: var(--go-text-muted);
+  background: var(--go-surface-sunken);
+  outline: none;
+}
+
+.evidence-badge__trigger:focus-visible {
+  outline: 2px solid var(--go-primary);
+  outline-offset: 1px;
+}
+
+.evidence-badge__popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border-radius: var(--go-radius-sm);
+  background: var(--go-surface);
+  border: 1px solid var(--go-border-soft);
+  box-shadow: var(--go-shadow-sm);
+  animation: evidence-popover-in 140ms ease-out;
+}
+
+.evidence-badge__popover--right {
+  left: auto;
+  right: 0;
+}
+
+@keyframes evidence-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evidence-badge__popover {
+    animation: none;
+  }
+}
+
+.evidence-badge__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--go-text-faint);
+}
+
+.evidence-badge__level {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.evidence-badge__level--strong {
+  color: var(--go-success-dark);
+}
+
+.evidence-badge__level--moderate {
+  color: var(--go-primary);
+}
+
+.evidence-badge__level--mixed {
+  color: var(--go-warning);
+}
+
+.evidence-badge__level--limited {
+  color: var(--go-warning);
+}
+
+.evidence-badge__level--insufficient {
+  color: var(--go-text-muted);
+}
+
+.evidence-badge__reason {
+  font-size: 11.5px;
+  color: var(--go-text-muted);
+  line-height: 1.4;
+}
+
+.evidence-badge__sources {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--go-border-soft);
+}
+
+.evidence-badge__source {
+  font-size: 11px;
+  color: var(--go-primary);
+  text-decoration: none;
+}
+
+.evidence-badge__source:hover {
+  text-decoration: underline;
+}

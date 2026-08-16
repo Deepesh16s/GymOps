@@ -84,6 +84,17 @@ const goalSchema = new mongoose.Schema(
       default: "MANUAL",
     },
 
+    direction: {
+      type: String,
+      enum: ["gain", "loss", null],
+      default: null,
+    },
+
+    startingValue: {
+      type: Number,
+      default: null,
+    },
+
     lastUpdated: {
       type: Date,
       default: Date.now,

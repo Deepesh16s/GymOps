@@ -1,4 +1,4 @@
-import { getMuscleRecoveryScores, getMusclePlateaus, getFatigueLevel } from "../intelligence";
+import { getMusclePlateaus, getFatigueLevel } from "../intelligence";
 import { getAvailableMuscles } from "../progression/progressionFilters";
 import { generateGoalReminders } from "../reminders/goalReminders";
 import { generatePlannerReminders } from "../reminders/plannerReminders";
@@ -6,20 +6,7 @@ import { generateStreakReminders } from "../reminders/streakReminders";
 import { TYPE_PRIORITY } from "../constants/notificationTypes";
 
 const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
-const CATEGORY_RANK = { recovery: 0, goal: 1, plateau: 2, fatigue: 3, planner: 4, streak: 5 };
-
-function recoverySignal(workouts) {
-  const needsRest = getMuscleRecoveryScores(workouts).filter((r) => r.status === "Needs Rest");
-  if (!needsRest.length) return null;
-  const muscleNames = needsRest.map((r) => r.muscle).sort();
-  return {
-    category: "recovery",
-    severity: needsRest.length >= 2 ? "critical" : "high",
-    title: needsRest.length === 1 ? `${muscleNames[0]} needs rest` : `${needsRest.length} muscle groups need rest`,
-    detail: "Recovery score below 50 — consider a lighter session or a different muscle group today.",
-    navigationTarget: "/analytics",
-  };
-}
+const CATEGORY_RANK = { goal: 1, plateau: 2, fatigue: 3, planner: 4, streak: 5 };
 
 function plateauSignal(workouts) {
   const muscles = getAvailableMuscles(workouts);
@@ -63,7 +50,6 @@ function reminderSignal(category, reminders, navigationTarget) {
 
 export function generateCoachPriority(workouts, { goals = [], plannedWorkouts = [] } = {}) {
   const signals = [
-    recoverySignal(workouts),
     reminderSignal("goal", generateGoalReminders(goals), "/goals"),
     plateauSignal(workouts),
     fatigueSignal(workouts),

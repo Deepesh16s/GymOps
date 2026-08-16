@@ -586,9 +586,6 @@ function MuscleBodyMap({
                   <Calendar size={10} strokeWidth={2} /> Not trained {modeLabelPhrase}
                 </span>
               )}
-              <span className="muscle-map__tooltip-row muscle-map__tooltip-row--muted">
-                <Info size={10} strokeWidth={2} /> Recovery tracking coming soon
-              </span>
             </div>
           )}
 
@@ -669,7 +666,7 @@ function MuscleBodyMap({
             </div>
             <div className="muscle-map__summary-item muscle-map__summary-item--wide">
               <span className="muscle-map__summary-label">
-                <TrendingDown size={11} strokeWidth={2} /> Neglected
+                <TrendingDown size={11} strokeWidth={2} /> Not Yet Trained
               </span>
               <strong>
                 {summary.neglected.length > 0 ? summary.neglected.join(", ") : "None"}

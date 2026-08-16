@@ -39,9 +39,11 @@ function OverflowMenu({ label = "More actions", children }) {
         <MoreHorizontal size={16} strokeWidth={2} />
       </button>
       {open && (
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events
         <div
           className="history-overflow-menu__panel"
           role="menu"
+          tabIndex={-1}
           onClick={() => setOpen(false)}
         >
           {children}

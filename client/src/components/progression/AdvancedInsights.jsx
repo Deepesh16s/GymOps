@@ -3,6 +3,7 @@ import { Lock, Sparkles, TrendingUp, BarChart3, Scale, GitCompare, Activity } fr
 import { getAdvancedProgression } from "../../services/progressionService";
 import { TrendBadge } from "./TrendChart";
 import ConfidenceBadge from "../ConfidenceBadge";
+import EvidenceBadge from "../EvidenceBadge";
 import "./advanced-insights.css";
 
 const PILLARS = [
@@ -77,7 +78,8 @@ function PlateauSection({ entries }) {
               <div className="advanced-insights__row-meta">
                 {p.trend && <TrendBadge trend={p.trend} />}
                 <span className="advanced-insights__row-detail">{p.recentFrequencyPerWeek}x/week recently</span>
-                <ConfidenceBadge level={p.confidence} label="Plateau read" />
+                <ConfidenceBadge level={p.confidence} label="Data confidence" />
+                <EvidenceBadge strength={p.evidenceStrength} explanation={p.evidenceDisclaimer} metricKey="plateau" />
               </div>
             )}
           </li>

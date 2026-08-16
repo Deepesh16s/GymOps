@@ -284,14 +284,6 @@ function SessionCard({
                 Session Intelligence
               </span>
               <div className="session-intelligence__grid">
-                {sessionIntelligence.recoveryImpact && (
-                  <div className="session-intelligence__row">
-                    <span>Recovery Impact</span>
-                    <strong>
-                      {sessionIntelligence.recoveryImpact.muscle}: {sessionIntelligence.recoveryImpact.status}
-                    </strong>
-                  </div>
-                )}
                 {sessionIntelligence.highestFatigueContributor && (
                   <div className="session-intelligence__row">
                     <span>Highest Fatigue Contributor</span>
@@ -305,12 +297,6 @@ function SessionCard({
                   <div className="session-intelligence__row">
                     <span>Weekly Volume Contribution</span>
                     <strong>{sessionIntelligence.weeklyVolumeContributionPct}%</strong>
-                  </div>
-                )}
-                {sessionIntelligence.suggestedRecoveryHours != null && (
-                  <div className="session-intelligence__row">
-                    <span>Suggested Recovery Window</span>
-                    <strong>~{sessionIntelligence.suggestedRecoveryHours}h</strong>
                   </div>
                 )}
               </div>

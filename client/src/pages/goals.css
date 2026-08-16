@@ -724,6 +724,12 @@
   font-weight: 700;
 }
 
+.goal-analytics-caveat {
+  color: var(--go-text-faint);
+  font-weight: 500;
+  font-size: 0.85em;
+}
+
 .goal-insight {
   display: flex;
   align-items: flex-start;

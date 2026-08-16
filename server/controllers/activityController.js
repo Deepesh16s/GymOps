@@ -5,9 +5,21 @@ const PhysiquePost = require("../models/PhysiquePost");
 const PhysiqueLike = require("../models/PhysiqueLike");
 const PhysiqueComment = require("../models/PhysiqueComment");
 const Reaction = require("../models/Reaction");
+const mongoose = require("mongoose");
 
 const MAX_FEED_PAGE_SIZE = 30;
 const DEFAULT_FEED_PAGE_SIZE = 20;
+
+function encodeCursor(activity) {
+  return `${activity.createdAt.toISOString()}|${activity._id}`;
+}
+
+function decodeCursor(raw) {
+  const [createdAtRaw, id] = String(raw).split("|");
+  const createdAt = new Date(createdAtRaw);
+  if (Number.isNaN(createdAt.getTime()) || !mongoose.isValidObjectId(id)) return null;
+  return { createdAt, id };
+}
 
 exports.getFeed = async (req, res) => {
   try {
@@ -32,12 +44,17 @@ exports.getFeed = async (req, res) => {
 
     const query = { user: { $in: actorIds } };
     if (req.query.before) {
-      const beforeDate = new Date(req.query.before);
-      if (!Number.isNaN(beforeDate.getTime())) query.createdAt = { $lt: beforeDate };
+      const cursor = decodeCursor(req.query.before);
+      if (cursor) {
+        query.$or = [
+          { createdAt: { $lt: cursor.createdAt } },
+          { createdAt: cursor.createdAt, _id: { $lt: cursor.id } },
+        ];
+      }
     }
 
     const rows = await Activity.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1)
       .populate("user", "username name picture");
 
@@ -108,7 +125,7 @@ exports.getFeed = async (req, res) => {
 
     res.status(200).json({
       activities,
-      nextCursor: hasMore && page.length ? page[page.length - 1].createdAt : null,
+      nextCursor: hasMore && page.length ? encodeCursor(page[page.length - 1]) : null,
       hasMore,
     });
   } catch (error) {

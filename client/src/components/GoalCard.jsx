@@ -88,6 +88,7 @@ function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit
       }`}
     >
       <div className="goal-card__head" onClick={() => setExpanded((v) => !v)} role="button" tabIndex={0}
+        aria-expanded={expanded}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -182,6 +183,12 @@ function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit
                   : analytics.projectedCompletionDate
                   ? formatDate(analytics.projectedCompletionDate)
                   : "Not enough data yet"}
+                {analytics.projectedCompletionDate && analytics.projectionReliability !== "reliable" && (
+                  <span className="goal-analytics-caveat">
+                    {" "}
+                    · {analytics.projectionReliability === "uncertain" ? "highly uncertain" : "rough estimate"}
+                  </span>
+                )}
               </span>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import {
   Trophy,
+  Award,
   PartyPopper,
   Flame,
   Timer,
@@ -21,6 +22,8 @@ import {
   Layers,
   Heart,
   MessageCircle,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 
 export const NOTIFICATION_CATEGORIES = {
@@ -43,6 +46,7 @@ export const NOTIFICATION_FILTERS = [
 
 const NOTIFICATION_ICON_MAP = {
   Trophy,
+  Award,
   PartyPopper,
   Flame,
   Timer,
@@ -63,6 +67,8 @@ const NOTIFICATION_ICON_MAP = {
   Layers,
   Heart,
   MessageCircle,
+  UserPlus,
+  UserCheck,
 };
 
 export const getNotificationIcon = (iconName) => NOTIFICATION_ICON_MAP[iconName] || Bell;
@@ -72,7 +78,6 @@ const TYPE_TONE = {
   streakMilestone: "achievement",
   highestVolume: "achievement",
   longestWorkout: "achievement",
-  recoveryComplete: "recovery",
   goalCompleted: "goal",
   goalThreshold: "goal",
   newLongestRun: "cardio",
@@ -100,7 +105,6 @@ const TYPE_TONE = {
   firstWorkoutAfterBreak: "achievement",
   plateauDetected: "insight",
   weeklyGradeImproved: "insight",
-  recoveryScoreIncreased: "recovery",
   volumeLandmarkAchieved: "insight",
   newFollower: "social",
   badgeEarned: "social",
@@ -119,7 +123,6 @@ export const TYPE_PRIORITY = {
   workoutToday: "high",
   workoutStartingSoon: "high",
   workoutMissedYesterday: "high",
-  recoveryComplete: "high",
   plannerOverlap: "high",
 
   goalProgressReminder: "medium",
@@ -146,7 +149,6 @@ export const TYPE_PRIORITY = {
 
   plateauDetected: "medium",
   weeklyGradeImproved: "low",
-  recoveryScoreIncreased: "low",
   volumeLandmarkAchieved: "low",
 };
 
@@ -172,7 +174,7 @@ export const REMINDER_PREFERENCE_CATEGORIES = {
 
 export const REMINDER_PREFERENCE_LABELS = {
   [REMINDER_PREFERENCE_CATEGORIES.WORKOUT]: "Workout reminders",
-  [REMINDER_PREFERENCE_CATEGORIES.RECOVERY]: "Recovery reminders",
+  [REMINDER_PREFERENCE_CATEGORIES.RECOVERY]: "Neglect & plateau reminders",
   [REMINDER_PREFERENCE_CATEGORIES.CARDIO]: "Cardio reminders",
   [REMINDER_PREFERENCE_CATEGORIES.PLANNER]: "Planner reminders",
   [REMINDER_PREFERENCE_CATEGORIES.ACHIEVEMENT]: "Achievement notifications",
@@ -186,7 +188,6 @@ const TYPE_PREFERENCE_CATEGORY = {
   workoutOverdue: "workout",
   workoutMissedYesterday: "workout",
   recurringDueTomorrow: "workout",
-  recoveryComplete: "recovery",
   muscleGroupNeglected: "recovery",
   cardioSessionDue: "cardio",
   cardioActivityNotLogged: "cardio",
@@ -212,7 +213,6 @@ const TYPE_PREFERENCE_CATEGORY = {
   streakProtection: "streak",
   cardioStreakExpiring: "streak",
   plateauDetected: "recovery",
-  recoveryScoreIncreased: "recovery",
   weeklyGradeImproved: "achievement",
   volumeLandmarkAchieved: "achievement",
 };

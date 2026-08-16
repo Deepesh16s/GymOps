@@ -1,8 +1,12 @@
 import { getMuscleProgression, getExerciseProgression } from "../progression/progressionEngine";
 import { classifyPlateau, isVolumeMaskedPlateau } from "../utils/trendUtils";
 import { getConfidence } from "../utils/confidenceUtils";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
 
 const MIN_BUCKETS_FOR_TREND = 4;
+
+const PLATEAU_DISCLAIMER =
+  "Repvyn detection heuristic: flags when a trend has stopped increasing over several recent sessions. A missing PR does not necessarily mean no progress — volume, technique, and proximity-to-failure can still be improving. The specific session-count thresholds used here are a product heuristic, not a scientifically validated plateau definition.";
 
 export function getMusclePlateaus(workouts, muscles, { rangeKey = "lifetime" } = {}) {
   return muscles
@@ -21,6 +25,8 @@ export function getMusclePlateaus(workouts, muscles, { rangeKey = "lifetime" } =
         plateauLevel: classifyPlateau(progression.trend.volume, progression.series.length),
         confidence,
         confidenceReason,
+        evidenceStrength: EVIDENCE_STRENGTH.LIMITED,
+        evidenceDisclaimer: PLATEAU_DISCLAIMER,
       };
     });
 }
@@ -41,6 +47,8 @@ export function getExercisePlateau(workouts, exerciseName, { rangeKey = "lifetim
     maskedByVolume: isVolumeMaskedPlateau(oneRMTrend, volumeTrend),
     confidence,
     confidenceReason,
+    evidenceStrength: EVIDENCE_STRENGTH.LIMITED,
+    evidenceDisclaimer: PLATEAU_DISCLAIMER,
   };
 }
 

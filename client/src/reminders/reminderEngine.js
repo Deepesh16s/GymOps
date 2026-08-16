@@ -1,6 +1,5 @@
 import { generateWorkoutReminders } from "./workoutReminders";
 import { generateGoalReminders } from "./goalReminders";
-import { generateRecoveryReminders } from "./recoveryReminders";
 import { generateStreakReminders } from "./streakReminders";
 import { generateNeglectReminders } from "./neglectReminders";
 import { generateCardioReminders } from "./cardioReminders";
@@ -61,7 +60,6 @@ export function generateReminders({ workouts = [], goals = [], plannedWorkouts =
   const raw = [
     ...generateWorkoutReminders(plannedWorkouts),
     ...generateGoalReminders(goals),
-    ...generateRecoveryReminders(workouts),
     ...generateStreakReminders(workouts),
     ...generateNeglectReminders(workouts),
     ...generateCardioReminders(workouts),

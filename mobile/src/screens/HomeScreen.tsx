@@ -124,8 +124,8 @@ export function HomeScreen({ onRequestRationale }: Props) {
           <>
             <Text style={styles.cardTitle}>Connect your health data</Text>
             <Text style={styles.cardBody}>
-              Bring heart rate, sleep, and activity into Repvyn to understand how your training
-              fits into your recovery.
+              Bring heart rate, sleep, and activity into Repvyn to see them alongside your
+              training.
             </Text>
             {health.error && <Text style={styles.error}>{health.error}</Text>}
             {health.error === PERMISSION_DENIED_ERROR && (

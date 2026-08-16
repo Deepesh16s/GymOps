@@ -10,7 +10,6 @@ import {
   Zap,
   Trophy,
   CalendarRange,
-  TrendingUp,
   Plus,
   ChevronRight,
   ChevronDown,
@@ -48,7 +47,6 @@ import { getGoals } from "../services/goalService";
 import { getPlannedWorkouts } from "../services/plannedWorkoutService";
 import { getDailySteps, setDailySteps } from "../services/dailyStepsService";
 import { getSessionBadges, getLongestStreakEver } from "../progression/liveWorkoutEngine";
-import { getDashboardInsights } from "../utils/dashboardInsights";
 import { generateReminders } from "../reminders/reminderEngine";
 import { generateNotifications } from "../services/notificationService";
 import { getCardioOverview } from "../progression/cardioProgressionEngine";
@@ -239,6 +237,7 @@ function TodayStepsCard({
             <input
               type="number"
               min="0"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               value={inputValue}
               onChange={onInputChange}
@@ -296,27 +295,6 @@ function TodayStepsCard({
   );
 }
 
-const INSIGHT_ICON_BY_KEY = {
-  recentPR: Trophy,
-  weeklyStreak: Flame,
-  volumeTrend: TrendingUp,
-};
-
-function InsightCard({ insight }) {
-  const Icon = INSIGHT_ICON_BY_KEY[insight.key] || Zap;
-  return (
-    <div className={`dash-insight-card dash-insight-card--${insight.tone}`}>
-      <div className="dash-insight-card__icon">
-        <Icon size={18} strokeWidth={2} />
-      </div>
-      <div className="dash-insight-card__body">
-        <span className="dash-insight-card__title">{insight.title}</span>
-        <span className="dash-insight-card__detail">{insight.detail}</span>
-      </div>
-    </div>
-  );
-}
-
 const BRIEF_ICON_BY_KEY = {
   workoutRecommendation: Dumbbell,
   plannedWorkout: CalendarDays,
@@ -332,6 +310,7 @@ function BriefListItem({ item, onStartPlanned }) {
   const hasExplanation = item.explanation?.length > 0;
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <li
       className={`hero-brief-item hero-brief-item--${item.tone} ${
         isActionable ? "hero-brief-item--actionable" : ""
@@ -399,10 +378,10 @@ const RESEARCH_REFERENCES = [
     url: "https://doi.org/10.1080/02640414.2016.1210197",
   },
   {
-    name: "RP Strength Volume Landmarks",
-    year: null,
-    description: "MEV / MAV / MRV training methodology",
-    url: "https://rpstrength.com/blogs/articles/training-volume-landmarks-muscle-growth",
+    name: "Resistance Training Dose-Response Meta-Regression",
+    year: "2025",
+    description: "Weekly volume and frequency effects on hypertrophy and strength, with diminishing returns",
+    url: "https://pubmed.ncbi.nlm.nih.gov/41343037/",
   },
 ];
 
@@ -416,6 +395,7 @@ function CoachExplanation({ sections, recommendedCategory, generatedAt }) {
   const heading = recommendedCategory
     ? `Why Repvyn recommends ${recommendedCategory} today`
     : "Why this recommendation?";
+  const buttonLabel = recommendedCategory ? `${heading}?` : heading;
 
   return (
     <div className="coach-why">
@@ -426,7 +406,7 @@ function CoachExplanation({ sections, recommendedCategory, generatedAt }) {
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
       >
-        Why this recommendation?
+        {buttonLabel}
       </button>
       {open && (
         <div id={panelId} className="coach-explanation" role="region" aria-label={heading}>
@@ -491,7 +471,6 @@ function CoachExplanation({ sections, recommendedCategory, generatedAt }) {
 }
 
 const COACH_PRIORITY_ICON = {
-  recovery: HeartPulse,
   goal: Target,
   plateau: AlertTriangle,
   fatigue: Flame,
@@ -1107,11 +1086,6 @@ function Dashboard() {
       ? weeklyVolumeChartData
       : DAY_ORDER.map((d) => ({ day: d, volume: 0 }));
 
-  const dashboardInsights = useMemo(
-    () => getDashboardInsights(muscleWorkouts),
-    [muscleWorkouts]
-  );
-
   const todaysPlannedWorkout = useMemo(() => {
     return (
       plannedWorkouts.find((p) => {
@@ -1287,6 +1261,11 @@ function Dashboard() {
           </div>
         </section>
 
+        <section className="section hero-last-session">
+          <p className="section__label">Last Session</p>
+          <LastSessionCard session={recentSessions[0] || null} loading={loading} />
+        </section>
+
         {!workoutSession.active && workoutSession.saveSuccess && (
           <div className="save-success-banner" role="status">
             <CheckCircle2 size={18} strokeWidth={2} />
@@ -1336,8 +1315,7 @@ function Dashboard() {
         )}
 
         {!loading &&
-          (trainingBrief.recoveryScore != null ||
-            trainingBrief.weeklyGrade ||
+          (trainingBrief.weeklyGrade ||
             trainingBrief.trainingBalance.available ||
             trainingBrief.fatigueBand ||
             trainingBrief.recommendedWorkout) && (
@@ -1351,6 +1329,24 @@ function Dashboard() {
             />
           </section>
         )}
+
+        <section className="section muscle-map-hero-section">
+          <div className="muscle-map-hero">
+            <div className="muscle-map-hero__head">
+              <div>
+                <p className="muscle-map-hero__title">Muscle Map</p>
+              </div>
+            </div>
+            <MuscleBodyMap
+              workouts={muscleWorkouts}
+              loading={loading}
+              personalRecords={stats.personalRecords}
+              onSelectMuscle={(muscle) =>
+                navigate(`/progression?muscle=${encodeURIComponent(muscle)}`)
+              }
+            />
+          </div>
+        </section>
 
         <section className="section dash-summary-row">
           <div className="dash-summary-row__stats">
@@ -1404,24 +1400,6 @@ function Dashboard() {
               <WeeklyCoachReport report={weeklyCoachReport} />
             </div>
           )}
-        </section>
-
-        <section className="section muscle-map-hero-section">
-          <div className="muscle-map-hero">
-            <div className="muscle-map-hero__head">
-              <div>
-                <p className="muscle-map-hero__title">Muscle Map</p>
-              </div>
-            </div>
-            <MuscleBodyMap
-              workouts={muscleWorkouts}
-              loading={loading}
-              personalRecords={stats.personalRecords}
-              onSelectMuscle={(muscle) =>
-                navigate(`/progression?muscle=${encodeURIComponent(muscle)}`)
-              }
-            />
-          </div>
         </section>
 
         <section className="section charts-row">
@@ -1487,8 +1465,10 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className="section supporting-row">
-          <div className="supporting-row__item">
+        {!loading && <GoalsWidget goals={goals} onViewAll={() => navigate("/goals")} />}
+
+        {!loading && (
+          <section className="section">
             <TodayStepsCard
               steps={todaySteps}
               dailyGoalTarget={dailyStepsGoal?.dailyTarget ?? null}
@@ -1501,28 +1481,7 @@ function Dashboard() {
               onCancel={handleCancelEditSteps}
               saving={stepsSaving}
             />
-          </div>
-          <div className="supporting-row__item">
-            <p className="section__label">Last Session</p>
-            <LastSessionCard session={recentSessions[0] || null} loading={loading} />
-          </div>
-        </section>
 
-        {!loading && dashboardInsights.length > 0 && (
-          <section className="section">
-            <p className="section__label">Quick Takeaways</p>
-            <div className="insights-grid">
-              {dashboardInsights.map((insight) => (
-                <InsightCard key={insight.key} insight={insight} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {!loading && <GoalsWidget goals={goals} onViewAll={() => navigate("/goals")} />}
-
-        {!loading && (
-          <section className="section">
             <button
               type="button"
               className="more-stats-toggle"

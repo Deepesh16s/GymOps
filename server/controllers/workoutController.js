@@ -213,11 +213,11 @@ exports.createWorkoutSession = async (req, res) => {
     if (trainedMuscleGroups.length) {
       try {
         await suppressNotifications(req.user._id, {
-          type: { $in: ["recoveryComplete", "muscleGroupNeglected"] },
+          type: { $in: ["muscleGroupNeglected"] },
           "metadata.muscles": { $in: trainedMuscleGroups },
         });
       } catch (suppressError) {
-        console.error("Recovery/neglect suppression failed:", suppressError);
+        console.error("Neglect suppression failed:", suppressError);
       }
     }
 

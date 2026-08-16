@@ -185,14 +185,17 @@ function PlannedWorkoutModal({ mode, initialDateKey, templatePrefill, editingPla
   return (
     <div
       className="planner-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Planned workout"
+      role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="planner-modal-card">
+      <div
+        className="planner-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Planned workout"
+      >
         <div className="planner-modal-header">
           <p className="planner-modal-title">{mode === "edit" ? "Edit Planned Workout" : "Plan a Workout"}</p>
           <button type="button" className="planner-modal-close" onClick={onClose} aria-label="Close">

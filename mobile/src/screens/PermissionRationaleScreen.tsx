@@ -4,11 +4,11 @@ import { TRACKED_RECORD_TYPES, RECORD_TYPE_LABELS } from "../health/recordTypes"
 
 const REASONS: Partial<Record<(typeof TRACKED_RECORD_TYPES)[number], string>> = {
   HeartRate: "To show heart-rate trends alongside your logged workouts.",
-  RestingHeartRate: "As a baseline signal for recovery context.",
-  HeartRateVariabilityRmssd: "As an additional recovery signal, where your device provides it.",
+  RestingHeartRate: "To show resting-heart-rate trends alongside your training.",
+  HeartRateVariabilityRmssd: "To show heart-rate-variability trends, where your device provides it.",
   Steps: "For daily activity context around your training.",
   ActiveCaloriesBurned: "For daily activity context around your training.",
-  SleepSession: "To connect sleep with training load and recovery.",
+  SleepSession: "To show sleep trends alongside your training load.",
   ExerciseSession: "To cross-reference workouts recorded by your watch with those logged in Repvyn.",
 };
 
@@ -29,7 +29,7 @@ export function PermissionRationaleScreen({ onContinue, onClose }: Props) {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.heading}>Why Repvyn asks for this</Text>
         <Text style={styles.intro}>
-          Repvyn reads your health data to provide training and recovery insights. Nothing is
+          Repvyn reads your health data to show it alongside your training. Nothing is
           shared publicly, sold, or sent to third-party analytics. You can disconnect and delete
           this data at any time from the app.
         </Text>

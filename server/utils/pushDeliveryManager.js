@@ -19,7 +19,6 @@ const PUSH_ELIGIBLE_TYPES = new Set([
   "recurringDueTomorrow",
   "streakProtection",
   "cardioStreakExpiring",
-  "recoveryComplete",
   "goalCompleted",
   "goalExpiringToday",
   "plannerRescheduleWarning",

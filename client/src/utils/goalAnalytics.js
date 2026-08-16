@@ -15,6 +15,15 @@ const formatAmount = (n) => {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 };
 
+function normalizeForDirection(goal) {
+  if (goal?.direction === "loss" && Number.isFinite(goal?.startingValue)) {
+    return {
+      current: goal.startingValue - (goal.current ?? 0),
+      target: goal.startingValue - (goal.target ?? 0),
+    };
+  }
+  return { current: goal?.current ?? 0, target: goal?.target ?? 0 };
+}
 
 export function getProgressPercent(current, target) {
   if (!target || target <= 0) return 0;
@@ -42,25 +51,48 @@ export function getDaysTotal(goal) {
 
 export function getAverageRequiredPerDay(goal, now = new Date()) {
   if (!goal?.deadline) return null;
-  const remaining = getRemaining(goal.current, goal.target);
+  const { current, target } = normalizeForDirection(goal);
+  const remaining = getRemaining(current, target);
   if (remaining <= 0) return 0;
   const daysRemaining = getDaysRemaining(goal, now);
   if (daysRemaining === null || daysRemaining <= 0) return null;
   return remaining / daysRemaining;
 }
 
+const MAX_PROJECTION_DAYS = 36500;
+
 export function getProjectedCompletionDate(goal, now = new Date()) {
-  if ((goal?.current ?? 0) >= (goal?.target ?? 0)) return null;
+  const { current, target } = normalizeForDirection(goal);
+  if (current >= target) return null;
   const daysElapsed = getDaysElapsed(goal, now);
   if (!daysElapsed || daysElapsed <= 0) return null;
 
-  const rate = goal.current / daysElapsed;
+  const rate = current / daysElapsed;
   if (!Number.isFinite(rate) || rate <= 0) return null;
 
-  const daysToTarget = Math.ceil(goal.target / rate);
+  const daysToTarget = Math.ceil(target / rate);
+  if (!Number.isFinite(daysToTarget) || daysToTarget > MAX_PROJECTION_DAYS) return null;
+
   const projected = new Date(goal.createdAt);
   projected.setDate(projected.getDate() + daysToTarget);
+  if (Number.isNaN(projected.getTime())) return null;
   return projected;
+}
+
+const RELIABLE_EXTRAPOLATION_RATIO = 3;
+const ROUGH_EXTRAPOLATION_RATIO = 10;
+
+export function getProjectionReliability(goal, now = new Date()) {
+  const daysElapsed = getDaysElapsed(goal, now);
+  const projected = getProjectedCompletionDate(goal, now);
+  if (!daysElapsed || daysElapsed <= 0 || !projected) return null;
+
+  const daysToTarget = daysBetween(goal.createdAt, projected);
+  const extrapolationRatio = daysToTarget / daysElapsed;
+
+  if (extrapolationRatio <= RELIABLE_EXTRAPOLATION_RATIO) return "reliable";
+  if (extrapolationRatio <= ROUGH_EXTRAPOLATION_RATIO) return "rough";
+  return "uncertain";
 }
 
 const HEALTH_TOLERANCE = 0.1;
@@ -68,7 +100,8 @@ const AT_RISK_TOLERANCE = 0.25;
 const MIN_DAYS_FOR_RELIABLE_READ = 2;
 
 export function getGoalHealth(goal, now = new Date()) {
-  if ((goal?.current ?? 0) >= (goal?.target ?? 0)) return "Completed";
+  const { current, target } = normalizeForDirection(goal);
+  if (current >= target) return "Completed";
   if (!goal?.deadline) return null;
 
   const daysTotal = getDaysTotal(goal);
@@ -86,10 +119,10 @@ export function getGoalHealth(goal, now = new Date()) {
   if ((daysElapsed ?? 0) < MIN_DAYS_FOR_RELIABLE_READ) return "Insufficient Data";
 
   const clampedElapsed = Math.min(Math.max(daysElapsed ?? 0, 0), daysTotal);
-  const expected = goal.target * (clampedElapsed / daysTotal);
-  const diff = goal.current - expected;
-  const tolerance = goal.target * HEALTH_TOLERANCE;
-  const atRiskTolerance = goal.target * AT_RISK_TOLERANCE;
+  const expected = target * (clampedElapsed / daysTotal);
+  const diff = current - expected;
+  const tolerance = target * HEALTH_TOLERANCE;
+  const atRiskTolerance = target * AT_RISK_TOLERANCE;
 
   if (diff >= tolerance) return "Ahead";
   if (diff >= -tolerance) return "On Track";
@@ -129,13 +162,14 @@ export function getGoalInsight(goal, analytics) {
 }
 
 export function getGoalAnalytics(goal, now = new Date()) {
+  const normalized = normalizeForDirection(goal);
   const daysRemaining = getDaysRemaining(goal, now);
-  const remaining = getRemaining(goal.current, goal.target);
+  const remaining = getRemaining(normalized.current, normalized.target);
   const hasDeadline = !!goal.deadline;
   const isOverdue = hasDeadline && daysRemaining !== null && daysRemaining < 0 && remaining > 0;
 
   const analytics = {
-    percent: getProgressPercent(goal.current, goal.target),
+    percent: getProgressPercent(normalized.current, normalized.target),
     remaining,
     daysElapsed: getDaysElapsed(goal, now),
     daysRemaining,
@@ -144,6 +178,7 @@ export function getGoalAnalytics(goal, now = new Date()) {
     isOverdue,
     averageRequiredPerDay: getAverageRequiredPerDay(goal, now),
     projectedCompletionDate: getProjectedCompletionDate(goal, now),
+    projectionReliability: getProjectionReliability(goal, now),
     health: getGoalHealth(goal, now),
   };
 

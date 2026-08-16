@@ -1,8 +1,11 @@
 import { groupWorkoutsIntoSessions, computeCurrentStreak } from "../utils/workoutUtils";
 import { prHistory } from "../utils/strengthUtils";
 import { weightedScore, clampScore } from "../utils/scoringUtils";
-import { getMuscleRecoveryScores } from "./recoveryEngine";
 import { getFatigueLevel } from "./fatigueEngine";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+
+const READINESS_DISCLAIMER =
+  "Repvyn heuristic combining training-load trend, streak length, and recent session difficulty into a single score — not a validated readiness or performance-prediction instrument.";
 
 const MS_PER_DAY = 86400000;
 const RECENT_PR_WINDOW_DAYS = 7;
@@ -33,18 +36,12 @@ function computePreviousSessionDifficultyRatio(workouts) {
 }
 
 export function getTodaysReadiness(workouts) {
-  const recoveryScores = getMuscleRecoveryScores(workouts);
-  const avgRecovery = recoveryScores.length
-    ? recoveryScores.reduce((s, r) => s + r.recoveryScore, 0) / recoveryScores.length
-    : null;
-
   const fatigue = getFatigueLevel(workouts);
   const consecutiveTrainingDays = computeCurrentStreak(workouts);
   const recentPrAttempts = countRecentPrAttempts(workouts);
   const difficultyRatio = computePreviousSessionDifficultyRatio(workouts);
 
   const parts = [
-    { value: avgRecovery, weight: 3 },
     { value: fatigue.fatigueScore != null ? 100 - fatigue.fatigueScore : null, weight: 2.5 },
     {
       value: consecutiveTrainingDays > 0 ? clampScore(100 - consecutiveTrainingDays * 8) : 100,
@@ -67,5 +64,12 @@ export function getTodaysReadiness(workouts) {
 
   const recommendation = READINESS_BANDS.find((b) => readiness != null && readiness >= b.min)?.label ?? null;
 
-  return { readiness, confidence, confidenceReason, recommendation };
+  return {
+    readiness,
+    confidence,
+    confidenceReason,
+    recommendation,
+    evidenceStrength: EVIDENCE_STRENGTH.INSUFFICIENT,
+    evidenceDisclaimer: READINESS_DISCLAIMER,
+  };
 }

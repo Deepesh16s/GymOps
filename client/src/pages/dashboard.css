@@ -515,7 +515,7 @@
 
 .dash-summary-row {
   display: grid;
-  grid-template-columns: minmax(280px, 400px) 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   gap: var(--go-space-5);
 }
@@ -543,6 +543,8 @@
 
 .primary-grid--compact {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  flex: 1;
   gap: 0;
   background: var(--go-surface);
   border: 1px solid var(--go-border-soft);
@@ -587,6 +589,8 @@
 
   .primary-grid--compact {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: none;
+    flex: initial;
   }
 
   .primary-grid--compact .primary-card:nth-child(2n) {
@@ -734,24 +738,6 @@ section.charts-row {
 
 .muscle-map-hero .muscle-map {
   min-height: 380px;
-}
-
-.supporting-row {
-  display: grid;
-  grid-template-columns: minmax(280px, 420px) 1fr;
-  gap: var(--go-space-5);
-  align-items: stretch;
-}
-
-.supporting-row__item {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.supporting-row__item > .today-steps-card,
-.supporting-row__item > .last-session-card {
-  flex: 1;
 }
 
 .chart-card {
@@ -951,10 +937,6 @@ section.charts-row {
   margin-top: 8px;
 }
 
-.secondary-card > .recovery-breakdown {
-  margin-top: 4px;
-}
-
 .today-steps-section__grid {
   grid-template-columns: minmax(280px, 420px);
 }
@@ -1106,77 +1088,6 @@ section.charts-row {
   background: var(--go-primary);
   border-color: var(--go-primary);
   color: white;
-}
-
-.insights-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.dash-insight-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: var(--go-surface);
-  border: 1px solid var(--go-border-soft);
-  border-radius: var(--go-radius-sm);
-  padding: var(--go-space-4) var(--go-space-5);
-  transition: border-color var(--go-fast), box-shadow var(--go-fast);
-  box-shadow: var(--go-shadow-xs);
-}
-
-.dash-insight-card:hover {
-  border-color: var(--go-border-strong);
-  box-shadow: var(--go-shadow-sm);
-}
-
-.dash-insight-card__icon {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-}
-
-.dash-insight-card--success .dash-insight-card__icon {
-  background: color-mix(in srgb, var(--go-success) 16%, transparent);
-  color: var(--go-success-dark);
-}
-
-.dash-insight-card--streak .dash-insight-card__icon {
-  background: var(--go-success-50);
-  color: var(--go-success-dark);
-}
-
-.dash-insight-card--warning .dash-insight-card__icon {
-  background: color-mix(in srgb, var(--go-warning, #f59e0b) 18%, transparent);
-  color: color-mix(in srgb, var(--go-warning, #f59e0b) 70%, black);
-}
-
-.dash-insight-card--goal .dash-insight-card__icon {
-  background: color-mix(in srgb, var(--go-primary) 14%, transparent);
-  color: var(--go-primary);
-}
-
-.dash-insight-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.dash-insight-card__title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--go-text);
-}
-
-.dash-insight-card__detail {
-  font-size: 12.5px;
-  color: var(--go-text-muted);
 }
 
 .goals-widget-head {
@@ -1562,10 +1473,6 @@ section.charts-row {
 
   .hero-card__title {
     font-size: 1.6rem;
-  }
-
-  .supporting-row {
-    grid-template-columns: 1fr;
   }
 
   .muscle-map-hero {

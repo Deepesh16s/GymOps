@@ -1,7 +1,11 @@
 import { getMuscleProgression } from "../progression/progressionEngine";
 import { getConfidence } from "../utils/confidenceUtils";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
 
 const MIN_WEEKS_FOR_LANDMARKS = 4;
+
+const VOLUME_RANGE_DISCLAIMER =
+  "Personal reference points based on your own logged training volume, not a scientific volume ceiling or floor. Research-established volume guidance is expressed in sets per muscle per week, not the total kg-volume used here.";
 
 function percentile(sortedAscending, p) {
   if (!sortedAscending.length) return 0;
@@ -24,7 +28,7 @@ export function getVolumeLandmarks(workouts, muscle, { rangeKey = "lifetime" } =
     return {
       muscle,
       available: false,
-      reason: `Log at least ${MIN_WEEKS_FOR_LANDMARKS} trained weeks for ${muscle} to estimate volume landmarks.`,
+      reason: `Log at least ${MIN_WEEKS_FOR_LANDMARKS} trained weeks for ${muscle} to see your personal volume range.`,
     };
   }
 
@@ -33,13 +37,15 @@ export function getVolumeLandmarks(workouts, muscle, { rangeKey = "lifetime" } =
   return {
     muscle,
     available: true,
-    maintenance: Math.round(percentile(weeklyVolumes, 0.25)),
-    mev: Math.round(percentile(weeklyVolumes, 0.4)),
-    mav: Math.round(percentile(weeklyVolumes, 0.7)),
-    mrv: Math.round(percentile(weeklyVolumes, 0.95)),
+    low: Math.round(percentile(weeklyVolumes, 0.25)),
+    typical: Math.round(percentile(weeklyVolumes, 0.5)),
+    elevated: Math.round(percentile(weeklyVolumes, 0.7)),
+    personalHigh: Math.round(percentile(weeklyVolumes, 0.95)),
     weeksConsidered: weeklyVolumes.length,
     confidence,
     confidenceReason,
+    evidenceStrength: EVIDENCE_STRENGTH.INSUFFICIENT,
+    evidenceDisclaimer: VOLUME_RANGE_DISCLAIMER,
   };
 }
 

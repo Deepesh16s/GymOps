@@ -78,8 +78,17 @@ const validateCardioGoalConfig = ({ activityType, metric, period, dailyTarget })
 const resolveCardioGoalUnit = (period, requestedUnit) =>
   DAILY_PERIODS.includes(period) ? "days" : requestedUnit;
 
-const buildGoalStatus = (current, target) =>
-  Number(current) >= Number(target) ? "Completed" : "In Progress";
+const buildGoalStatus = (current, target, direction) =>
+  direction === "loss"
+    ? Number(current) <= Number(target)
+      ? "Completed"
+      : "In Progress"
+    : Number(current) >= Number(target)
+    ? "Completed"
+    : "In Progress";
+
+const deriveWeightDirection = (startingValue, target) =>
+  Number(startingValue) > Number(target) ? "loss" : "gain";
 
 const ALLOWED_GOAL_UPDATE_FIELDS = [
   "title",
@@ -220,7 +229,14 @@ exports.createGoal = async (req, res) => {
           : 0;
     }
 
-    const status = buildGoalStatus(current, resolvedTarget);
+    let direction = null;
+    let startingValue = null;
+    if (type === GOAL_TYPES.WEIGHT) {
+      startingValue = current;
+      direction = deriveWeightDirection(startingValue, resolvedTarget);
+    }
+
+    const status = buildGoalStatus(current, resolvedTarget, direction);
 
     const goal = await Goal.create({
       user: req.user._id,
@@ -235,6 +251,8 @@ exports.createGoal = async (req, res) => {
       period: goalPeriod,
       dailyTarget: goalDailyTarget,
       deadline: deadline || null,
+      direction,
+      startingValue,
       status,
     });
 
@@ -358,7 +376,26 @@ exports.updateGoal = async (req, res) => {
       return res.status(400).json({ message: "Deadline is not a valid date" });
     }
 
-    updates.status = buildGoalStatus(mergedCurrent, mergedTarget);
+    const willBeWeight =
+      updates.type === GOAL_TYPES.WEIGHT ||
+      (updates.type === undefined && goal.type === GOAL_TYPES.WEIGHT);
+
+    if (willBeWeight) {
+      const becomingWeight = updates.type === GOAL_TYPES.WEIGHT && goal.type !== GOAL_TYPES.WEIGHT;
+      const needsBaseline = becomingWeight || goal.startingValue === null || goal.startingValue === undefined;
+
+      if (needsBaseline) updates.startingValue = mergedCurrent;
+      if (needsBaseline || updates.target !== undefined) {
+        const baseline = needsBaseline ? mergedCurrent : goal.startingValue;
+        updates.direction = deriveWeightDirection(baseline, mergedTarget);
+      }
+    } else if (updates.type !== undefined && goal.type === GOAL_TYPES.WEIGHT) {
+      updates.direction = null;
+      updates.startingValue = null;
+    }
+
+    const mergedDirection = updates.direction !== undefined ? updates.direction : goal.direction;
+    updates.status = buildGoalStatus(mergedCurrent, mergedTarget, mergedDirection);
 
     const updatedGoal = await Goal.findByIdAndUpdate(req.params.id, updates, {
       new: true,

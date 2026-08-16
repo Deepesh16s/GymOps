@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import ConfidenceBadge from "../ConfidenceBadge";
+import EvidenceBadge from "../EvidenceBadge";
 import "./progression-charts.css";
 
 function DistributionRow({
@@ -12,6 +13,9 @@ function DistributionRow({
   confidence,
   confidenceReason,
   confidenceLabel = "Confidence",
+  evidenceStrength,
+  evidenceExplanation,
+  evidenceMetricKey,
 }) {
   const content = (
     <>
@@ -26,6 +30,9 @@ function DistributionRow({
       <span className="prog-exdist__row-count">
         {badge && <span className={`distribution-row__badge distribution-row__badge--${badge.tone}`}>{badge.label}</span>}
         {confidence && <ConfidenceBadge level={confidence} reason={confidenceReason} label={confidenceLabel} />}
+        {evidenceStrength && (
+          <EvidenceBadge strength={evidenceStrength} explanation={evidenceExplanation} metricKey={evidenceMetricKey} />
+        )}
         {sub}
         {onSelect && <ChevronRight size={13} strokeWidth={2} />}
       </span>

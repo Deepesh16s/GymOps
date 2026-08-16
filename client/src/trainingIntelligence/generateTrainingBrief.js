@@ -1,67 +1,42 @@
 import {
-  getMuscleRecoveryScores,
   getTodaysReadiness,
   getFatigueLevel,
   getWeeklyGrade,
   getTrainingBalance,
 } from "../intelligence";
 import { getTodaysBrief } from "../utils/dashboardInsights";
-import { getConfidence } from "../utils/confidenceUtils";
 import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
-
-function averageRecoveryScore(recoveryScores) {
-  if (!recoveryScores.length) return null;
-  return Math.round(recoveryScores.reduce((s, r) => s + r.recoveryScore, 0) / recoveryScores.length);
-}
-
-function describeRecoveryStatus(score) {
-  if (score >= 85) return "fully recovered";
-  if (score >= 50) return "partially recovered";
-  return "still recovering";
-}
 
 const PLURAL_CATEGORIES = new Set(["Legs"]);
 
-function buildExplanationSections({ recoveryScores, recoveryScore, recommendationItem, goalItem, fatigue }) {
+function buildExplanationSections({ recommendationItem, goalItem, fatigue }) {
   const sections = [];
   const isCategoryRecommendation = recommendationItem?.key === "workoutRecommendation";
   const recommendedCategory = isCategoryRecommendation ? recommendationItem.mostOverdueCategory : null;
 
   if (recommendedCategory) {
-    const inCategory = recoveryScores.filter((r) => MUSCLE_SPLIT_CATEGORY[r.muscle] === recommendedCategory);
-    if (inCategory.length) {
-      const avg = Math.round(inCategory.reduce((s, r) => s + r.recoveryScore, 0) / inCategory.length);
-      const plural = PLURAL_CATEGORIES.has(recommendedCategory);
-      const status = describeRecoveryStatus(avg);
-      sections.push({
-        key: "recovery",
-        tone: avg >= 85 ? "success" : avg >= 50 ? "neutral" : "warning",
-        heading: "Recovery",
-        sentence:
-          avg >= 50
-            ? `${recommendedCategory} ${plural ? "are" : "is"} ${status} and ready to train.`
-            : `${recommendedCategory} ${plural ? "are" : "is"} ${status} — a lighter session may be worth considering.`,
-      });
-    }
-  } else if (recoveryScore != null) {
-    sections.push({
-      key: "recovery",
-      tone: recoveryScore >= 85 ? "success" : recoveryScore >= 50 ? "neutral" : "warning",
-      heading: "Recovery",
-      sentence: `Your overall recovery is ${describeRecoveryStatus(recoveryScore)}.`,
-    });
-  }
-
-  if (recommendedCategory) {
     const days = recommendationItem.mostOverdueDays;
     const plural = PLURAL_CATEGORIES.has(recommendedCategory);
+    const otherGaps = (recommendationItem.categoryGaps || [])
+      .filter((g) => g.category !== recommendedCategory)
+      .sort((a, b) => b.daysAgo - a.daysAgo);
+    const nextClosest = otherGaps[0] || null;
+
+    const comparison = nextClosest
+      ? ` The next-longest gap is ${nextClosest.category} at ${nextClosest.daysAgo} day${
+          nextClosest.daysAgo === 1 ? "" : "s"
+        }, so ${recommendedCategory} is furthest behind.`
+      : "";
+
     sections.push({
       key: "priority",
       tone: "neutral",
       heading: "Priority",
       sentence: `${recommendedCategory} ${plural ? "haven't" : "hasn't"} been trained for ${days} day${
         days === 1 ? "" : "s"
-      }, making ${plural ? "them" : "it"} your highest-priority muscle group today.`,
+      } — the longest gap among your tracked muscle groups.${comparison} This is a days-since-trained heuristic; it doesn't account for how much volume ${
+        plural ? "they" : "it"
+      } typically ${plural ? "get" : "gets"} relative to your other muscle groups.`,
     });
   }
 
@@ -86,7 +61,7 @@ function buildExplanationSections({ recoveryScores, recoveryScore, recommendatio
         ? "Overall fatigue is moderate — a normal training day."
         : fatigue.band === "High"
         ? "Overall fatigue is elevated — consider an easier session today."
-        : "Overall fatigue is very high — consider a rest day or active recovery.";
+        : "Overall fatigue is very high — consider a lighter day.";
     sections.push({
       key: "fatigue",
       tone: fatigue.band === "Low" ? "success" : fatigue.band === "Medium" ? "neutral" : "warning",
@@ -99,8 +74,6 @@ function buildExplanationSections({ recoveryScores, recoveryScore, recommendatio
 }
 
 export function generateTrainingBrief(workouts, goals, options = {}) {
-  const recoveryScores = getMuscleRecoveryScores(workouts);
-  const recoveryScore = averageRecoveryScore(recoveryScores);
   const readiness = getTodaysReadiness(workouts);
   const fatigue = getFatigueLevel(workouts);
   const weeklyGrade = getWeeklyGrade(workouts);
@@ -112,20 +85,12 @@ export function generateTrainingBrief(workouts, goals, options = {}) {
   const goalItem = brief.find((item) => item.key === "goalFocus") || null;
 
   const { sections: explanationSections, recommendedCategory } = buildExplanationSections({
-    recoveryScores,
-    recoveryScore,
     recommendationItem,
     goalItem,
     fatigue,
   });
 
-  const recoveryConfidence = getConfidence(recoveryScores.length, "muscle");
-
   return {
-    recoveryScore,
-    recoveryConfidence: recoveryConfidence.level,
-    recoveryConfidenceReason: recoveryConfidence.reason,
-    recoveryBreakdown: recoveryScores,
     readiness: readiness.readiness,
     readinessConfidence: readiness.confidence,
     readinessConfidenceReason: readiness.confidenceReason,

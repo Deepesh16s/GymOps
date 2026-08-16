@@ -81,7 +81,7 @@ eventual product name from day one.
 
 ## What's NOT built yet (by design, out of Phase 2 scope)
 
-- Health UI (charts/recovery context) — Phase 4
+- Health & Activity Insights UI (charts and trends from connected health/activity data) — Phase 4
 - Background sync (WorkManager/`expo-task-manager`) — sync currently runs on
   app-open and via a manual "Sync Now" button only; `BackgroundAccessPermission`
   is intentionally not requested until a background job actually uses it

@@ -1,6 +1,5 @@
 import { getMusclePlateaus } from "../intelligence/plateauEngine";
 import { getWeeklyGrade } from "../intelligence/weeklyGradeEngine";
-import { getMuscleRecoveryScores } from "../intelligence/recoveryEngine";
 import { getAllVolumeLandmarks } from "../intelligence/volumeLandmarkEngine";
 import { getAvailableMuscles } from "../progression/progressionFilters";
 import { getMuscleProgression } from "../progression/progressionEngine";
@@ -58,39 +57,13 @@ function weeklyGradeReminders(workouts) {
   ];
 }
 
-function recoveryScoreReminders(workouts) {
-  const scores = getMuscleRecoveryScores(workouts);
-  const justRecovered = scores.filter((r) => r.status === "Recovered" && r.hoursUntilRecovered > 0);
-  if (!justRecovered.length) return [];
-
-  const muscleNames = justRecovered.map((r) => r.muscle).sort();
-  return [
-    {
-      type: "recoveryScoreIncreased",
-      category: "insights",
-      confidence: "medium",
-      icon: "HeartPulse",
-      title: justRecovered.length === 1 ? "Recovery Improving" : "Recovery Improving",
-      subtitle:
-        justRecovered.length === 1
-          ? `${muscleNames[0]} recovery score is climbing — ready to train again.`
-          : `${justRecovered.length} muscle groups are recovering well.`,
-      navigationTarget: "/dashboard",
-      action: { page: "/dashboard", entityId: null, focus: null },
-      dedupeKey: `recovery-score-increased-${muscleNames.join("-").toLowerCase()}`,
-      expiresAt: new Date(Date.now() + 2 * MS_PER_DAY),
-      metadata: { muscles: muscleNames },
-    },
-  ];
-}
-
 function volumeLandmarkReminders(workouts) {
   const muscles = getAvailableMuscles(workouts);
   const landmarks = getAllVolumeLandmarks(workouts, muscles).filter((l) => l.available);
 
   const achieved = landmarks.filter((l) => {
     const progression = getMuscleProgressionThisWeekVolume(workouts, l.muscle);
-    return progression != null && progression >= l.mav;
+    return progression != null && progression >= l.elevated;
   });
   if (!achieved.length) return [];
 
@@ -101,11 +74,11 @@ function volumeLandmarkReminders(workouts) {
       category: "insights",
       confidence: "medium",
       icon: "Layers",
-      title: "Volume Landmark Achieved",
+      title: "Elevated Training Volume",
       subtitle:
         achieved.length === 1
-          ? `${muscleNames[0]} hit its MAV volume this week.`
-          : `${achieved.length} muscle groups hit their MAV volume this week.`,
+          ? `${muscleNames[0]} volume is above your personal typical range this week.`
+          : `${achieved.length} muscle groups had volume above your personal typical range this week.`,
       navigationTarget: "/analytics",
       action: { page: "/analytics", entityId: null, focus: null },
       dedupeKey: `volume-landmark-${muscleNames.join("-").toLowerCase()}`,
@@ -126,7 +99,6 @@ export function generateIntelligenceReminders(workouts) {
   return [
     ...plateauReminders(workouts),
     ...weeklyGradeReminders(workouts),
-    ...recoveryScoreReminders(workouts),
     ...volumeLandmarkReminders(workouts),
   ];
 }

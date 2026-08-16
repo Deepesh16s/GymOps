@@ -43,7 +43,7 @@ function Landing() {
           <span className="land-heading-accent">Visualize your progress.</span>
         </h1>
         <p className="land-sub motion-enter motion-stagger-3">
-          Repvyn turns your logged sets into recovery, progression, and muscle-balance insight —
+          Repvyn turns your logged sets into progression and muscle-balance insight —
           computed from your own training history, not a black box.
         </p>
         <div className="land-cta-row motion-enter motion-stagger-4">

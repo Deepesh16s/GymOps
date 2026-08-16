@@ -166,9 +166,10 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
         <h2>{isReplaceMode ? "Replace Exercise" : "Add Exercise"}</h2>
 
         <form onSubmit={handleSubmit}>
-          <label>Muscle Group</label>
+          <label htmlFor="add-workout-muscle-group">Muscle Group</label>
 
           <select
+            id="add-workout-muscle-group"
             value={muscleGroup}
             onChange={(e) => setMuscleGroup(e.target.value)}
           >
@@ -185,9 +186,10 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
             ))}
           </select>
 
-          <label>Exercise</label>
+          <label htmlFor="add-workout-exercise-select">Exercise</label>
 
           <Select
+            inputId="add-workout-exercise-select"
             classNamePrefix="go-select"
             placeholder="Search Exercise..."
             isSearchable
@@ -255,7 +257,7 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
 
           {!isReplaceMode && (
             <>
-              <label>First Set</label>
+              <p className="modal-card-group-label">First Set</p>
 
               <div className="single-set-row">
                 <input

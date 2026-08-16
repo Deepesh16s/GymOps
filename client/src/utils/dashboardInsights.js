@@ -158,7 +158,7 @@ function computeWorkoutRecommendation(workouts) {
   breakdown.forEach((entry) => {
     if (!entry.lastTrained) return;
     const category = MUSCLE_SPLIT_CATEGORY[entry.muscle];
-    if (!category || category === "Core") return;
+    if (!category) return;
     const existing = lastTrainedByCategory[category];
     if (!existing || entry.lastTrained > existing) {
       lastTrainedByCategory[category] = entry.lastTrained;
@@ -178,23 +178,19 @@ function computeWorkoutRecommendation(workouts) {
 
   if (mostOverdue.daysAgo < 3) return null;
 
-  const detailParts = [];
-  const explanation = [];
+  const detailParts = [`${mostOverdue.category} overdue by ${mostOverdue.daysAgo} days`];
   if (freshest.category !== mostOverdue.category && freshest.daysAgo <= 1) {
-    detailParts.push(`${freshest.category} fully recovered`);
-    explanation.push(`${freshest.category} fully recovered`);
+    detailParts.push(`${freshest.category} trained most recently`);
   }
-  detailParts.push(`${mostOverdue.category} overdue by ${mostOverdue.daysAgo} days`);
-  explanation.push(`Last trained ${mostOverdue.daysAgo} days ago`);
 
   return {
     key: "workoutRecommendation",
     tone: "recommend",
     title: `Train ${mostOverdue.category} today`,
     detail: detailParts.join(" · "),
-    explanation,
     mostOverdueCategory: mostOverdue.category,
     mostOverdueDays: mostOverdue.daysAgo,
+    categoryGaps: withGaps,
   };
 }
 

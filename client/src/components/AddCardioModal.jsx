@@ -86,9 +86,9 @@ function AddCardioModal({ closeModal, onAddCardio }) {
         <h2>Add Cardio</h2>
 
         <form onSubmit={handleSubmit}>
-          <label>Activity Type</label>
+          <label htmlFor="cardio-activity-type">Activity Type</label>
 
-          <select value={activityType} onChange={handleActivityChange}>
+          <select id="cardio-activity-type" value={activityType} onChange={handleActivityChange}>
             {CARDIO_ACTIVITY_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -98,8 +98,8 @@ function AddCardioModal({ closeModal, onAddCardio }) {
 
           {availableVariants.length > 0 && (
             <>
-              <label>Variant (optional)</label>
-              <select value={variant} onChange={(e) => setVariant(e.target.value)}>
+              <label htmlFor="cardio-variant">Variant (optional)</label>
+              <select id="cardio-variant" value={variant} onChange={(e) => setVariant(e.target.value)}>
                 <option value="">None</option>
                 {availableVariants.map((v) => (
                   <option key={v} value={v}>

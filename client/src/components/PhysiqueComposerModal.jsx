@@ -131,13 +131,18 @@ function PhysiqueComposerModal({ open, accountIsPrivate, onCancel, onCreated }) 
   if (!open) return null;
 
   return (
-    <div className="physique-composer-overlay" onMouseDown={handleCancel}>
+    <div
+      className="physique-composer-overlay"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) handleCancel();
+      }}
+    >
       <div
         className="physique-composer-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="physique-composer-title"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="physique-composer-title" className="physique-composer-title">
           Share a physique update

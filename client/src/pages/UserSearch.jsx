@@ -87,7 +87,6 @@ function UserSearch() {
           placeholder="Search by username"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          autoFocus
         />
       </div>
 

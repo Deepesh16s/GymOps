@@ -106,6 +106,7 @@ function UsernameSetupPrompt({ user, onDone }) {
               minLength={3}
               maxLength={20}
               pattern="[a-z0-9_]+"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               required
             />

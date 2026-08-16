@@ -1,32 +1,45 @@
 import { buildProgressionSeries, compareRecentPeriods } from "../progression/progressionEngine";
 import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
-import { getWeeklyGrade, getMuscleRecoveryScores, getMusclePriorities } from "../intelligence";
-import { getConfidence } from "../utils/confidenceUtils";
+import { getWeeklyGrade, getMusclePriorities } from "../intelligence";
+import { getWorkoutVolume, isCardioEntry, groupWorkoutsIntoSessions } from "../utils/workoutUtils";
+import { prHistory } from "../utils/strengthUtils";
 
 const MS_PER_DAY = 86400000;
 
-function averageRecoveryScore(recoveryScores) {
-  if (!recoveryScores.length) return null;
-  return Math.round(recoveryScores.reduce((s, r) => s + r.recoveryScore, 0) / recoveryScores.length);
+function weekWorkouts(workouts) {
+  const weekAgo = Date.now() - 7 * MS_PER_DAY;
+  return workouts.filter((w) => new Date(w.date || w.createdAt).getTime() >= weekAgo);
 }
 
 function computeWeekConsistency(workouts) {
-  const weekAgo = Date.now() - 7 * MS_PER_DAY;
-  const trainedDays = new Set(
-    workouts
-      .filter((w) => new Date(w.date || w.createdAt).getTime() >= weekAgo)
-      .map((w) => new Date(w.date || w.createdAt).toDateString())
-  );
+  const trainedDays = new Set(weekWorkouts(workouts).map((w) => new Date(w.date || w.createdAt).toDateString()));
   return { trained: trainedDays.size, total: 7 };
+}
+
+function computeWeekTotalVolume(workouts) {
+  return Math.round(
+    weekWorkouts(workouts)
+      .filter((w) => !isCardioEntry(w))
+      .reduce((sum, w) => sum + getWorkoutVolume(w), 0)
+  );
+}
+
+function computeWeekSessionCount(workouts) {
+  return groupWorkoutsIntoSessions(weekWorkouts(workouts)).length;
+}
+
+function computeWeekPrCount(workouts) {
+  const weekAgo = Date.now() - 7 * MS_PER_DAY;
+  return prHistory(workouts).filter((e) => new Date(e.date).getTime() >= weekAgo).length;
 }
 
 export function generateWeeklyCoachReport(workouts) {
   const { grade, score, confidence: gradeConfidence, confidenceReason: gradeConfidenceReason } =
     getWeeklyGrade(workouts);
-  const recoveryScores = getMuscleRecoveryScores(workouts);
-  const recoveryScore = averageRecoveryScore(recoveryScores);
-  const recoveryConfidence = getConfidence(recoveryScores.length, "muscle");
   const consistency = computeWeekConsistency(workouts);
+  const totalVolume = computeWeekTotalVolume(workouts);
+  const sessionCount = computeWeekSessionCount(workouts);
+  const prCount = computeWeekPrCount(workouts);
 
   const weeklySeries = buildProgressionSeries(workouts, { granularity: "week" });
   const volumeTrend = compareRecentPeriods(weeklySeries, "volume", 1);
@@ -45,11 +58,10 @@ export function generateWeeklyCoachReport(workouts) {
     score,
     gradeConfidence,
     gradeConfidenceReason,
-    recovery: recoveryScore,
-    recoveryConfidence: recoveryConfidence.level,
-    recoveryConfidenceReason: recoveryConfidence.reason,
-    recoveryBreakdown: recoveryScores,
     consistency,
+    totalVolume,
+    sessionCount,
+    prCount,
     volumeChangePct: volumeTrend?.changePct ?? null,
     mostImproved,
     needsAttention,

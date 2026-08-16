@@ -3,6 +3,10 @@ import { buildSessionSummaries } from "../utils/workoutUtils";
 import { prHistory } from "../utils/strengthUtils";
 import { getTrainingBalance } from "./balanceEngine";
 import { weightedScore, clampScore, scoreToBand } from "../utils/scoringUtils";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+
+const WEEKLY_GRADE_DISCLAIMER =
+  "Repvyn heuristic combining consistency, week-over-week volume change, muscle-group balance, and PR frequency into a single score — not a validated measure of training quality or effectiveness. Treat it as an engagement summary, not a scientific assessment.";
 
 const MS_PER_DAY = 86400000;
 const CONSISTENCY_WINDOW_DAYS = 28;
@@ -76,5 +80,7 @@ export function getWeeklyGrade(workouts, { now = new Date() } = {}) {
     factors,
     confidence,
     confidenceReason,
+    evidenceStrength: EVIDENCE_STRENGTH.INSUFFICIENT,
+    evidenceDisclaimer: WEEKLY_GRADE_DISCLAIMER,
   };
 }
