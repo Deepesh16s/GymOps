@@ -884,6 +884,7 @@ function Dashboard() {
   const [stepsSaving, setStepsSaving] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability -- fetchDashboardData is declared below, but effects run after render commits so it's already initialized here.
     fetchDashboardData();
   }, []);
 

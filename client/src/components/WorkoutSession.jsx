@@ -59,7 +59,7 @@ function WorkoutSession({
   isSaving,
   saveError,
 }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [showConfirm, setShowConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);

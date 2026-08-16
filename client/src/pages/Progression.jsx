@@ -146,14 +146,16 @@ function Progression() {
   );
 
   const RECENT_PR_WINDOW_DAYS = 14;
-  const recentPr = useMemo(() => {
+  const latestPrEvent = useMemo(() => {
     const events = prHistory(workouts);
-    if (!events.length) return null;
-    const latest = events[events.length - 1];
-    const daysAgo = Math.floor((Date.now() - new Date(latest.date).getTime()) / 86400000);
-    if (daysAgo > RECENT_PR_WINDOW_DAYS) return null;
-    return { ...latest, daysAgo };
+    return events.length ? events[events.length - 1] : null;
   }, [workouts]);
+  const recentPr = (() => {
+    if (!latestPrEvent) return null;
+    const daysAgo = Math.floor((Date.now() - new Date(latestPrEvent.date).getTime()) / 86400000);
+    if (daysAgo > RECENT_PR_WINDOW_DAYS) return null;
+    return { ...latestPrEvent, daysAgo };
+  })();
   const muscleProgression = useMemo(
     () => (muscle ? getMuscleProgression(workouts, muscle, { rangeKey: timeRange }) : null),
     [workouts, muscle, timeRange]

@@ -90,6 +90,7 @@ function SessionCard({
                   className="history-card__type-icon"
                   style={{ background: typeColor.bg, color: typeColor.text }}
                 >
+                  {/* eslint-disable-next-line react-hooks/static-components -- TypeIcon resolves via getSessionIcon to a module-level imported component (HeartPulse/Dumbbell) with stable identity, not a component created during render. */}
                   <TypeIcon size={14} strokeWidth={2} />
                 </span>
                 <h3 className="history-card__title" style={{ color: typeColor.text }}>

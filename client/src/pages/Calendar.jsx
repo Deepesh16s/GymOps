@@ -366,6 +366,7 @@ function CalendarPage() {
 
   const [pendingAction, setPendingAction] = useState(null);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Compiler-transform preservation note only; this project doesn't use React Compiler.
   const handleCancelPendingAction = useCallback(() => setPendingAction(null), []);
 
   const handlePendingDateChange = (value) => {

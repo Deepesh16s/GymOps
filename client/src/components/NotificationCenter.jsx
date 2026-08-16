@@ -115,6 +115,7 @@ function NotificationItem({ notification, onNavigate, onDismiss, onSnooze, onMar
     >
       {!notification.read && <span className="notif-item__dot" aria-hidden="true" />}
       <div className="notif-item__icon">
+        {/* eslint-disable-next-line react-hooks/static-components -- Icon resolves via getNotificationIcon to a module-level imported component with stable identity, not a component created during render. */}
         <Icon size={16} strokeWidth={2} />
       </div>
       <div className="notif-item__body">

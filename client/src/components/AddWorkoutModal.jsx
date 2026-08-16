@@ -32,6 +32,7 @@ function AddWorkoutModal({ closeModal, onAddExercise, mode = "add" }) {
       Number.isInteger(Number(reps));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability -- fetchExercises is declared below, but effects run after render commits so it's already initialized here.
     fetchExercises();
   }, [muscleGroup]);
 
