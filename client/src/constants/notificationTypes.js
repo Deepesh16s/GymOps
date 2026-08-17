@@ -164,7 +164,7 @@ export function getPriorityRank(priority) {
 
 export const REMINDER_PREFERENCE_CATEGORIES = {
   WORKOUT: "workout",
-  RECOVERY: "recovery",
+  NEGLECT: "recovery", // value stays "recovery": existing localStorage key; renaming it resets users who already toggled this off
   CARDIO: "cardio",
   PLANNER: "planner",
   ACHIEVEMENT: "achievement",
@@ -174,7 +174,7 @@ export const REMINDER_PREFERENCE_CATEGORIES = {
 
 export const REMINDER_PREFERENCE_LABELS = {
   [REMINDER_PREFERENCE_CATEGORIES.WORKOUT]: "Workout reminders",
-  [REMINDER_PREFERENCE_CATEGORIES.RECOVERY]: "Neglect & plateau reminders",
+  [REMINDER_PREFERENCE_CATEGORIES.NEGLECT]: "Neglect & plateau reminders",
   [REMINDER_PREFERENCE_CATEGORIES.CARDIO]: "Cardio reminders",
   [REMINDER_PREFERENCE_CATEGORIES.PLANNER]: "Planner reminders",
   [REMINDER_PREFERENCE_CATEGORIES.ACHIEVEMENT]: "Achievement notifications",

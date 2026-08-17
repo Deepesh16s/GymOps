@@ -13,7 +13,11 @@ const PLATEAU_RECENT_FREQUENCY_WINDOW_DAYS = 28;
 const PLATEAU_MIN_RECENT_SESSIONS = 2;
 const PLATEAU_HIGH_CONFIDENCE_SESSIONS = 10;
 const PLATEAU_MEDIUM_CONFIDENCE_SESSIONS = 6;
-const PLATEAU_FLAT_PCT = 3;
+// Kept in sync with client/src/intelligence/plateauEngine.js's PLATEAU_FLAT_PCT.
+// 5%, not 3% — 1RM test-retest reliability research reports a median CV around
+// 4.2% (range 0.5-12.1%), so a 3% flat-band risked classifying pure measurement
+// noise as a declining trend.
+const PLATEAU_FLAT_PCT = 5;
 const PLATEAU_VOLATILITY_HIGH_CV = 0.12;
 
 const STRENGTH_TREND_MIN_SESSIONS = 4;

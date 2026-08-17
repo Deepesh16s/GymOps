@@ -1,6 +1,6 @@
 import { getMuscleProgression } from "../progression/progressionEngine";
 import { getConfidence } from "../utils/confidenceUtils";
-import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+import { EVIDENCE_STRENGTH, withMuscleEvidenceQualifier } from "../constants/evidenceSources";
 
 const MIN_WEEKS_FOR_LANDMARKS = 4;
 
@@ -45,7 +45,7 @@ export function getVolumeLandmarks(workouts, muscle, { rangeKey = "lifetime" } =
     confidence,
     confidenceReason,
     evidenceStrength: EVIDENCE_STRENGTH.INSUFFICIENT,
-    evidenceDisclaimer: VOLUME_RANGE_DISCLAIMER,
+    evidenceDisclaimer: withMuscleEvidenceQualifier(VOLUME_RANGE_DISCLAIMER, muscle),
   };
 }
 

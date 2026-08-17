@@ -6,7 +6,30 @@ import {
   calculateWorkingWeightAverage,
   calculateRelativeIntensity,
   prHistory,
+  suggestedLoadIncrement,
 } from "../../src/utils/strengthUtils";
+
+describe("suggestedLoadIncrement (ACSM 2-10%-of-load guidance, replaces a flat kg jump)", () => {
+  it("scales with the current weight instead of using a fixed amount", () => {
+    expect(suggestedLoadIncrement(20)).toBeLessThan(suggestedLoadIncrement(200));
+  });
+
+  it("stays within roughly the 2-10% ACSM range for a typical working weight", () => {
+    const weight = 100;
+    const increment = suggestedLoadIncrement(weight);
+    expect(increment).toBeGreaterThanOrEqual(weight * 0.02);
+    expect(increment).toBeLessThanOrEqual(weight * 0.1);
+  });
+
+  it("clamps to a practical 0.5kg minimum for very light loads", () => {
+    expect(suggestedLoadIncrement(5)).toBe(0.5);
+  });
+
+  it("falls back to a sane default for missing/zero weight", () => {
+    expect(suggestedLoadIncrement(0)).toBe(2.5);
+    expect(suggestedLoadIncrement(null)).toBe(2.5);
+  });
+});
 
 describe("estimate1RM (Epley formula)", () => {
   it("returns the weight itself for a single rep", () => {

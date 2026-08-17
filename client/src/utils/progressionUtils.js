@@ -1,6 +1,6 @@
 import { getConfidenceReason } from "./confidenceUtils";
+import { suggestedLoadIncrement } from "./strengthUtils";
 
-const WEIGHT_INCREMENT_KG = 2.5;
 const REP_INCREMENT = 1;
 const MIN_SESSIONS_FOR_SUGGESTION = 4;
 const MIN_SESSIONS_FOR_HIGH_CONFIDENCE = 8;
@@ -18,7 +18,7 @@ export function suggestNextTarget({ lastSet, weightTrend, sessionCount = 0 }) {
       return {
         metric: "weight",
         current: { weight, reps },
-        suggested: { weight: roundToHalf(weight + WEIGHT_INCREMENT_KG), reps },
+        suggested: { weight: roundToHalf(weight + suggestedLoadIncrement(weight)), reps },
         confidence: sessionCount >= MIN_SESSIONS_FOR_HIGH_CONFIDENCE ? "High" : "Medium",
         confidenceReason: getConfidenceReason(sessionCount, "session"),
         reason: `Working weight has trended up over the last ${sessionCount} sessions.`,

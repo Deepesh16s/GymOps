@@ -35,12 +35,12 @@ const SPLITS = [
       "Longer sessions on leg day since quads, hamstrings, glutes, and calves are all stacked together",
     ],
     suitability:
-      "Best if you can train 5–6 days/week. If you're capped at 3 days/week, PPL can still work well — Upper/Lower or Full Body are also worth considering since they let you revisit each muscle sooner in the week.",
+      "Works well if you can train 5–6 days/week. If you're capped at 3 days/week, PPL can still work well — Upper/Lower or Full Body are also worth considering since they let you revisit each muscle sooner in the week. Research suggests frequency itself matters less than getting enough weekly volume in with good quality — frequency is mainly useful as a way to fit that volume in without overly long sessions.",
   },
   {
     id: "ul",
     name: "Upper / Lower",
-    tagline: "The efficiency pick — near-optimal frequency in 4 days",
+    tagline: "The efficiency pick — solid frequency in just 4 days",
     structure:
       "Alternates Upper body day (chest, back, shoulders, arms) and Lower body day (quads, hamstrings, glutes, calves).",
     frequencyOptions: [
@@ -58,7 +58,7 @@ const SPLITS = [
       "Fatigue from earlier exercises can slightly limit performance on later ones in the same session",
     ],
     suitability:
-      "Best if you can commit to 4 days/week. Often considered one of the most efficient splits for intermediate lifters in terms of results per session.",
+      "Works well if you can commit to 4 days/week. A common choice for intermediate lifters, since it fits solid weekly volume into fewer sessions than PPL — though research suggests it's the volume and effort you accumulate that matters most, not the frequency itself.",
   },
   {
     id: "full-body",
@@ -127,7 +127,7 @@ const EXERCISES = [
       "Bar drifting forward off the mid-foot, increasing strain on the lower back",
     ],
     science:
-      "Mechanical tension is the primary driver of hypertrophy, and training through a comfortable full range of motion — like squatting to at least parallel — often improves tension at longer muscle lengths for the quads and glutes.",
+      "Mechanical tension is considered by most current research to be the leading driver of hypertrophy, and training through a comfortable full range of motion — like squatting to at least parallel — often improves tension at longer muscle lengths for the quads and glutes.",
   },
   {
     id: "bench",
@@ -147,7 +147,7 @@ const EXERCISES = [
       "Losing scapular retraction mid-set",
     ],
     science:
-      "Mechanical tension is the main driver of growth here, and controlling the eccentric (lowering) phase helps maintain tension through a comfortable full range of motion rather than relying on momentum.",
+      "Mechanical tension is considered the leading driver of growth here, and controlling the eccentric (lowering) phase helps maintain tension through a comfortable full range of motion rather than relying on momentum.",
   },
   {
     id: "deadlift",
@@ -356,10 +356,10 @@ function Guide() {
         <div className="guide-list">
           <div className="guide-callout">
             <span className="guide-callout-strong">Why form matters:</span> mechanical tension is
-            the primary driver of muscle hypertrophy. Progressive overload, sufficient weekly volume,
-            training with good effort, and adequate recovery are the major determinants of growth.
+            considered by most current research to be the leading driver of muscle hypertrophy, alongside
+            progressive overload, sufficient weekly volume, training with good effort, and adequate recovery.
             Training through a full, comfortable range of motion often improves tension at longer
-            muscle lengths — usually the biggest lever you control on every single rep.
+            muscle lengths — one of the more direct levers you control on every single rep.
           </div>
 
           {EXERCISES.map((ex) => {

@@ -9,7 +9,7 @@ export function generateSessionIntelligence(workouts, session) {
   }
 
   const sessionBreakdown = computeMuscleBreakdown(session.workouts).sort((a, b) => b.volume - a.volume);
-  const highestFatigueContributor = sessionBreakdown[0] || null;
+  const highestVolumeMuscle = sessionBreakdown[0] || null;
 
   const sessionDate = new Date(session.date);
   const weekStart = new Date(sessionDate);
@@ -28,8 +28,8 @@ export function generateSessionIntelligence(workouts, session) {
 
   return {
     available: true,
-    highestFatigueContributor: highestFatigueContributor
-      ? { muscle: highestFatigueContributor.muscle, volume: Math.round(highestFatigueContributor.volume) }
+    highestVolumeMuscle: highestVolumeMuscle
+      ? { muscle: highestVolumeMuscle.muscle, volume: Math.round(highestVolumeMuscle.volume) }
       : null,
     weeklyVolumeContributionPct,
   };

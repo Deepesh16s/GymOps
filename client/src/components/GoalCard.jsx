@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { usesHealthBadge } from "../utils/goalAnalytics";
 import { formatDate } from "../utils/dateUtils";
+import EvidenceBadge from "./EvidenceBadge";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+
+const PROJECTION_EVIDENCE_EXPLANATION =
+  "A straight-line projection from your recent pace. Strength and progress adaptation typically follow a diminishing-returns curve rather than a straight line, so a short recent window doesn't reliably extrapolate over a long horizon — treat this as an estimate, not a guarantee.";
 
 const HEALTH_ICONS = {
   Completed: CheckCircle2,
@@ -174,7 +179,14 @@ function GoalCard({ goal, analytics, hasReminder, cardRef, isHighlighted, onEdit
             </div>
 
             <div className="goal-analytics-item">
-              <span className="goal-analytics-label">Projected completion</span>
+              <span className="goal-analytics-label">
+                Projected completion
+                <EvidenceBadge
+                  strength={EVIDENCE_STRENGTH.LIMITED}
+                  explanation={PROJECTION_EVIDENCE_EXPLANATION}
+                  metricKey="goalForecast"
+                />
+              </span>
               <span className="goal-analytics-value">
                 {isCompleted
                   ? "Already completed"

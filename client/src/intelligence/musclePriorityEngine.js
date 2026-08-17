@@ -2,7 +2,12 @@ import { computeMuscleBreakdown } from "../utils/workoutUtils";
 import { getMuscleProgression } from "../progression/progressionEngine";
 import { getAvailableMuscles } from "../progression/progressionFilters";
 import { getConfidence } from "../utils/confidenceUtils";
-import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+import {
+  EVIDENCE_STRENGTH,
+  withMuscleEvidenceQualifier,
+  getMuscleEvidenceTier,
+  MUSCLE_EVIDENCE_TIERS,
+} from "../constants/evidenceSources";
 
 const MS_PER_DAY = 86400000;
 const RECENT_WINDOW_DAYS = 14;
@@ -53,15 +58,23 @@ export function getMusclePriorities(workouts, { rangeKey = "lifetime" } = {}) {
 
   const { level: confidence, reason: confidenceReason } = getConfidence(breakdown.length, "muscle");
 
+  const fastestGrowing = growing[0] || null;
+  const highlightedMuscles = [mostOverdue?.muscle, fastestGrowing?.muscle, ...lowerRecentExposure].filter(Boolean);
+  const weakestTierMuscle = highlightedMuscles.find(
+    (m) => getMuscleEvidenceTier(m) === MUSCLE_EVIDENCE_TIERS.INSUFFICIENT
+  );
+
   return {
     available: true,
     mostOverdue,
-    fastestGrowing: growing[0] || null,
+    fastestGrowing,
     lowerRecentExposure,
     neglected: lowerRecentExposure,
     confidence,
     confidenceReason,
     evidenceStrength: EVIDENCE_STRENGTH.LIMITED,
-    evidenceDisclaimer: EXPOSURE_DISCLAIMER,
+    evidenceDisclaimer: weakestTierMuscle
+      ? withMuscleEvidenceQualifier(EXPOSURE_DISCLAIMER, weakestTierMuscle)
+      : EXPOSURE_DISCLAIMER,
   };
 }

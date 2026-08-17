@@ -285,12 +285,12 @@ function SessionCard({
                 Session Intelligence
               </span>
               <div className="session-intelligence__grid">
-                {sessionIntelligence.highestFatigueContributor && (
+                {sessionIntelligence.highestVolumeMuscle && (
                   <div className="session-intelligence__row">
-                    <span>Highest Fatigue Contributor</span>
+                    <span>Highest Volume Muscle</span>
                     <strong>
-                      {sessionIntelligence.highestFatigueContributor.muscle} (
-                      {sessionIntelligence.highestFatigueContributor.volume.toLocaleString()} kg)
+                      {sessionIntelligence.highestVolumeMuscle.muscle} (
+                      {sessionIntelligence.highestVolumeMuscle.volume.toLocaleString()} kg)
                     </strong>
                   </div>
                 )}

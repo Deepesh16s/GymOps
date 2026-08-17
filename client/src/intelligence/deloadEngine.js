@@ -1,10 +1,14 @@
 import { getAvailableMuscles } from "../progression/progressionFilters";
 import { getMusclePlateaus } from "./plateauEngine";
 import { getFatigueLevel } from "./fatigueEngine";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
 
 const FATIGUE_TRIGGER_BANDS = new Set(["High", "Very High"]);
 const EXTREME_VOLUME_RATIO_TRIGGER = 1.6;
 const MIN_TRIGGERS_FOR_RECOMMENDATION = 2;
+
+const DELOAD_DISCLAIMER =
+  "Repvyn heuristic: fires when at least 2 of 3 training-history signals line up (plateau, elevated fatigue trend, high recent volume). Controlled research on planned deloads for resistance training is limited, and genuine overtraining from resistance training alone appears uncommon over the timeframes typical recreational lifters train. This is a suggestion worth considering, not a signal that your body physiologically needs reduced training.";
 
 export function getDeloadRecommendation(workouts, { rangeKey = "lifetime" } = {}) {
   const muscles = getAvailableMuscles(workouts);
@@ -35,5 +39,7 @@ export function getDeloadRecommendation(workouts, { rangeKey = "lifetime" } = {}
       fatigueBand: fatigue.band,
       weeklyVolumeRatio: fatigue.inputs.weeklyVolumeRatio,
     },
+    evidenceStrength: EVIDENCE_STRENGTH.LIMITED,
+    evidenceDisclaimer: DELOAD_DISCLAIMER,
   };
 }

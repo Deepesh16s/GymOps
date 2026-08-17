@@ -1,8 +1,12 @@
 import { computeMuscleBreakdown, buildSessionSummaries } from "../utils/workoutUtils";
 import { MUSCLE_SPLIT_CATEGORY } from "../constants/muscles";
 import { getConfidence } from "../utils/confidenceUtils";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
 
 const CATEGORIES = ["Push", "Pull", "Legs", "Core"];
+
+const BALANCE_DISCLAIMER =
+  "Repvyn heuristic comparing your own set distribution across Push/Pull/Legs/Core — not a scientific measurement of injury risk or muscular imbalance. A skewed split isn't automatically a problem; some programs deliberately emphasize certain movement patterns for a period.";
 
 export function summarizeMuscleGroupSplit(breakdown, { metric = "sets" } = {}) {
   const totals = { Push: 0, Pull: 0, Legs: 0, Core: 0 };
@@ -66,6 +70,8 @@ export function getTrainingBalance(workouts, { metric = "volume" } = {}) {
     },
     confidence,
     confidenceReason,
+    evidenceStrength: EVIDENCE_STRENGTH.INSUFFICIENT,
+    evidenceDisclaimer: BALANCE_DISCLAIMER,
   };
 }
 

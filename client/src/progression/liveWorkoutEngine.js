@@ -1,7 +1,5 @@
-import { bestSet, estimate1RM } from "../utils/strengthUtils";
+import { bestSet, estimate1RM, suggestedLoadIncrement } from "../utils/strengthUtils";
 import { groupWorkoutsIntoSessions, getSessionStats, computeCurrentStreak } from "../utils/workoutUtils";
-
-const WEIGHT_INCREMENT_KG = 2.5;
 
 export function strengthWorkoutsForExercise(historicalWorkouts, exerciseId) {
   if (!exerciseId || !historicalWorkouts?.length) return [];
@@ -46,11 +44,23 @@ export function getNextSetSuggestion(snapshot, sessionSetsSoFar = []) {
   if (sessionSetsSoFar.length) {
     const lastInSession = sessionSetsSoFar[sessionSetsSoFar.length - 1];
     const sessionBest = bestSet(sessionSetsSoFar);
-    const readyForMoreWeight = lastInSession.weight >= sessionBest.weight && lastInSession.reps >= 3;
+    // Requires the performance to have already been repeated at least once
+    // this session (2+ sets at/above the session best), not a single set —
+    // a single set clearing a threshold isn't distinguishable from ordinary
+    // set-to-set variability (1RM test-retest CV is ~4% even under controlled
+    // conditions; ordinary training sets carry at least as much noise).
+    const priorSets = sessionSetsSoFar.slice(0, -1);
+    const priorBestInSession = priorSets.length ? bestSet(priorSets) : null;
+    const readyForMoreWeight =
+      priorBestInSession &&
+      lastInSession.weight >= sessionBest.weight &&
+      lastInSession.reps >= 3 &&
+      priorBestInSession.weight >= sessionBest.weight &&
+      priorBestInSession.reps >= 3;
 
     if (readyForMoreWeight) {
       return {
-        weight: Math.round((lastInSession.weight + WEIGHT_INCREMENT_KG) * 2) / 2,
+        weight: Math.round((lastInSession.weight + suggestedLoadIncrement(lastInSession.weight)) * 2) / 2,
         reps: lastInSession.reps,
         basis: "weight",
       };
@@ -74,7 +84,7 @@ export function getNextSetSuggestion(snapshot, sessionSetsSoFar = []) {
 
   if (readyForMoreWeight) {
     return {
-      weight: Math.round((lastBest.weight + WEIGHT_INCREMENT_KG) * 2) / 2,
+      weight: Math.round((lastBest.weight + suggestedLoadIncrement(lastBest.weight)) * 2) / 2,
       reps: lastBest.reps,
       basis: "weight",
     };

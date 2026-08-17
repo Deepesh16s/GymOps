@@ -9,6 +9,7 @@ import {
   Rocket,
   Sparkles,
   AlertTriangle,
+  CheckCircle2,
   Trophy,
   HeartPulse,
   Zap,
@@ -36,6 +37,7 @@ import {
 } from "../intelligence/balanceEngine";
 import { getMusclePlateaus } from "../intelligence/plateauEngine";
 import { getFatigueLevel } from "../intelligence/fatigueEngine";
+import { getDeloadRecommendation } from "../intelligence/deloadEngine";
 import { getWeeklyGrade } from "../intelligence/weeklyGradeEngine";
 import { getAllVolumeLandmarks } from "../intelligence/volumeLandmarkEngine";
 import { getExerciseInsights } from "../intelligence/exerciseIntelligence";
@@ -112,8 +114,8 @@ function formatRelativeDays(days) {
 }
 
 function pplBadge(pct) {
-  if (pct >= 45) return { label: "Overtrained", tone: "danger" };
-  if (pct <= 10) return { label: "Needs Work", tone: "warning" };
+  if (pct >= 45) return { label: "Dominant Share", tone: "danger" };
+  if (pct <= 10) return { label: "Low Share", tone: "warning" };
   return { label: "Balanced", tone: "balanced" };
 }
 
@@ -265,71 +267,17 @@ function Analytics() {
     [muscleBySets]
   );
 
-  const trainingScoreBreakdown = useMemo(() => {
-    const clamp = (v) => Math.max(0, Math.min(100, v));
-    const pplValues = Object.values(lifetimePplPct);
-    const pplSpread = pplValues.length ? Math.max(...pplValues) - Math.min(...pplValues) : null;
-    return [
-      {
-        key: "consistency",
-        label: "Consistency",
-        value: consistency ? clamp(consistency.percent) : null,
-        caption: consistency
-          ? `${Math.round(consistency.percent)}% of expected sessions logged`
-          : "Log more workouts to unlock this",
-      },
-      {
-        key: "overload",
-        label: "Progressive Overload",
-        value: volumeTrend ? clamp(50 + volumeTrend.changePct) : null,
-        caption: volumeTrend
-          ? `Volume ${volumeTrend.changePct >= 0 ? "up" : "down"} ${Math.abs(volumeTrend.changePct)}% vs prior`
-          : "Log more workouts to unlock this",
-      },
-      {
-        key: "balance",
-        label: "Muscle Balance",
-        value: pplSpread != null ? clamp(100 - pplSpread) : null,
-        caption:
-          pplSpread != null
-            ? `${Math.round(pplSpread)}pt spread across push/pull/legs/core`
-            : "Log more workouts to unlock this",
-      },
-      {
-        key: "prFrequency",
-        label: "PR Frequency",
-        value: clamp((recordsThisMonth / 3) * 100),
-        caption: `${recordsThisMonth} new record${recordsThisMonth === 1 ? "" : "s"} this month`,
-      },
-    ];
-  }, [consistency, volumeTrend, lifetimePplPct, recordsThisMonth]);
-
-  const trainingScore = useMemo(() => {
-    const available = trainingScoreBreakdown.filter((p) => p.value != null);
-    if (!available.length) return null;
-    return Math.round(available.reduce((s, p) => s + p.value, 0) / available.length);
-  }, [trainingScoreBreakdown]);
-
-  const trainingScoreLabel =
-    trainingScore == null
-      ? null
-      : trainingScore >= 85
-      ? "Excellent"
-      : trainingScore >= 70
-      ? "Good"
-      : trainingScore >= 50
-      ? "Fair"
-      : "Needs Work";
-
-  const trainingScoreTrend = useMemo(() => {
-    const deltas = [volumeTrend, strengthTrend, consistencyTrend, prRateTrend]
-      .filter(Boolean)
-      .map((t) => t.changePct);
-    if (!deltas.length) return null;
-    const avg = Math.round(deltas.reduce((s, v) => s + v, 0) / deltas.length);
-    const direction = avg > 5 ? "up" : avg < -5 ? "down" : "flat";
-    return { direction, changePct: avg };
-  }, [volumeTrend, strengthTrend, consistencyTrend, prRateTrend]);
+  const weeklyGrade = useMemo(() => getWeeklyGrade(workouts), [workouts]);
+  const previousWeeklyGrade = useMemo(
+    () => getWeeklyGrade(workouts, { now: new Date(Date.now() - 7 * 86400000) }),
+    [workouts]
+  );
+  const weeklyGradeTrend = useMemo(() => {
+    if (weeklyGrade.score == null || previousWeeklyGrade.score == null) return null;
+    const changePct = weeklyGrade.score - previousWeeklyGrade.score;
+    const direction = changePct > 5 ? "up" : changePct < -5 ? "down" : "flat";
+    return { direction, changePct };
+  }, [weeklyGrade, previousWeeklyGrade]);
 
   const mostImprovedInsight = insightsData.available
     ? insightsData.insights.find((i) => i.key === "mostImprovedMuscle")
@@ -506,10 +454,10 @@ function Analytics() {
   );
 
   const fatigueLevel = useMemo(() => getFatigueLevel(workouts), [workouts]);
+  const deloadRecommendation = useMemo(() => getDeloadRecommendation(workouts), [workouts]);
   const trainingBalanceReport = useMemo(() => getTrainingBalance(workouts), [workouts]);
   const upperLowerSplit = useMemo(() => getUpperLowerSplit(workouts), [workouts]);
   const strengthCardioSplitReport = useMemo(() => getStrengthCardioSplit(workouts), [workouts]);
-  const weeklyGrade = useMemo(() => getWeeklyGrade(workouts), [workouts]);
   const volumeLandmarks = useMemo(
     () =>
       getAllVolumeLandmarks(workouts, availableMuscles, { rangeKey: advancedRange }).filter(
@@ -685,15 +633,23 @@ function Analytics() {
             </div>
 
             <div className="analytics-score">
-              <span className="analytics-score__label">Repvyn Training Score</span>
-              {trainingScore != null ? (
+              <span className="analytics-score__label">
+                Repvyn Training Score
+                <EvidenceBadge
+                  strength={weeklyGrade.evidenceStrength}
+                  explanation={weeklyGrade.evidenceDisclaimer}
+                  metricKey="weeklyGrade"
+                />
+              </span>
+              {weeklyGrade.score != null ? (
                 <>
-                  <span className="analytics-score__value">{trainingScore}</span>
-                  <span className="analytics-score__tag">{trainingScoreLabel}</span>
-                  {trainingScoreTrend && (
+                  <span className="analytics-score__value">{weeklyGrade.score}</span>
+                  <span className="analytics-score__tag">{weeklyGrade.grade}</span>
+                  <ConfidenceBadge level={weeklyGrade.confidence} reason={weeklyGrade.confidenceReason} label="Data confidence" />
+                  {weeklyGradeTrend && (
                     <div className="analytics-score__trend">
-                      <TrendBadge trend={trainingScoreTrend} />
-                      <span>vs last month</span>
+                      <TrendBadge trend={weeklyGradeTrend} />
+                      <span>vs last week</span>
                     </div>
                   )}
                 </>
@@ -706,14 +662,15 @@ function Analytics() {
                 </>
               )}
               <p className="analytics-score__formula">
-                From consistency, progressive overload, muscle balance &amp; PR frequency
+                From consistency, progressive overload, muscle balance &amp; PR frequency — a Repvyn heuristic, not a
+                validated training-quality measurement
               </p>
             </div>
 
             <div className="analytics-score-breakdown">
               <p className="analytics-score-breakdown__title">The maths behind your Repvyn score</p>
               <div className="analytics-score-breakdown__list">
-                {trainingScoreBreakdown.map((part) => (
+                {weeklyGrade.factors.map((part) => (
                   <div className="analytics-score-breakdown__row" key={part.key}>
                     <div className="analytics-score-breakdown__row-head">
                       <span className="analytics-score-breakdown__row-label">{part.label}</span>
@@ -727,7 +684,6 @@ function Analytics() {
                         style={{ width: `${part.value != null ? part.value : 0}%` }}
                       />
                     </div>
-                    <p className="analytics-score-breakdown__caption">{part.caption}</p>
                   </div>
                 ))}
               </div>
@@ -1441,6 +1397,33 @@ function Analytics() {
         </section>
 
         <section className="analytics-section">
+          <div className="analytics-latest-pr__head">
+            <p className="analytics-section__label" style={{ marginBottom: 0 }}>
+              Deload
+            </p>
+            <EvidenceBadge
+              strength={deloadRecommendation.evidenceStrength}
+              explanation={deloadRecommendation.evidenceDisclaimer}
+              metricKey="deload"
+            />
+          </div>
+          <div className="progression-panel">
+            {!deloadRecommendation.recommended ? (
+              <PanelEmptyState
+                icon={CheckCircle2}
+                message="No combination of signals currently suggests a deload."
+              />
+            ) : (
+              <ul className="prog-exdist__hint" style={{ paddingLeft: 18, margin: 0 }}>
+                {deloadRecommendation.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        <section className="analytics-section">
           <p className="analytics-section__label">Training Balance</p>
           <div className="progression-panel">
             {!trainingBalanceReport.available ? (
@@ -1455,6 +1438,11 @@ function Analytics() {
                     level={trainingBalanceReport.confidence}
                     reason={trainingBalanceReport.confidenceReason}
                     label="Training balance"
+                  />
+                  <EvidenceBadge
+                    strength={trainingBalanceReport.evidenceStrength}
+                    explanation={trainingBalanceReport.evidenceDisclaimer}
+                    metricKey="muscleBalance"
                   />
                 </div>
                 <div className="prog-exdist">

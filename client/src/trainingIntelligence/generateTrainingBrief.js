@@ -1,5 +1,4 @@
 import {
-  getTodaysReadiness,
   getFatigueLevel,
   getWeeklyGrade,
   getTrainingBalance,
@@ -74,7 +73,6 @@ function buildExplanationSections({ recommendationItem, goalItem, fatigue }) {
 }
 
 export function generateTrainingBrief(workouts, goals, options = {}) {
-  const readiness = getTodaysReadiness(workouts);
   const fatigue = getFatigueLevel(workouts);
   const weeklyGrade = getWeeklyGrade(workouts);
   const trainingBalance = getTrainingBalance(workouts);
@@ -91,10 +89,6 @@ export function generateTrainingBrief(workouts, goals, options = {}) {
   });
 
   return {
-    readiness: readiness.readiness,
-    readinessConfidence: readiness.confidence,
-    readinessConfidenceReason: readiness.confidenceReason,
-    readinessLabel: readiness.recommendation,
     recommendedWorkout: recommendationItem?.title || null,
     fatigueBand: fatigue.band,
     fatigueConfidence: fatigue.confidence,

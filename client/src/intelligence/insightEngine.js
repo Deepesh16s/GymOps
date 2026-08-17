@@ -69,7 +69,7 @@ export function getSmartInsights(workouts) {
 
   const deload = getDeloadRecommendation(workouts);
   if (deload.recommended) {
-    insights.push("Next week would be ideal for a deload.");
+    insights.push("A lighter week may be worth considering — plateau and fatigue signals suggest reduced training load.");
   }
 
   const existing = getInsights(workouts);

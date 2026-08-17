@@ -10,7 +10,7 @@ import { getConfidence } from "../utils/confidenceUtils";
 import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
 
 const FATIGUE_DISCLAIMER =
-  "Training-load trend signal (this week's volume vs. your recent baseline), not an individual injury or overtraining prediction. Research on this type of ratio shows a real association with injury risk at a population level, but wide individual variation.";
+  "Describes how this week's training volume compares to your own recent baseline — not an injury or overtraining prediction. This type of load ratio (borrowed from team-sport injury research) has been criticized on methodological grounds: the acute and chronic windows share overlapping data, which can produce a statistical association independent of any real injury relationship. Treat this as a load-trend signal only, not a validated risk score.";
 
 const MS_PER_DAY = 86400000;
 const LONG_SESSION_MINUTES = 75;
@@ -102,7 +102,7 @@ export function getFatigueLevel(workouts) {
     band: fatigueScoreToBand(fatigueScore),
     confidence,
     confidenceReason,
-    evidenceStrength: EVIDENCE_STRENGTH.MIXED,
+    evidenceStrength: EVIDENCE_STRENGTH.LIMITED,
     evidenceDisclaimer: FATIGUE_DISCLAIMER,
     inputs: {
       weeklyVolumeRatio: Math.round(weeklyVolumeRatio * 100) / 100,

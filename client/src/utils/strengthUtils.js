@@ -1,4 +1,15 @@
 
+// ACSM's Progression Models in Resistance Training position stand (2009)
+// recommends load increases of roughly 2-10%, scaled to the exercise/muscle
+// mass involved, rather than a fixed absolute jump. 5% (the midpoint) applied
+// to the current working weight, clamped to a practical 0.5kg minimum,
+// replaces what used to be a flat +2.5kg for every exercise regardless of load.
+export function suggestedLoadIncrement(currentWeight) {
+  if (!currentWeight || currentWeight <= 0) return 2.5;
+  const raw = currentWeight * 0.05;
+  return Math.max(0.5, Math.round(raw * 2) / 2);
+}
+
 export function estimate1RM(weight, reps) {
   if (!weight || !reps || weight <= 0 || reps <= 0) return 0;
   if (reps === 1) return Math.round(weight);

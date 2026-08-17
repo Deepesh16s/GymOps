@@ -4,7 +4,13 @@ import { getAdvancedProgression } from "../../services/progressionService";
 import { TrendBadge } from "./TrendChart";
 import ConfidenceBadge from "../ConfidenceBadge";
 import EvidenceBadge from "../EvidenceBadge";
+import { EVIDENCE_STRENGTH } from "../../constants/evidenceSources";
 import "./advanced-insights.css";
+
+const VOLUME_TREND_DISCLAIMER =
+  "Compares your recent weekly training volume against your own historical baseline — not a scientific volume ceiling or floor. Research-established volume guidance is expressed in sets per muscle per week, not the total kg-volume used here.";
+const MUSCLE_BALANCE_DISCLAIMER =
+  "Repvyn heuristic comparing your own volume distribution across muscle groups — not a scientific measurement of injury risk or imbalance. A skewed split isn't automatically a problem.";
 
 const PILLARS = [
   {
@@ -145,6 +151,11 @@ function VolumeTrendSection({ data }) {
               {data.flag === "unusually_high" ? "Unusually high volume" : "Unusually low volume"}
             </span>
           )}
+          <EvidenceBadge
+            strength={EVIDENCE_STRENGTH.INSUFFICIENT}
+            explanation={VOLUME_TREND_DISCLAIMER}
+            metricKey="volumeLandmarks"
+          />
         </div>
       </div>
       {data.muscles.length > 0 && (
@@ -185,6 +196,11 @@ function MuscleBalanceSection({ data }) {
               {data.imbalanceGapPct}pt gap
             </span>
           )}
+          <EvidenceBadge
+            strength={EVIDENCE_STRENGTH.INSUFFICIENT}
+            explanation={MUSCLE_BALANCE_DISCLAIMER}
+            metricKey="muscleBalance"
+          />
         </div>
       </div>
       <div className="prog-exdist">
@@ -208,6 +224,11 @@ function ExerciseComparisonSection({ entries }) {
   return (
     <div className="advanced-insights__section">
       <p className="advanced-insights__section-title">Exercise Comparison</p>
+      <p className="advanced-insights__row-note">
+        The 30-day figure is the noisiest of the three — even a controlled, maximal strength test varies by ~4%
+        session to session, so a small 30-day change may be measurement noise rather than a real shift. 60/90-day
+        figures are more reliable.
+      </p>
       <ul className="advanced-insights__row-list">
         {usable.map((e) => (
           <li key={e.exercise} className="advanced-insights__row">

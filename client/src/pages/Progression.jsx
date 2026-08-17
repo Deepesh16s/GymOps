@@ -35,6 +35,10 @@ import LoadErrorBanner from "../components/LoadErrorBanner";
 import AdvancedInsights from "../components/progression/AdvancedInsights";
 import { getExercisePlateau } from "../intelligence/plateauEngine";
 import { getOverloadSuggestion } from "../intelligence/overloadEngine";
+import { EVIDENCE_STRENGTH } from "../constants/evidenceSources";
+
+const E1RM_EVIDENCE_EXPLANATION =
+  "Estimated from your working weight and reps using the Epley formula — most reliable in roughly the 3-6 rep range, less reliable at higher rep counts. Not a substitute for a tested 1RM, and not directly comparable across different exercises.";
 import {
   DEFAULT_TIME_RANGE,
   DEFAULT_METRIC,
@@ -524,7 +528,16 @@ function Progression() {
                 loading={loading}
               />
               <MetricCard
-                label="Estimated 1RM Trend"
+                label={
+                  <>
+                    Estimated 1RM Trend
+                    <EvidenceBadge
+                      strength={EVIDENCE_STRENGTH.MODERATE}
+                      explanation={E1RM_EVIDENCE_EXPLANATION}
+                      metricKey="e1RM"
+                    />
+                  </>
+                }
                 icon={Flame}
                 value={loading ? null : overall.trend.estOneRM ? `${overall.trend.estOneRM.changePct > 0 ? "+" : ""}${overall.trend.estOneRM.changePct}%` : "—"}
                 trend={overall.trend.estOneRM}
@@ -578,7 +591,16 @@ function Progression() {
                 }
               />
               <MetricCard
-                label="Estimated 1RM"
+                label={
+                  <>
+                    Estimated 1RM
+                    <EvidenceBadge
+                      strength={EVIDENCE_STRENGTH.MODERATE}
+                      explanation={E1RM_EVIDENCE_EXPLANATION}
+                      metricKey="e1RM"
+                    />
+                  </>
+                }
                 icon={Flame}
                 value={
                   exerciseProgression.stats.bestSet
